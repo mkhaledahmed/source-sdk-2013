@@ -1159,7 +1159,7 @@ void PushVariant(HSQUIRRELVM vm, const ScriptVariant_t& value)
 		break;
 	case FIELD_VECTOR:
 	{
-		SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
+		SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 		Assert(pSquirrelVM);
 		sq_pushobject(vm, pSquirrelVM->vectorClass_);
 		sq_createinstance(vm, -1);
@@ -1422,7 +1422,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	ScriptVariant_t retval;
 
-	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
+	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 	Assert(pSquirrelVM);
 
 	sq_resetobject(&pSquirrelVM->lastError_);
@@ -1475,7 +1475,7 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 		return sqstd_throwerrorf(vm, "Unable to construct instances of %s", pClassDesc->m_pszScriptName);
 	}
 
-	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
+	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 	Assert(pSquirrelVM);
 
 	sq_resetobject(&pSquirrelVM->lastError_);
@@ -2008,7 +2008,7 @@ bool SquirrelVM::Init()
 	if (vm_ == nullptr)
 		return false;
 
-	sq_setforeignptr(vm_, this);
+	sq_setsharedforeignptr(vm_, this);
 	sq_resetobject(&lastError_);
 
 	sq_setprintfunc(vm_, printfunc, errorfunc);
