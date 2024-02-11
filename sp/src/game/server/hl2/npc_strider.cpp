@@ -5833,6 +5833,7 @@ AI_BEGIN_CUSTOM_NPC( npc_strider, CNPC_Strider )
 		SCHED_STRIDER_FALL_TO_GROUND,
 
 		"	Tasks "
+		"		TASK_SOUND_WAKE			0"
 		"		TASK_PLAY_SEQUENCE		ACTIVITY:ACT_STRIDER_DEPLOY"
 		""
 		"	Interrupts "
