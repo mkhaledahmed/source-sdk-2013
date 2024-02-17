@@ -300,6 +300,9 @@ private:
 	bool IsHovering();
 	void UpdateGroundRotorWashSound( float flAltitude );
 	void UpdateRotorWashVolume( CSoundPatch *pRotorSound, float flVolume, float flDeltaTime );
+#ifdef MAPBASE
+	void DeathNotice(CBaseEntity* pVictim);
+#endif
 
 private:
 	// Timers
@@ -2490,7 +2493,7 @@ void CNPC_CombineDropship::PrescheduleThink( void )
 
 			m_hContainer = NULL;
 
-			m_flTimeTakeOff = gpGlobals->curtime + 5.0f;
+			m_flTimeTakeOff = gpGlobals->curtime + 3.0f;
 			SetLandingState(LANDING_UNLOADING);
 
 			return;
@@ -3341,6 +3344,19 @@ void CNPC_CombineDropship::MakeTracer( const Vector &vecTracerSrc, const trace_t
 		break;
 	}
 }
+
+#ifdef MAPBASE
+//-----------------------------------------------------------------------------
+// Purpose: Need a way to tell if our strider died
+//-----------------------------------------------------------------------------
+void CNPC_CombineDropship::DeathNotice( CBaseEntity *pVictim )
+{
+	if ( m_iCrateType == CRATE_STRIDER && GetLandingState() == LANDING_NO )
+	{
+		m_OnContainerShotDownBeforeDropoff.Set( 1, m_hContainer, this );
+	}
+}
+#endif
 
 AI_BEGIN_CUSTOM_NPC( npc_combinedropship, CNPC_CombineDropship )
 
