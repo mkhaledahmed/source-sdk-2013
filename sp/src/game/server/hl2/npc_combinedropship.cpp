@@ -2493,7 +2493,7 @@ void CNPC_CombineDropship::PrescheduleThink( void )
 
 			m_hContainer = NULL;
 
-			m_flTimeTakeOff = gpGlobals->curtime + 3.0f;
+			m_flTimeTakeOff = gpGlobals->curtime + 3.5f;
 			SetLandingState(LANDING_UNLOADING);
 
 			return;
