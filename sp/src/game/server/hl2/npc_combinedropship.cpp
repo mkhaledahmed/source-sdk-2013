@@ -1844,9 +1844,9 @@ void CNPC_CombineDropship::InputDropMines( inputdata_t &inputdata )
 
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
-void CNPC_CombineDropship::InputDropStrider( inputdata_t& inputdata )
+void CNPC_CombineDropship::InputDropStrider( inputdata_t &inputdata )
 {
-	if ( !m_hContainer || !FClassnameIs ( m_hContainer, "npc_strider" ) )
+	if ( !m_hContainer || !FClassnameIs( m_hContainer, "npc_strider" ) )
 	{
 		Warning("npc_combinedropship %s was told to drop Strider, but isn't carrying one!\n", STRING(GetEntityName()) );
 		return;
