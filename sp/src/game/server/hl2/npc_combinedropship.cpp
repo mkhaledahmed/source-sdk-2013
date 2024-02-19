@@ -985,6 +985,11 @@ void CNPC_CombineDropship::Spawn( void )
 		if ( m_sStriderTemplate != NULL_STRING )
 		{
 			m_sStriderTemplateData = Templates_FindByTargetName( STRING( m_sStriderTemplate ) );
+			if (m_sStriderTemplateData == NULL_STRING)
+			{
+				Warning("npc_combinedropship %s: Strider Template %s not found!\n", STRING(GetEntityName()), STRING(m_sStriderTemplate));
+				break;
+			}
 
 			CAI_BaseNPC* pent = NULL;
 			CBaseEntity* pEntity = NULL;
@@ -992,6 +997,12 @@ void CNPC_CombineDropship::Spawn( void )
 			if ( pEntity != NULL )
 			{
 				pent = ( CAI_BaseNPC* )pEntity;
+			}
+
+			if ( !FClassnameIs(pent, "npc_strider"))
+			{
+				Warning("npc_combinedropship %s: Strider Template %s is not a strider!\n", STRING(GetEntityName()), STRING(m_sStriderTemplate));
+				break;
 			}
 
 			m_OnSpawnNPC.Set( pEntity, pEntity, this );
