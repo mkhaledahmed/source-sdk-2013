@@ -3514,13 +3514,11 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 			WriteObject( pThis->_base, pBuffer, writeState );
 		}
 		WriteObject( pThis->_members, pBuffer, writeState );
-		WriteObject( pThis->_attributes, pBuffer, writeState );
 
 		int count = pThis->_defaultvalues.size();
 		pBuffer->PutInt( count );
 		for ( int i = 0; i < count; ++i )
 		{
-			WriteObject( pThis->_defaultvalues[i].attrs, pBuffer, writeState );
 			WriteObject( pThis->_defaultvalues[i].val, pBuffer, writeState );
 		}
 
@@ -3528,7 +3526,6 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 		pBuffer->PutInt( count );
 		for ( int i = 0; i < count; ++i )
 		{
-			WriteObject( pThis->_methods[i].attrs, pBuffer, writeState );
 			WriteObject( pThis->_methods[i].val, pBuffer, writeState );
 		}
 
@@ -4069,7 +4066,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 		}
 		else if ( type == ScriptClassType )
 		{
-			SQObjectPtr base, members, attributes;
+			SQObjectPtr base, members;
 
 			if ( pBuffer->GetChar() )
 			{
@@ -4082,7 +4079,6 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 			readState.StoreInCache( marker, obj );
 
 			ReadObject( members, pBuffer, readState );
-			ReadObject( attributes, pBuffer, readState );
 
 			Assert( members._type == OT_TABLE );
 
@@ -4091,13 +4087,10 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 			pThis->_members = members._unVal.pTable;
 			__ObjAddRef( pThis->_members );
 
-			pThis->_attributes = attributes;
-
 			int count = pBuffer->GetInt();
 			pThis->_defaultvalues.resize( count );
 			for ( int i = 0; i < count; ++i )
 			{
-				ReadObject( pThis->_defaultvalues[i].attrs, pBuffer, readState );
 				ReadObject( pThis->_defaultvalues[i].val, pBuffer, readState );
 			}
 
@@ -4105,7 +4098,6 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 			pThis->_methods.resize( count );
 			for ( int i = 0; i < count; ++i )
 			{
-				ReadObject( pThis->_methods[i].attrs, pBuffer, readState );
 				ReadObject( pThis->_methods[i].val, pBuffer, readState );
 			}
 
