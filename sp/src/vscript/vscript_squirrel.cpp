@@ -3199,6 +3199,8 @@ enum ClassType
 	for ( ; (i = pTable->Next( false, pi, key, val )) != -1; pi._unVal.nInteger = i )
 
 
+#define NATIVE_NAME_READBUF_SIZE 128
+
 void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, WriteStateMap& writeState )
 {
 	pBuffer->PutInt( obj._type );
@@ -3225,6 +3227,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 		break;
 
 	case OT_BOOL:
+		Assert( ( obj._unVal.nInteger & -2 ) == 0 );
 		pBuffer->PutChar( obj._unVal.nInteger );
 		break;
 
@@ -3362,6 +3365,8 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 		SQNativeClosure *pThis = obj._unVal.pNativeClosure;
 
 #ifdef _DEBUG
+		bool bAsserted = false;
+
 		if ( pThis->_noutervalues && pThis->_name._type == OT_STRING && pThis->_name._unVal.pString )
 		{
 			Assert( pThis->_noutervalues == 1 );
@@ -3380,6 +3385,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 								pThis->_name._unVal.pString->_val,
 								classes[i]->m_pszScriptName,
 								funcs[j].m_desc.m_pszScriptName );
+						bAsserted = true;
 						goto done;
 					}
 				}
@@ -3390,18 +3396,22 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 		if ( pThis->_name._type == OT_STRING && pThis->_name._unVal.pString && !pThis->_env )
 		{
+			Assert( pThis->_name._unVal.pString->_len < NATIVE_NAME_READBUF_SIZE );
 			pBuffer->Put( pThis->_name._unVal.pString->_val, pThis->_name._unVal.pString->_len + 1 );
 			break;
 		}
 
+#ifdef _DEBUG
 		if ( pThis->_name._type == OT_STRING && pThis->_name._unVal.pString )
 		{
-			AssertMsg( 0, "SquirrelVM: Native closure is not saved! '%s'", pThis->_name._unVal.pString->_val );
+			if ( !bAsserted )
+				AssertMsg( 0, "SquirrelVM: Native closure is not saved! '%s'", pThis->_name._unVal.pString->_val );
 		}
 		else
 		{
 			AssertMsg( 0, "SquirrelVM: Native closure is not saved!" );
 		}
+#endif
 
 		Assert( *(int*)pBuffer->PeekPut( -(int)sizeof(int) ) == OT_NATIVECLOSURE );
 		*(int*)pBuffer->PeekPut( -(int)sizeof(int) ) = OT_NULL;
@@ -3490,6 +3500,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 				ScriptClassDesc_t *pDesc = (ScriptClassDesc_t*)typetag;
 				pBuffer->PutChar( NativeClassType );
 				pBuffer->PutString( pDesc->m_pszScriptName );
+				Assert( strlen(pDesc->m_pszScriptName) < NATIVE_NAME_READBUF_SIZE );
 			}
 
 			break;
@@ -3505,18 +3516,19 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 		pBuffer->PutChar( ScriptClassType );
 
-		// UNDONE: script class inheriting native class. E.g.: class vec3_t extends Vector {}
-		Assert( pThis->_udsize == 0 );
-
 		pBuffer->PutChar( pThis->_base != NULL );
 		if ( pThis->_base )
 		{
 			WriteObject( pThis->_base, pBuffer, writeState );
 		}
+
+		// FIXME: This is inefficient for inheritance, broken for native class inheritance
+
 		WriteObject( pThis->_members, pBuffer, writeState );
 
 		int count = pThis->_defaultvalues.size();
 		pBuffer->PutInt( count );
+
 		for ( int i = 0; i < count; ++i )
 		{
 			WriteObject( pThis->_defaultvalues[i].val, pBuffer, writeState );
@@ -3524,6 +3536,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 		count = pThis->_methods.size();
 		pBuffer->PutInt( count );
+
 		for ( int i = 0; i < count; ++i )
 		{
 			WriteObject( pThis->_methods[i].val, pBuffer, writeState );
@@ -3596,6 +3609,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 					}
 					else if ( !pData->instanceId.IsEmpty() )
 					{
+						Assert( strlen(pData->instanceId.Get()) < NATIVE_NAME_READBUF_SIZE );
 						pBuffer->PutString( pData->instanceId );
 						pBuffer->PutChar( pData->allowDestruct ? 1 : 0 );
 					}
@@ -3774,7 +3788,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 	switch ( obj._type )
 	{
 	case OT_NULL:
-		obj._unVal.pUserPointer = 0;
+		obj._unVal.raw = 0;
 		break;
 
 	case OT_INTEGER:
@@ -3794,7 +3808,8 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 		break;
 
 	case OT_BOOL:
-		obj._unVal.nInteger = (bool)( pBuffer->GetChar() != 0 );
+		obj._unVal.nInteger = pBuffer->GetChar();
+		Assert( ( obj._unVal.nInteger & -2 ) == 0 );
 		break;
 
 	case OT_STRING:
@@ -3937,7 +3952,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 	}
 	case OT_NATIVECLOSURE:
 	{
-		char psz[128] = "";
+		char psz[NATIVE_NAME_READBUF_SIZE] = "";
 		pBuffer->GetString( psz, sizeof(psz) );
 
 		SQObjectPtr key = SQString::Create( _ss(vm_), psz );
@@ -4045,7 +4060,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 		}
 		else if ( type == NativeClassType )
 		{
-			char psz[128] = "";
+			char psz[NATIVE_NAME_READBUF_SIZE] = "";
 			pBuffer->GetString( psz, sizeof(psz) );
 
 			SQObjectPtr key = SQString::Create( _ss(vm_), psz );
@@ -4089,6 +4104,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 			int count = pBuffer->GetInt();
 			pThis->_defaultvalues.resize( count );
+
 			for ( int i = 0; i < count; ++i )
 			{
 				ReadObject( pThis->_defaultvalues[i].val, pBuffer, readState );
@@ -4096,6 +4112,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 			count = pBuffer->GetInt();
 			pThis->_methods.resize( count );
+
 			for ( int i = 0; i < count; ++i )
 			{
 				ReadObject( pThis->_methods[i].val, pBuffer, readState );
@@ -4200,7 +4217,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 			{
 				ScriptClassDesc_t *pDesc = (ScriptClassDesc_t *)typetag;
 
-				char pszInstanceName[128] = "";
+				char pszInstanceName[NATIVE_NAME_READBUF_SIZE] = "";
 				pBuffer->GetString( pszInstanceName, sizeof(pszInstanceName) );
 
 				if ( pszInstanceName[0] )
@@ -4503,29 +4520,14 @@ void SquirrelVM::WriteState( CUtlBuffer* pBuffer )
 	// If the main VM can be suspended, WriteVM/ReadVM would need to include the code inside OT_THREAD r/w
 	Assert( !vm_->ci );
 
-	if ( int c = sq_collectgarbage( vm_ ) > 0 )
-	{
-		Warning( "SquirrelVM::WriteVM: %d garbage refs\n", c );
-	}
-
 	WriteStateMap writeState;
 	WriteVM( vm_, pBuffer, writeState );
 }
 
 void SquirrelVM::ReadState( CUtlBuffer* pBuffer )
 {
-	if ( int c = sq_collectgarbage( vm_ ) > 0 )
-	{
-		Warning( "SquirrelVM::ReadVM: %d garbage refs (pre-read)\n", c );
-	}
-
 	ReadStateMap readState;
 	ReadVM( vm_, pBuffer, readState );
-
-	if ( int c = sq_collectgarbage( vm_ ) > 0 )
-	{
-		Warning( "SquirrelVM::ReadVM: %d garbage refs\n", c );
-	}
 }
 
 void SquirrelVM::RemoveOrphanInstances()
