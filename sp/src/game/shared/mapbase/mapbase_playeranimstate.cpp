@@ -15,7 +15,7 @@
 //=============================================================================//
 
 #include "cbase.h"
-#include "singleplayer_animstate.h"
+#include "mapbase_playeranimstate.h"
 #include "tier0/vprof.h"
 #include "animation.h"
 #include "studio.h"
@@ -27,9 +27,9 @@
 
 extern ConVar mp_facefronttime, mp_feetyawrate, mp_ik;
 
-ConVar sv_playeranimstate_animtype( "sv_playeranimstate_animtype", "0", FCVAR_NONE, "The leg animation type used by the singleplayer animation state. 9way = 0, 8way = 1, GoldSrc = 2" );
-ConVar sv_playeranimstate_bodyyaw( "sv_playeranimstate_bodyyaw", "45.0", FCVAR_NONE, "The maximum body yaw used by the singleplayer animation state." );
-ConVar sv_playeranimstate_use_aim_sequences( "sv_playeranimstate_use_aim_sequences", "1", FCVAR_NONE, "Allows the singleplayer animation state to use aim sequences." );
+ConVar sv_playeranimstate_animtype( "sv_playeranimstate_animtype", "0", FCVAR_NONE, "The leg animation type used by the Mapbase animation state. 9way = 0, 8way = 1, GoldSrc = 2" );
+ConVar sv_playeranimstate_bodyyaw( "sv_playeranimstate_bodyyaw", "45.0", FCVAR_NONE, "The maximum body yaw used by the Mapbase animation state." );
+ConVar sv_playeranimstate_use_aim_sequences( "sv_playeranimstate_use_aim_sequences", "1", FCVAR_NONE, "Allows the Mapbase animation state to use aim sequences." );
 
 #define MIN_TURN_ANGLE_REQUIRING_TURN_ANIMATION        15.0f
 
@@ -37,11 +37,11 @@ ConVar sv_playeranimstate_use_aim_sequences( "sv_playeranimstate_use_aim_sequenc
 #define RELOADSEQUENCE_LAYER	(FIRESEQUENCE_LAYER + 1)
 #define NUM_LAYERS_WANTED		(RELOADSEQUENCE_LAYER + 1)
 
-CSinglePlayerAnimState *CreatePlayerAnimationState( CBasePlayer *pPlayer )
+CMapbasePlayerAnimState *CreatePlayerAnimationState( CBasePlayer *pPlayer )
 {
     MDLCACHE_CRITICAL_SECTION();
 
-    CSinglePlayerAnimState *pState = new CSinglePlayerAnimState( pPlayer );
+    CMapbasePlayerAnimState *pState = new CMapbasePlayerAnimState( pPlayer );
 
     // Setup the movement data.
     CModAnimConfig movementData;
@@ -67,14 +67,14 @@ extern ConVar mp_feetyawrate;
 extern ConVar mp_facefronttime;
 extern ConVar mp_ik;
 
-CSinglePlayerAnimState::CSinglePlayerAnimState( CBasePlayer *pPlayer ): m_pPlayer( pPlayer )
+CMapbasePlayerAnimState::CMapbasePlayerAnimState( CBasePlayer *pPlayer ): m_pPlayer( pPlayer )
 {
 };
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-Activity CSinglePlayerAnimState::CalcMainActivity()
+Activity CMapbasePlayerAnimState::CalcMainActivity()
 {
 #ifdef CLIENT_DLL
     return ACT_IDLE;
@@ -138,7 +138,7 @@ Activity CSinglePlayerAnimState::CalcMainActivity()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
+void CMapbasePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
 {
     if ( playerAnim == PLAYER_ATTACK1 )
     {
@@ -199,7 +199,7 @@ void CSinglePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-Activity CSinglePlayerAnimState::TranslateActivity( Activity actDesired )
+Activity CMapbasePlayerAnimState::TranslateActivity( Activity actDesired )
 {
 #ifdef CLIENT_DLL
     return actDesired;
@@ -211,7 +211,7 @@ Activity CSinglePlayerAnimState::TranslateActivity( Activity actDesired )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-bool CSinglePlayerAnimState::HandleJumping()
+bool CMapbasePlayerAnimState::HandleJumping()
 {
 	if ( m_bJumping )
 	{
@@ -242,7 +242,7 @@ bool CSinglePlayerAnimState::HandleJumping()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ComputeSequences( CStudioHdr *pStudioHdr )
+void CMapbasePlayerAnimState::ComputeSequences( CStudioHdr *pStudioHdr )
 {
     CBasePlayerAnimState::ComputeSequences(pStudioHdr);
 
@@ -255,7 +255,7 @@ void CSinglePlayerAnimState::ComputeSequences( CStudioHdr *pStudioHdr )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::AddMiscSequence( int iSequence, float flBlendIn, float flBlendOut, float flPlaybackRate, bool bHoldAtEnd, bool bOnlyWhenStill )
+void CMapbasePlayerAnimState::AddMiscSequence( int iSequence, float flBlendIn, float flBlendOut, float flPlaybackRate, bool bHoldAtEnd, bool bOnlyWhenStill )
 {
     Assert( iSequence != -1 );
 
@@ -275,7 +275,7 @@ void CSinglePlayerAnimState::AddMiscSequence( int iSequence, float flBlendIn, fl
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ClearAnimationState()
+void CMapbasePlayerAnimState::ClearAnimationState()
 {
 	m_bJumping = false;
 	m_bFiring = false;
@@ -289,7 +289,7 @@ void CSinglePlayerAnimState::ClearAnimationState()
 	CBasePlayerAnimState::ClearAnimationState();
 }
 
-void CSinglePlayerAnimState::ClearAnimationLayers()
+void CMapbasePlayerAnimState::ClearAnimationLayers()
 {
 	VPROF( "CBasePlayerAnimState::ClearAnimationLayers" );
 	if ( !m_pOuter )
@@ -308,13 +308,13 @@ void CSinglePlayerAnimState::ClearAnimationLayers()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-int CSinglePlayerAnimState::CalcAimLayerSequence( float *flCycle, float *flAimSequenceWeight, bool bForceIdle )
+int CMapbasePlayerAnimState::CalcAimLayerSequence( float *flCycle, float *flAimSequenceWeight, bool bForceIdle )
 {
     // TODO?
     return m_pOuter->LookupSequence( "soldier_Aim_9_directions" );
 }
 
-void CSinglePlayerAnimState::UpdateLayerSequenceGeneric( int iLayer, bool &bEnabled,
+void CMapbasePlayerAnimState::UpdateLayerSequenceGeneric( int iLayer, bool &bEnabled,
 					float &flCurCycle, int &iSequence, bool bWaitAtEnd,
 					float fBlendIn, float fBlendOut, bool bMoveBlend, float fPlaybackRate, bool bUpdateCycle /* = true */ )
 {
@@ -418,23 +418,23 @@ void CSinglePlayerAnimState::UpdateLayerSequenceGeneric( int iLayer, bool &bEnab
 	pLayer->SetOrder( iLayer );
 }
 
-void CSinglePlayerAnimState::ComputeFireSequence()
+void CMapbasePlayerAnimState::ComputeFireSequence()
 {
 	UpdateLayerSequenceGeneric( FIRESEQUENCE_LAYER, m_bFiring, m_flFireCycle, m_iFireSequence, false );
 }
 
-void CSinglePlayerAnimState::ComputeReloadSequence()
+void CMapbasePlayerAnimState::ComputeReloadSequence()
 {
 	UpdateLayerSequenceGeneric( RELOADSEQUENCE_LAYER, m_bReloading, m_flReloadCycle, m_iReloadSequence, false, m_flReloadBlendIn, m_flReloadBlendOut, false, m_fReloadPlaybackRate );
 }
 
-void CSinglePlayerAnimState::ComputeWeaponSwitchSequence()
+void CMapbasePlayerAnimState::ComputeWeaponSwitchSequence()
 {
 	UpdateLayerSequenceGeneric( RELOADSEQUENCE_LAYER, m_bWeaponSwitching, m_flWeaponSwitchCycle, m_iWeaponSwitchSequence, false, 0, 0.5f );
 }
 
 // does misc gestures if we're not firing
-void CSinglePlayerAnimState::ComputeMiscSequence()
+void CMapbasePlayerAnimState::ComputeMiscSequence()
 {
 	UpdateLayerSequenceGeneric( RELOADSEQUENCE_LAYER, m_bPlayingMisc, m_flMiscCycle, m_iMiscSequence, m_bMiscHoldAtEnd, m_flMiscBlendIn, m_flMiscBlendOut, m_bMiscOnlyWhenStill, m_fMiscPlaybackRate );	
 }
@@ -444,7 +444,7 @@ void CSinglePlayerAnimState::ComputeMiscSequence()
 // Input  :  - 
 // Output : float
 //-----------------------------------------------------------------------------
-float CSinglePlayerAnimState::GetCurrentMaxGroundSpeed()
+float CMapbasePlayerAnimState::GetCurrentMaxGroundSpeed()
 {
 	CStudioHdr *pStudioHdr = GetOuter()->GetModelPtr();
 
@@ -485,7 +485,7 @@ float CSinglePlayerAnimState::GetCurrentMaxGroundSpeed()
 // Purpose: Override for backpeddling
 // Input  : dt -
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ComputePoseParam_BodyYaw( void )
+void CMapbasePlayerAnimState::ComputePoseParam_BodyYaw( void )
 {
     CBasePlayerAnimState::ComputePoseParam_BodyYaw();
 
@@ -495,7 +495,7 @@ void CSinglePlayerAnimState::ComputePoseParam_BodyYaw( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ComputePoseParam_BodyLookYaw( void )
+void CMapbasePlayerAnimState::ComputePoseParam_BodyLookYaw( void )
 {
     // See if we even have a blender for pitch
     int upper_body_yaw = GetOuter()->LookupPoseParameter( "aim_yaw" );
@@ -632,7 +632,7 @@ void CSinglePlayerAnimState::ComputePoseParam_BodyLookYaw( void )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ComputePoseParam_BodyPitch( CStudioHdr *pStudioHdr )
+void CMapbasePlayerAnimState::ComputePoseParam_BodyPitch( CStudioHdr *pStudioHdr )
 {
     // Get pitch from v_angle
     float flPitch = m_flEyePitch;
@@ -652,7 +652,7 @@ void CSinglePlayerAnimState::ComputePoseParam_BodyPitch( CStudioHdr *pStudioHdr 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-void CSinglePlayerAnimState::ComputePoseParam_HeadPitch( CStudioHdr *pStudioHdr )
+void CMapbasePlayerAnimState::ComputePoseParam_HeadPitch( CStudioHdr *pStudioHdr )
 {
     // Get pitch from v_angle
     int iHeadPitch = GetOuter()->LookupPoseParameter("head_pitch");

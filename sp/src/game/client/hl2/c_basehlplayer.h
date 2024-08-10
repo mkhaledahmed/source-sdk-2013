@@ -16,7 +16,7 @@
 #include "c_hl2_playerlocaldata.h"
 
 #if !defined( HL2MP ) && defined ( MAPBASE )
-#include "mapbase/singleplayer_animstate.h"
+#include "mapbase/mapbase_playeranimstate.h"
 #endif
 
 class C_BaseHLPlayer : public C_BasePlayer

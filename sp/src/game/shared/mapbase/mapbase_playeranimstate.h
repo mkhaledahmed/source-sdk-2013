@@ -14,8 +14,8 @@
 // 
 //=============================================================================//
 
-#ifndef SINGLEPLAYER_ANIMSTATE_H
-#define SINGLEPLAYER_ANIMSTATE_H
+#ifndef MAPBASE_PLAYERANIMSTATE_H
+#define MAPBASE_PLAYERANIMSTATE_H
 #ifdef _WIN32
 #pragma once
 #endif
@@ -34,10 +34,10 @@
 #define SP_ANIM_STATE 1
 #endif
 
-class CSinglePlayerAnimState : public CBasePlayerAnimState
+class CMapbasePlayerAnimState : public CBasePlayerAnimState
 {
 public:
-    CSinglePlayerAnimState( CBasePlayer *pPlayer );
+    CMapbasePlayerAnimState( CBasePlayer *pPlayer );
     
 	Activity CalcMainActivity();
 	int CalcAimLayerSequence( float *flCycle, float *flAimSequenceWeight, bool bForceIdle );
@@ -105,6 +105,6 @@ private:
 	float m_flFireCycle;
 };
 
-CSinglePlayerAnimState *CreatePlayerAnimationState( CBasePlayer *pPlayer );
+CMapbasePlayerAnimState *CreatePlayerAnimationState( CBasePlayer *pPlayer );
 
-#endif // SINGLEPLAYER_ANIMSTATE_H
+#endif // MAPBASE_PLAYERANIMSTATE_H
