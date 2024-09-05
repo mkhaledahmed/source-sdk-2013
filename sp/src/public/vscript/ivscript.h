@@ -396,6 +396,9 @@ struct ScriptVariant_t
 #ifdef MAPBASE_VSCRIPT
 	ScriptVariant_t( const QAngle &val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pAngle = &val; } else { m_pAngle = new QAngle( val ); m_flags |= SV_FREE; } }
 	ScriptVariant_t( const QAngle *val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pAngle = val; } else { m_pAngle = new QAngle( *val ); m_flags |= SV_FREE; } }
+
+	ScriptVariant_t( Vector &&val ) : ScriptVariant_t( val, true ) { }
+	ScriptVariant_t( QAngle &&val ) : ScriptVariant_t( val, true ) { }
 #endif
 
 	bool IsNull() const						{ return (m_type == FIELD_VOID ); }
@@ -423,6 +426,9 @@ struct ScriptVariant_t
 #ifdef MAPBASE_VSCRIPT
 	void operator=( const QAngle &vec )		{ m_type = FIELD_VECTOR; m_pAngle = &vec; }
 	void operator=( const QAngle *vec )		{ m_type = FIELD_VECTOR; m_pAngle = vec; }
+
+	void operator=( Vector &&vec )		{ m_type = FIELD_VECTOR; m_pVector = new Vector( vec ); m_flags |= SV_FREE; }
+	void operator=( QAngle &&vec )		{ m_type = FIELD_VECTOR; m_pAngle = new QAngle( vec ); m_flags |= SV_FREE; }
 #endif
 
 	void Free()								{ if ( ( m_flags & SV_FREE ) && ( m_type == FIELD_HSCRIPT || m_type == FIELD_VECTOR || m_type == FIELD_CSTRING ) ) delete m_pszString; } // Generally only needed for return results
