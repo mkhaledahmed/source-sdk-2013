@@ -1247,7 +1247,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		{
 			return false;
 		}
-		char* buffer = new char[size + 1];
+		char* buffer = (char*)malloc(size + 1);
 		V_memcpy(buffer, val, size);
 		buffer[size] = 0;
 		variant = buffer;
@@ -1262,7 +1262,8 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 			tag == TYPETAG_VECTOR &&
 			SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
 		{
-			variant = new Vector(*v);
+			variant = (Vector*)malloc(sizeof(Vector));
+			variant.EmplaceAllocedVector(*v);
 			variant.m_flags |= SV_FREE;
 			return true;
 		}

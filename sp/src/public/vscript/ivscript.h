@@ -389,13 +389,49 @@ struct ScriptVariant_t
 	ScriptVariant_t( bool val ) :			m_flags( 0 ), m_type( FIELD_BOOLEAN )	{ m_bool = val; }
 	ScriptVariant_t( HSCRIPT val ) :		m_flags( 0 ), m_type( FIELD_HSCRIPT )	{ m_hScript = val; }
 
-	ScriptVariant_t( const Vector &val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pVector = &val; } else { m_pVector = new Vector( val ); m_flags |= SV_FREE; } }
-	ScriptVariant_t( const Vector *val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pVector = val; } else { m_pVector = new Vector( *val ); m_flags |= SV_FREE; } }
-	ScriptVariant_t( const char *val , bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_CSTRING )	{ if ( !bCopy ) { m_pszString = val; } else { m_pszString = strdup( val ); m_flags |= SV_FREE; } }
+	ScriptVariant_t( const Vector &val, bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_VECTOR )
+	{
+		if ( !bCopy )
+		{
+			m_pVector = &val;
+		}
+		else
+		{
+			m_pVector = (Vector*)malloc( sizeof( Vector ) );
+			new ( (Vector*)m_pVector ) Vector( val );
+			m_flags |= SV_FREE;
+		}
+	}
+	ScriptVariant_t( const Vector *val, bool bCopy = false ) : ScriptVariant_t( *val ) { }
+
+	ScriptVariant_t( const char *val , bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_CSTRING )
+	{
+		if ( !bCopy )
+		{
+			m_pszString = val;
+		}
+		else
+		{
+			m_pszString = strdup( val );
+			m_flags |= SV_FREE;
+		}
+	}
 
 #ifdef MAPBASE_VSCRIPT
-	ScriptVariant_t( const QAngle &val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pAngle = &val; } else { m_pAngle = new QAngle( val ); m_flags |= SV_FREE; } }
-	ScriptVariant_t( const QAngle *val, bool bCopy = false ) :	m_flags( 0 ), m_type( FIELD_VECTOR )	{ if ( !bCopy ) { m_pAngle = val; } else { m_pAngle = new QAngle( *val ); m_flags |= SV_FREE; } }
+	ScriptVariant_t( const QAngle &val, bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_VECTOR )
+	{
+		if ( !bCopy )
+		{
+			m_pAngle = &val;
+		}
+		else
+		{
+			m_pAngle = (QAngle*)malloc( sizeof( QAngle ) );
+			new ( (QAngle*)m_pAngle ) QAngle( val );
+			m_flags |= SV_FREE;
+		}
+	}
+	ScriptVariant_t( const QAngle *val, bool bCopy = false ) : ScriptVariant_t( *val ) { }
 
 	ScriptVariant_t( Vector &&val ) : ScriptVariant_t( val, true ) { }
 	ScriptVariant_t( QAngle &&val ) : ScriptVariant_t( val, true ) { }
@@ -427,11 +463,34 @@ struct ScriptVariant_t
 	void operator=( const QAngle &vec )		{ m_type = FIELD_VECTOR; m_pAngle = &vec; }
 	void operator=( const QAngle *vec )		{ m_type = FIELD_VECTOR; m_pAngle = vec; }
 
-	void operator=( Vector &&vec )		{ m_type = FIELD_VECTOR; m_pVector = new Vector( vec ); m_flags |= SV_FREE; }
-	void operator=( QAngle &&vec )		{ m_type = FIELD_VECTOR; m_pAngle = new QAngle( vec ); m_flags |= SV_FREE; }
+	void operator=( Vector &&vec )
+	{
+		m_type = FIELD_VECTOR;
+		m_pVector = (Vector*)malloc( sizeof( Vector ) );
+		new ( (Vector*)m_pVector ) Vector( vec );
+		m_flags |= SV_FREE;
+	}
+
+	void operator=( QAngle &&ang )
+	{
+		m_type = FIELD_VECTOR;
+		m_pAngle = (QAngle*)malloc( sizeof( QAngle ) );
+		new ( (QAngle*)m_pAngle ) QAngle( ang );
+		m_flags |= SV_FREE;
+	}
 #endif
 
-	void Free()								{ if ( ( m_flags & SV_FREE ) && ( m_type == FIELD_HSCRIPT || m_type == FIELD_VECTOR || m_type == FIELD_CSTRING ) ) delete m_pszString; } // Generally only needed for return results
+	void Free()
+	{
+		// Generally only needed for return results
+		if ( ! ( m_flags & SV_FREE ) )
+		{
+			return;
+		}
+
+		AssertMsg( m_type == FIELD_CSTRING || m_type == FIELD_VECTOR, "Don't know how to free script variant of type %d", m_type );
+		free( (void*)m_pszString );
+	}
 
 	template <typename T>
 	T Get()
@@ -532,23 +591,35 @@ struct ScriptVariant_t
 	bool AssignTo( ScriptVariant_t *pDest )
 	{
 		pDest->m_type = m_type;
-		if ( m_type == FIELD_VECTOR ) 
+		if ( m_flags & SV_FREE )
 		{
-			pDest->m_pVector = new Vector;
-			((Vector *)(pDest->m_pVector))->Init( m_pVector->x, m_pVector->y, m_pVector->z );
-			pDest->m_flags |= SV_FREE;
-		}
-		else if ( m_type == FIELD_CSTRING ) 
-		{
-			pDest->m_pszString = strdup( m_pszString );
-			pDest->m_flags |= SV_FREE;
+			if ( m_type == FIELD_VECTOR )
+			{
+				pDest->m_pVector = (Vector*)malloc( sizeof( Vector ) );
+				pDest->EmplaceAllocedVector( *m_pVector );
+				m_flags |= SV_FREE;
+			}
+			else if ( m_type == FIELD_CSTRING )
+			{
+				pDest->m_pszString = strdup( m_pszString );
+				pDest->m_flags |= SV_FREE;
+			}
+			else
+			{
+				Assert( false );
+				pDest->m_int = m_int;
+				pDest->m_flags &= ~SV_FREE;
+			}
 		}
 		else
 		{
 			pDest->m_int = m_int;
+			pDest->m_flags &= ~SV_FREE;
 		}
 		return false;
 	}
+
+	void EmplaceAllocedVector( const Vector &vec );
 
 	union
 	{
@@ -570,6 +641,13 @@ struct ScriptVariant_t
 
 private:
 };
+
+#include "tier0/memdbgoff.h"
+inline void ScriptVariant_t::EmplaceAllocedVector( const Vector &vec )
+{
+	new ( (Vector*)m_pVector ) Vector( vec );
+}
+#include "tier0/memdbgon.h"
 
 #define SCRIPT_VARIANT_NULL ScriptVariant_t()
 
