@@ -1399,6 +1399,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	}
 
 	ScriptVariant_t retval;
+	ScriptVariantTemporaryStorage_t retval_storage;
 
 	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
 	assert(pSquirrelVM);
@@ -1406,7 +1407,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	sq_resetobject(&pSquirrelVM->lastError_);
 
 	(*pFunc->m_pfnBinding)(pFunc->m_pFunction, instance, params.Base(), nargs,
-		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &retval);
+		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &retval, retval_storage);
 
 	if (!sq_isnull(pSquirrelVM->lastError_))
 	{
@@ -1417,7 +1418,9 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	PushVariant(vm, retval);
 
-	retval.Free();
+	// strings never get copied here, Vector and QAngle are stored in script_retval_storage
+	// everything else is stored inline, so there should be no memory to free
+	Assert(!(retval.m_flags & SV_FREE));
 
 	return pFunc->m_desc.m_ReturnType != FIELD_VOID;
 }

@@ -300,7 +300,8 @@ enum ScriptFuncBindingFlags_t
 	SF_MEMBER_FUNC	= 0x01,
 };
 
-typedef bool (*ScriptBindingFunc_t)( void *pFunction, void *pContext, ScriptVariant_t *pArguments, int nArguments, ScriptVariant_t *pReturn );
+union ScriptVariantTemporaryStorage_t;
+typedef bool (*ScriptBindingFunc_t)( void *pFunction, void *pContext, ScriptVariant_t *pArguments, int nArguments, ScriptVariant_t *pReturn, ScriptVariantTemporaryStorage_t &temporaryReturnStorage );
 
 struct ScriptFunctionBinding_t
 {
@@ -389,52 +390,17 @@ struct ScriptVariant_t
 	ScriptVariant_t( bool val ) :			m_flags( 0 ), m_type( FIELD_BOOLEAN )	{ m_bool = val; }
 	ScriptVariant_t( HSCRIPT val ) :		m_flags( 0 ), m_type( FIELD_HSCRIPT )	{ m_hScript = val; }
 
-	ScriptVariant_t( const Vector &val, bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_VECTOR )
-	{
-		if ( !bCopy )
-		{
-			m_pVector = &val;
-		}
-		else
-		{
-			m_pVector = (Vector*)malloc( sizeof( Vector ) );
-			new ( (Vector*)m_pVector ) Vector( val );
-			m_flags |= SV_FREE;
-		}
-	}
-	ScriptVariant_t( const Vector *val, bool bCopy = false ) : ScriptVariant_t( *val ) { }
+	ScriptVariant_t( const Vector &val ) : m_flags( 0 ), m_type( FIELD_VECTOR ) { m_pVector = &val; }
+	ScriptVariant_t( const Vector *val ) : ScriptVariant_t( *val ) { }
 
-	ScriptVariant_t( const char *val , bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_CSTRING )
-	{
-		if ( !bCopy )
-		{
-			m_pszString = val;
-		}
-		else
-		{
-			m_pszString = strdup( val );
-			m_flags |= SV_FREE;
-		}
-	}
+	ScriptVariant_t( const char *val ) : m_flags( 0 ), m_type( FIELD_CSTRING ) { m_pszString = val; }
 
 #ifdef MAPBASE_VSCRIPT
-	ScriptVariant_t( const QAngle &val, bool bCopy = false ) : m_flags( 0 ), m_type( FIELD_VECTOR )
-	{
-		if ( !bCopy )
-		{
-			m_pAngle = &val;
-		}
-		else
-		{
-			m_pAngle = (QAngle*)malloc( sizeof( QAngle ) );
-			new ( (QAngle*)m_pAngle ) QAngle( val );
-			m_flags |= SV_FREE;
-		}
-	}
-	ScriptVariant_t( const QAngle *val, bool bCopy = false ) : ScriptVariant_t( *val ) { }
+	ScriptVariant_t( const QAngle &val ) : m_flags( 0 ), m_type( FIELD_VECTOR ) { m_pAngle = &val; }
+	ScriptVariant_t( const QAngle *val ) : ScriptVariant_t( *val ) { }
 
-	ScriptVariant_t( Vector &&val ) : ScriptVariant_t( val, true ) { }
-	ScriptVariant_t( QAngle &&val ) : ScriptVariant_t( val, true ) { }
+	ScriptVariant_t( Vector &&val ) = delete;
+	ScriptVariant_t( QAngle &&val ) = delete;
 #endif
 
 	bool IsNull() const						{ return (m_type == FIELD_VOID ); }
@@ -442,42 +408,29 @@ struct ScriptVariant_t
 	operator int() const					{ Assert( m_type == FIELD_INTEGER );	return m_int; }
 	operator float() const					{ Assert( m_type == FIELD_FLOAT );		return m_float; }
 	operator const char *() const			{ Assert( m_type == FIELD_CSTRING );	return ( m_pszString ) ? m_pszString : ""; }
-	operator const Vector &() const			{ Assert( m_type == FIELD_VECTOR );		static Vector vecNull(0, 0, 0); return (m_pVector) ? *m_pVector : vecNull; }
+	operator const Vector &() const			{ Assert( m_type == FIELD_VECTOR );		return (m_pVector) ? *m_pVector : vec3_origin; }
 	operator char() const					{ Assert( m_type == FIELD_CHARACTER );	return m_char; }
 	operator bool() const					{ Assert( m_type == FIELD_BOOLEAN );	return m_bool; }
 	operator HSCRIPT() const				{ Assert( m_type == FIELD_HSCRIPT );	return m_hScript; }
 #ifdef MAPBASE_VSCRIPT
-	operator const QAngle &() const			{ Assert( m_type == FIELD_VECTOR );		static QAngle vecNull(0, 0, 0); return (m_pAngle) ? *m_pAngle : vecNull; }
+	operator const QAngle &() const			{ Assert( m_type == FIELD_VECTOR );		return (m_pAngle) ? *m_pAngle : vec3_angle; }
 #endif
 
-	void operator=( int i ) 				{ m_type = FIELD_INTEGER; m_int = i; }
-	void operator=( float f ) 				{ m_type = FIELD_FLOAT; m_float = f; }
-	void operator=( double f ) 				{ m_type = FIELD_FLOAT; m_float = (float)f; }
-	void operator=( const Vector &vec )		{ m_type = FIELD_VECTOR; m_pVector = &vec; }
-	void operator=( const Vector *vec )		{ m_type = FIELD_VECTOR; m_pVector = vec; }
-	void operator=( const char *psz )		{ m_type = FIELD_CSTRING; m_pszString = psz; }
-	void operator=( char c )				{ m_type = FIELD_CHARACTER; m_char = c; }
-	void operator=( bool b ) 				{ m_type = FIELD_BOOLEAN; m_bool = b; }
-	void operator=( HSCRIPT h ) 			{ m_type = FIELD_HSCRIPT; m_hScript = h; }
+	void operator=( int i ) 				{ m_type = FIELD_INTEGER; m_flags = 0; m_int = i; }
+	void operator=( float f ) 				{ m_type = FIELD_FLOAT; m_flags = 0; m_float = f; }
+	void operator=( double f ) 				{ m_type = FIELD_FLOAT; m_flags = 0; m_float = (float)f; }
+	void operator=( const Vector &vec )		{ m_type = FIELD_VECTOR; m_flags = 0; m_pVector = &vec; }
+	void operator=( const Vector *vec )		{ m_type = FIELD_VECTOR; m_flags = 0; m_pVector = vec; }
+	void operator=( const char *psz )		{ m_type = FIELD_CSTRING; m_flags = 0; m_pszString = psz; }
+	void operator=( char c )				{ m_type = FIELD_CHARACTER; m_flags = 0; m_char = c; }
+	void operator=( bool b ) 				{ m_type = FIELD_BOOLEAN; m_flags = 0; m_bool = b; }
+	void operator=( HSCRIPT h ) 			{ m_type = FIELD_HSCRIPT; m_flags = 0; m_hScript = h; }
 #ifdef MAPBASE_VSCRIPT
-	void operator=( const QAngle &vec )		{ m_type = FIELD_VECTOR; m_pAngle = &vec; }
-	void operator=( const QAngle *vec )		{ m_type = FIELD_VECTOR; m_pAngle = vec; }
+	void operator=( const QAngle &ang )		{ m_type = FIELD_VECTOR; m_flags = 0; m_pAngle = &ang; }
+	void operator=( const QAngle *ang )		{ m_type = FIELD_VECTOR; m_flags = 0; m_pAngle = ang; }
 
-	void operator=( Vector &&vec )
-	{
-		m_type = FIELD_VECTOR;
-		m_pVector = (Vector*)malloc( sizeof( Vector ) );
-		new ( (Vector*)m_pVector ) Vector( vec );
-		m_flags |= SV_FREE;
-	}
-
-	void operator=( QAngle &&ang )
-	{
-		m_type = FIELD_VECTOR;
-		m_pAngle = (QAngle*)malloc( sizeof( QAngle ) );
-		new ( (QAngle*)m_pAngle ) QAngle( ang );
-		m_flags |= SV_FREE;
-	}
+	void operator=( Vector &&vec ) = delete;
+	void operator=( QAngle &&ang ) = delete;
 #endif
 
 	void Free()
@@ -651,6 +604,16 @@ inline void ScriptVariant_t::EmplaceAllocedVector( const Vector &vec )
 
 #define SCRIPT_VARIANT_NULL ScriptVariant_t()
 
+union ScriptVariantTemporaryStorage_t
+{
+	// members must be initialized via placement-new
+	ScriptVariantTemporaryStorage_t() { }
+
+	// members must have trivial destructor, since no destructor will be invoked
+	Vector m_vec;
+	QAngle m_ang;
+};
+
 #ifdef MAPBASE_VSCRIPT
 //---------------------------------------------------------
 struct ScriptConstantBinding_t
@@ -743,7 +706,7 @@ static inline int ToConstantVariant(int value)
 // This is used for registering variants (particularly vectors) not tied to existing variables.
 // The principal difference is that m_data is initted with bCopy set to true.
 #define ScriptRegisterConstantFromTemp( pVM, constant, description )									ScriptRegisterConstantFromTempNamed( pVM, constant, #constant, description )
-#define ScriptRegisterConstantFromTempNamed( pVM, constant, scriptName, description )					do { static ScriptConstantBinding_t binding; binding.m_pszScriptName = scriptName; binding.m_pszDescription = description; binding.m_data = ScriptVariant_t( constant, true ); pVM->RegisterConstant( &binding ); } while (0)
+#define ScriptRegisterConstantFromTempNamed( pVM, constant, scriptName, description )					do { static const auto constantStorage = constant; static ScriptConstantBinding_t binding; binding.m_pszScriptName = scriptName; binding.m_pszDescription = description; binding.m_data = ScriptVariant_t( constantStorage ); pVM->RegisterConstant( &binding ); } while (0)
 
 //-----------------------------------------------------------------------------
 // 
