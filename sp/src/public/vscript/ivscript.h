@@ -445,52 +445,6 @@ struct ScriptVariant_t
 		free( (void*)m_pszString );
 	}
 
-	template <typename T>
-	T Get()
-	{
-		T value;
-		AssignTo( &value );
-		return value;
-	}
-
-	template <typename T>
-	bool AssignTo( T *pDest )
-	{
-		ScriptDataType_t destType = ScriptDeduceType( T );
-		if ( destType == FIELD_TYPEUNKNOWN )
-		{
-			DevWarning( "Unable to convert script variant to unknown type\n" );
-		}
-		if ( destType == m_type )
-		{
-			*pDest = *this;
-			return true;
-		}
-
-		if ( m_type != FIELD_VECTOR && m_type != FIELD_CSTRING && destType != FIELD_VECTOR && destType != FIELD_CSTRING )
-		{
-			switch ( m_type )
-			{
-			case FIELD_VOID:		*pDest = 0; break;
-			case FIELD_INTEGER:		*pDest = m_int; return true;
-			case FIELD_FLOAT:		*pDest = m_float; return true;
-			case FIELD_CHARACTER:	*pDest = m_char; return true;
-			case FIELD_BOOLEAN:		*pDest = m_bool; return true;
-			case FIELD_HSCRIPT:		*pDest = m_hScript; return true;
-			}
-		}
-		else
-		{
-			DevWarning( "No free conversion of %s script variant to %s right now\n",
-				ScriptFieldTypeName( m_type ), ScriptFieldTypeName<T>() );
-			if ( destType != FIELD_VECTOR )
-			{
-				*pDest = 0;
-			}
-		}
-		return false;
-	}
-
 	bool AssignTo( float *pDest )
 	{
 		switch( m_type )
