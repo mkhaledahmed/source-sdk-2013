@@ -497,6 +497,7 @@ struct ScriptVariant_t
 
 	bool AssignTo( ScriptVariant_t *pDest )
 	{
+		pDest->Free();
 		pDest->m_type = m_type;
 		if ( m_flags & SV_FREE )
 		{

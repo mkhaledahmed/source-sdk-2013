@@ -1205,6 +1205,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 	{
 	case OT_NULL:
 	{
+		variant.Free();
 		variant.m_flags = 0;
 		// TODO: Should this be (HSCRIPT)nullptr
 		variant.m_type = FIELD_VOID;
@@ -1217,6 +1218,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		{
 			return false;
 		}
+		variant.Free();
 		variant = (int)val;
 		return true;
 	}
@@ -1227,6 +1229,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		{
 			return false;
 		}
+		variant.Free();
 		variant = (float)val;
 		return true;
 	}
@@ -1237,6 +1240,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		{
 			return false;
 		}
+		variant.Free();
 		variant = val ? true : false;
 		return true;
 	}
@@ -1248,6 +1252,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		{
 			return false;
 		}
+		variant.Free();
 		char* buffer = (char*)malloc(size + 1);
 		V_memcpy(buffer, val, size);
 		buffer[size] = 0;
@@ -1263,6 +1268,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 			tag == TYPETAG_VECTOR &&
 			SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
 		{
+			variant.Free();
 			variant = (Vector*)malloc(sizeof(Vector));
 			variant.EmplaceAllocedVector(*v);
 			variant.m_flags |= SV_FREE;
@@ -1272,6 +1278,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 	}
 	default:
 	{
+		variant.Free();
 		HSQOBJECT* obj = new HSQOBJECT;
 		sq_resetobject(obj);
 		sq_getstackobj(vm, idx, obj);
