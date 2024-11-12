@@ -1205,6 +1205,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 	{
 	case OT_NULL:
 	{
+		variant.m_flags = 0;
 		// TODO: Should this be (HSCRIPT)nullptr
 		variant.m_type = FIELD_VOID;
 		return true;
@@ -3074,6 +3075,7 @@ void SquirrelVM::ReleaseValue(ScriptVariant_t& value)
 
 	// Let's prevent this being called again and giving some UB
 	value.m_type = FIELD_VOID;
+	value.m_flags = 0;
 }
 
 bool SquirrelVM::ClearValue(HSCRIPT hScope, const char* pszKey)
