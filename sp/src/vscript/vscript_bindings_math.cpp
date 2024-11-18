@@ -275,23 +275,6 @@ bool CScriptQuaternionInstanceHelper::Set( void *p, const char *pszKey, ScriptVa
 	return false;
 }
 
-ScriptVariant_t *CScriptQuaternionInstanceHelper::Add( void *p, ScriptVariant_t &variant )
-{
-	Quaternion *pQuat = ((Quaternion *)p);
-
-	float flAdd;
-	variant.AssignTo( &flAdd );
-
-	(*pQuat)[0] += flAdd;
-	(*pQuat)[1] += flAdd;
-	(*pQuat)[2] += flAdd;
-	(*pQuat)[3] += flAdd;
-
-	static ScriptVariant_t result;
-	result = (HSCRIPT)p;
-	return &result;
-}
-
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 

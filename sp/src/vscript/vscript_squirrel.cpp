@@ -1578,106 +1578,6 @@ SQInteger set_stub(HSQUIRRELVM vm)
 	return 0;
 }
 
-SQInteger add_stub(HSQUIRRELVM vm)
-{
-	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
-
-	ScriptVariant_t var;
-	getVariant( vm, 1, var );
-
-	if (classInstanceData &&
-		classInstanceData->instance &&
-		classInstanceData->desc->pHelper)
-	{
-		ScriptVariant_t *result = classInstanceData->desc->pHelper->Add( classInstanceData->instance, var );
-		if (result != nullptr)
-		{
-			PushVariant( vm, *result );
-			sq_pop(vm, 1);
-			return 1;
-		}
-	}
-
-	sq_pop(vm, 1);
-	return sqstd_throwerrorf(vm, "invalid arith op +");
-}
-
-SQInteger sub_stub(HSQUIRRELVM vm)
-{
-	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
-
-	ScriptVariant_t var;
-	getVariant( vm, 1, var );
-
-	if (classInstanceData &&
-		classInstanceData->instance &&
-		classInstanceData->desc->pHelper)
-	{
-		ScriptVariant_t *result = classInstanceData->desc->pHelper->Subtract( classInstanceData->instance, var );
-		if (result != nullptr)
-		{
-			PushVariant( vm, *result );
-			sq_pop(vm, 1);
-			return 1;
-		}
-	}
-
-	sq_pop(vm, 1);
-	return sqstd_throwerrorf(vm, "invalid arith op -");
-}
-
-SQInteger mul_stub(HSQUIRRELVM vm)
-{
-	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
-
-	ScriptVariant_t var;
-	getVariant( vm, 1, var );
-
-	if (classInstanceData &&
-		classInstanceData->instance &&
-		classInstanceData->desc->pHelper )
-	{
-		ScriptVariant_t *result = classInstanceData->desc->pHelper->Add( classInstanceData->instance, var );
-		if (result != nullptr)
-		{
-			PushVariant( vm, *result );
-			sq_pop(vm, 1);
-			return 1;
-		}
-	}
-
-	sq_pop(vm, 1);
-	return sqstd_throwerrorf(vm, "invalid arith op *");
-}
-
-SQInteger div_stub(HSQUIRRELVM vm)
-{
-	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
-
-	ScriptVariant_t var;
-	getVariant( vm, 1, var );
-
-	if (classInstanceData &&
-		classInstanceData->instance &&
-		classInstanceData->desc->pHelper )
-	{
-		ScriptVariant_t *result = classInstanceData->desc->pHelper->Add( classInstanceData->instance, var );
-		if (result != nullptr)
-		{
-			PushVariant( vm, *result );
-			sq_pop(vm, 1);
-			return 1;
-		}
-	}
-
-	sq_pop(vm, 1);
-	return sqstd_throwerrorf(vm, "invalid arith op /");
-}
-
 SQInteger IsValid_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
@@ -2509,22 +2409,6 @@ bool SquirrelVM::RegisterClass(ScriptClassDesc_t* pClassDesc)
 
 	sq_pushstring(vm_, "_set", -1);
 	sq_newclosure(vm_, set_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
-
-	sq_pushstring(vm_, "_add", -1);
-	sq_newclosure(vm_, add_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
-
-	sq_pushstring(vm_, "_sub", -1);
-	sq_newclosure(vm_, sub_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
-
-	sq_pushstring(vm_, "_mul", -1);
-	sq_newclosure(vm_, mul_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
-
-	sq_pushstring(vm_, "_div", -1);
-	sq_newclosure(vm_, div_stub, 0);
 	sq_newslot(vm_, -3, SQFalse);
 
 	sq_pushstring(vm_, "IsValid", -1);

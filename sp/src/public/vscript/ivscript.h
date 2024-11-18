@@ -322,11 +322,6 @@ public:
 #ifdef MAPBASE_VSCRIPT
 	virtual bool Get( void *p, const char *pszKey, ScriptVariant_t &variant )		{ return false; }
 	virtual bool Set( void *p, const char *pszKey, ScriptVariant_t &variant )		{ return false; }
-
-	virtual ScriptVariant_t *Add( void *p, ScriptVariant_t &variant )				{ return NULL; }
-	virtual ScriptVariant_t *Subtract( void *p, ScriptVariant_t &variant )			{ return NULL; }
-	virtual ScriptVariant_t *Multiply( void *p, ScriptVariant_t &variant )			{ return NULL; }
-	virtual ScriptVariant_t *Divide( void *p, ScriptVariant_t &variant )			{ return NULL; }
 #endif
 };
 
