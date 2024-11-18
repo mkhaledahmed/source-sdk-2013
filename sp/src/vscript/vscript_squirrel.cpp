@@ -1405,31 +1405,39 @@ SQInteger function_stub(HSQUIRRELVM vm)
 		instance = ((ClassInstanceData*)self)->instance;
 	}
 
-	ScriptVariant_t retval;
-	ScriptVariantTemporaryStorage_t retval_storage;
+	ScriptVariant_t script_retval;
+	ScriptVariantTemporaryStorage_t script_retval_storage;
 
 	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
 	assert(pSquirrelVM);
 
 	sq_resetobject(&pSquirrelVM->lastError_);
 
-	(*pFunc->m_pfnBinding)(pFunc->m_pFunction, instance, params.Base(), nargs,
-		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &retval, retval_storage);
+	bool call_success = (*pFunc->m_pfnBinding)(pFunc->m_pFunction, instance, params.Base(), nargs,
+		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &script_retval, script_retval_storage);
+	Assert(call_success);
+	(void)call_success;
 
+	SQInteger sq_retval;
 	if (!sq_isnull(pSquirrelVM->lastError_))
 	{
 		sq_pushobject(vm, pSquirrelVM->lastError_);
 		sq_resetobject(&pSquirrelVM->lastError_);
-		return sq_throwobject(vm);
+		sq_retval = sq_throwobject(vm);
 	}
+	else
+	{
+		Assert(script_retval.m_type == pFunc->m_desc.m_ReturnType);
 
-	PushVariant(vm, retval);
+		PushVariant(vm, script_retval);
+		sq_retval = 1;
+	}
 
 	// strings never get copied here, Vector and QAngle are stored in script_retval_storage
 	// everything else is stored inline, so there should be no memory to free
-	Assert(!(retval.m_flags & SV_FREE));
+	Assert(!(script_retval.m_flags & SV_FREE));
 
-	return pFunc->m_desc.m_ReturnType != FIELD_VOID;
+	return sq_retval;
 }
 
 
@@ -1469,12 +1477,8 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 
 	void* instance = pClassDesc->m_pfnConstruct();
 
-	if (!sq_isnull(pSquirrelVM->lastError_))
-	{
-		sq_pushobject(vm, pSquirrelVM->lastError_);
-		sq_resetobject(&pSquirrelVM->lastError_);
-		return sq_throwobject(vm);
-	}
+	// expect construction to always succeed
+	Assert(sq_isnull(pSquirrelVM->lastError_));
 
 	{
 		SQUserPointer p;
@@ -1531,19 +1535,22 @@ SQInteger get_stub(HSQUIRRELVM vm)
 	}
 
 	ScriptVariant_t var;
+	SQInteger sq_retval = 0;
 	if (classInstanceData &&
 		classInstanceData->instance &&
 		classInstanceData->desc->pHelper &&
 		classInstanceData->desc->pHelper->Get(classInstanceData->instance, key, var))
 	{
 		PushVariant(vm, var);
+		sq_retval = 1;
 	}
 	else
 	{
-		return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 	}
 
-	return 1;
+	var.Free();
+	return sq_retval;
 }
 
 SQInteger set_stub(HSQUIRRELVM vm)
@@ -1560,22 +1567,22 @@ SQInteger set_stub(HSQUIRRELVM vm)
 	}
 
 	ScriptVariant_t var;
+	SQInteger sq_retval = 0;
 	getVariant( vm, -1, var );
 
-	if (classInstanceData &&
+	if (!(
+		classInstanceData &&
 		classInstanceData->instance &&
 		classInstanceData->desc->pHelper &&
-		classInstanceData->desc->pHelper->Set(classInstanceData->instance, key, var))
+		classInstanceData->desc->pHelper->Set(classInstanceData->instance, key, var)
+	))
 	{
-		sq_pop(vm, 1);
-	}
-	else
-	{
-		sq_pop(vm, 1);
-		return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 	}
 
-	return 0;
+	var.Free();
+	sq_pop(vm, 1);
+	return sq_retval;
 }
 
 SQInteger IsValid_stub(HSQUIRRELVM vm)
@@ -2326,6 +2333,7 @@ void SquirrelVM::RegisterFunction(ScriptFunctionBinding_t* pScriptFunction)
 		return;
 
 	char typemask[64];
+	Assert(pScriptFunction->m_desc.m_Parameters.Count() < sizeof(typemask));
 	if (!CreateParamCheck(*pScriptFunction, typemask))
 	{
 		return;
@@ -2429,6 +2437,7 @@ bool SquirrelVM::RegisterClass(ScriptClassDesc_t* pClassDesc)
 		auto& scriptFunction = pClassDesc->m_FunctionBindings[i];
 
 		char typemask[64];
+		Assert(scriptFunction.m_desc.m_Parameters.Count() < sizeof(typemask));
 		if (!CreateParamCheck(scriptFunction, typemask))
 		{
 			Warning("Unable to create param check for %s.%s\n",
