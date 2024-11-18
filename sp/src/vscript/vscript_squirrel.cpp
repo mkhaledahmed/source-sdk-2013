@@ -1429,8 +1429,15 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	{
 		Assert(script_retval.m_type == pFunc->m_desc.m_ReturnType);
 
-		PushVariant(vm, script_retval);
-		sq_retval = 1;
+		if (pFunc->m_desc.m_ReturnType != FIELD_VOID)
+		{
+			PushVariant(vm, script_retval);
+			sq_retval = 1;
+		}
+		else
+		{
+			sq_retval = 0;
+		}
 	}
 
 	// strings never get copied here, Vector and QAngle are stored in script_retval_storage
