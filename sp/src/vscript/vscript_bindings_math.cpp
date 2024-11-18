@@ -259,17 +259,13 @@ bool CScriptQuaternionInstanceHelper::Set( void *p, const char *pszKey, ScriptVa
 		switch (pszKey[0])
 		{
 			case 'x':
-				variant.AssignTo( &pQuat->x );
-				return true;
+				return variant.AssignTo( &pQuat->x );
 			case 'y':
-				variant.AssignTo( &pQuat->y );
-				return true;
+				return variant.AssignTo( &pQuat->y );
 			case 'z':
-				variant.AssignTo( &pQuat->z );
-				return true;
+				return variant.AssignTo( &pQuat->z );
 			case 'w':
-				variant.AssignTo( &pQuat->w );
-				return true;
+				return variant.AssignTo( &pQuat->w );
 		}
 	}
 	return false;

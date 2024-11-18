@@ -560,16 +560,18 @@ bool CAnimEventTInstanceHelper::Set( void *p, const char *pszKey, ScriptVariant_
 
 	animevent_t *ani = ((animevent_t *)p);
 	if (FStrEq( pszKey, "event" ))
-		ani->event = variant;
+		return variant.AssignTo( &ani->event );
 	else if (FStrEq( pszKey, "options" ))
-		ani->options = variant;
+		// broken: return variant.AssignTo( &ani->options );
+		//         variant memory is freed afterwards
+		return false;
 	else if (FStrEq( pszKey, "cycle" ))
-		ani->cycle = variant;
+		return variant.AssignTo( &ani->cycle );
 	else if (FStrEq( pszKey, "eventtime" ))
-		ani->eventtime = variant;
+		return variant.AssignTo( &ani->eventtime );
 	else if (FStrEq( pszKey, "type" ))
-		ani->type = variant;
-	else if (FStrEq( pszKey, "source" ))
+		return variant.AssignTo( &ani->type );
+	else if (FStrEq( pszKey, "source" ) && variant.m_type == FIELD_HSCRIPT)
 	{
 		CBaseEntity *pEnt = ToEnt( variant.m_hScript );
 		if (pEnt)
