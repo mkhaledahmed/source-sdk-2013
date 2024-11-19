@@ -535,7 +535,7 @@ bool CAnimEventTInstanceHelper::Get( void *p, const char *pszKey, ScriptVariant_
 {
 	DevWarning( "VScript animevent_t.%s: animevent_t metamethod members are deprecated! Use 'script_help animevent_t' to see the correct functions.\n", pszKey );
 
-	animevent_t *ani = ((animevent_t *)p);
+	animevent_t *ani = &((scriptanimevent_t *)p)->event;
 	if (FStrEq( pszKey, "event" ))
 		variant = ani->event;
 	else if (FStrEq( pszKey, "options" ))
@@ -558,13 +558,21 @@ bool CAnimEventTInstanceHelper::Set( void *p, const char *pszKey, ScriptVariant_
 {
 	DevWarning( "VScript animevent_t.%s: animevent_t metamethod members are deprecated! Use 'script_help animevent_t' to see the correct functions.\n", pszKey );
 
-	animevent_t *ani = ((animevent_t *)p);
+	scriptanimevent_t *script_ani = ((scriptanimevent_t *)p);
+	animevent_t *ani = &script_ani->event;
 	if (FStrEq( pszKey, "event" ))
+	{
 		return variant.AssignTo( &ani->event );
+	}
 	else if (FStrEq( pszKey, "options" ))
-		// broken: return variant.AssignTo( &ani->options );
-		//         variant memory is freed afterwards
-		return false;
+	{
+		char *szOptions;
+		if (!variant.AssignTo( &szOptions ))
+		{
+			return false;
+		}
+		script_ani->SetOptions( szOptions );
+	}
 	else if (FStrEq( pszKey, "cycle" ))
 		return variant.AssignTo( &ani->cycle );
 	else if (FStrEq( pszKey, "eventtime" ))
