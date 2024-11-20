@@ -225,6 +225,7 @@ public:
 
 	virtual void CreateArray(ScriptVariant_t &arr, int size = 0) override;
 	virtual bool ArrayAppend(HSCRIPT hArray, const ScriptVariant_t &val) override;
+	virtual HSCRIPT CopyObject(HSCRIPT obj) override;
 
 	//----------------------------------------------------------------------------
 
@@ -1317,7 +1318,8 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	ScriptFunctionBinding_t* pFunc = (ScriptFunctionBinding_t*)userptr;
 
-	auto nargs = pFunc->m_desc.m_Parameters.Count();
+	int nargs = pFunc->m_desc.m_Parameters.Count();
+	int nLastHScriptIdx = -1;
 
 	if (nargs > top)
 	{
@@ -1394,9 +1396,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 			{
 				HSQOBJECT* pObject = new HSQOBJECT;
 				*pObject = val;
-				sq_addref(vm, pObject);
 				params[i] = (HSCRIPT)pObject;
 			}
+
+			nLastHScriptIdx = i;
 			break;
 		}
 		default:
@@ -1451,6 +1454,12 @@ SQInteger function_stub(HSQUIRRELVM vm)
 		// Release the intermediary ref held from RegisterInstance
 		sq_release(vm, (HSQOBJECT*)retval.m_hScript);
 		delete (HSQOBJECT*)retval.m_hScript;
+	}
+
+	for ( int i = 0; i <= nLastHScriptIdx; ++i )
+	{
+		if ( pFunc->m_desc.m_Parameters[i] == FIELD_HSCRIPT )
+			delete (HSQOBJECT*)params[i].m_hScript;
 	}
 
 	return pFunc->m_desc.m_ReturnType != FIELD_VOID;
@@ -3199,6 +3208,17 @@ bool SquirrelVM::ArrayAppend(HSCRIPT hArray, const ScriptVariant_t &val)
 	sq_pop(vm_, 1);
 
 	return ret;
+}
+
+HSCRIPT SquirrelVM::CopyObject(HSCRIPT obj)
+{
+	if ( !obj )
+		return NULL;
+
+	HSQOBJECT *ret = new HSQOBJECT;
+	*ret = *(HSQOBJECT*)obj;
+	sq_addref( vm_, ret );
+	return (HSCRIPT)ret;
 }
 
 //-------------------------------------------------------------
