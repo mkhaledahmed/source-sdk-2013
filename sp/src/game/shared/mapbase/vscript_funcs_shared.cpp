@@ -381,9 +381,6 @@ static HSCRIPT_RC ScriptTraceLineComplex( const Vector &vecStart, const Vector &
 	CBaseEntity *pIgnore = ToEnt( entIgnore );
 	UTIL_TraceLine( vecStart, vecEnd, iMask, pIgnore, iCollisionGroup, tr );
 
-	tr->RegisterSurface();
-	tr->RegisterPlane();
-
 	return g_pScriptVM->RegisterInstance( tr, true );
 }
 
@@ -394,9 +391,6 @@ static HSCRIPT_RC ScriptTraceHullComplex( const Vector &vecStart, const Vector &
 
 	CBaseEntity *pIgnore = ToEnt( entIgnore );
 	UTIL_TraceHull( vecStart, vecEnd, hullMin, hullMax, iMask, pIgnore, iCollisionGroup, tr );
-
-	tr->RegisterSurface();
-	tr->RegisterPlane();
 
 	return g_pScriptVM->RegisterInstance( tr, true );
 }
