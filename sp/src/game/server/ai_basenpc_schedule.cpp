@@ -46,7 +46,7 @@ extern ConVar ai_use_think_optimizations;
 ConVar	ai_simulate_task_overtime( "ai_simulate_task_overtime", "0" );
 
 #ifdef MAPBASE
-ConVar	ai_enemy_memory_fixes( "ai_enemy_memory_fixes", "1", FCVAR_NONE, "Toggles Mapbase fixes for certain NPC AI not using enemy memory when it should." );
+ConVar	ai_enemy_memory_fixes( "ai_enemy_memory_fixes", "0", FCVAR_NONE, "Toggles Mapbase fixes for certain NPC AI not using enemy memory when it should." );
 #endif
 
 #define MAX_TASKS_RUN 10
