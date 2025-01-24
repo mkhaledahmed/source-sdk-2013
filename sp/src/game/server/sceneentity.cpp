@@ -61,6 +61,10 @@ class CBaseFlex;
 static ConVar scene_forcecombined( "scene_forcecombined", "0", 0, "When playing back, force use of combined .wav files even in english." );
 static ConVar scene_maxcaptionradius( "scene_maxcaptionradius", "1200", 0, "Only show closed captions if recipient is within this many units of speaking actor (0==disabled)." );
 
+#ifdef MAPBASE
+static ConVar scene_resume_use_last_speaking( "scene_resume_use_last_speaking", "1", 0, "Uses the last actor who spoke for resume scene calls, rather than the first actor of the scene" );
+#endif
+
 // Assume sound system is 100 msec lagged (only used if we can't find snd_mixahead cvar!)
 #define SOUND_SYSTEM_LATENCY_DEFAULT ( 0.1f )
 
@@ -416,6 +420,10 @@ public:
 	// If this scene is waiting on an actor, give up and quit trying.
 	void InputStopWaitingForActor( inputdata_t &inputdata );
 
+#ifdef MAPBASE
+	void InputPauseAtLastInterrupt( inputdata_t &inputdata );
+#endif
+
 	virtual void StartPlayback( void );
 	virtual void PausePlayback( void );
 	virtual void ResumePlayback( void );
@@ -496,6 +504,7 @@ public:
 	bool					HasFlexAnimation( void );
 #ifdef MAPBASE
 	bool					IsPlayingSpeech( void );
+	CBaseFlex				*GetLastSpeakingActor( void );
 #endif
 
 	void					SetCurrentTime( float t, bool forceClientSync );
@@ -773,8 +782,9 @@ BEGIN_DATADESC( CSceneEntity )
 	DEFINE_INPUTFUNC( FIELD_STRING, "InterjectResponse", 	InputInterjectResponse ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "StopWaitingForActor", 	InputStopWaitingForActor ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "Trigger", InputTriggerEvent ),
-
 #ifdef MAPBASE
+	DEFINE_INPUTFUNC( FIELD_VOID, "PauseAtLastInterrupt", InputPauseAtLastInterrupt ),
+
 	DEFINE_INPUTFUNC( FIELD_STRING, "SetTarget1", InputSetTarget1 ),
 	DEFINE_INPUTFUNC( FIELD_STRING, "SetTarget2", InputSetTarget2 ),
 	DEFINE_INPUTFUNC( FIELD_STRING, "SetTarget3", InputSetTarget3 ),
@@ -1363,6 +1373,33 @@ bool CSceneEntity::IsPlayingSpeech( void )
 	}
 
 	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+CBaseFlex *CSceneEntity::GetLastSpeakingActor( void )
+{
+	if ( m_pScene )
+	{
+		CChoreoActor *pLastActor = NULL;
+		float flTime = m_pScene->GetTime();
+		for ( int i = 0; i < m_pScene->GetNumEvents(); i++ )
+		{
+			CChoreoEvent *e = m_pScene->GetEvent( i );
+			if ( e->GetType() == CChoreoEvent::SPEAK )
+			{
+				if ( flTime >= e->GetStartTime() )
+					pLastActor = e->GetActor();
+			}
+		}
+
+		if (pLastActor)
+			return FindNamedActor( pLastActor );
+	}
+
+	// Fall back to the first actor
+	return FindNamedActor( 0 );
 }
 #endif
 
@@ -2670,6 +2707,39 @@ void CSceneEntity::InputInterjectResponse( inputdata_t &inputdata )
 #ifdef MAPBASE
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
+void CSceneEntity::InputPauseAtLastInterrupt( inputdata_t &inputdata )
+{
+	PausePlayback();
+	m_bPausedViaInput = true;
+
+	if ( m_pScene )
+	{
+		float flLastInterrupt = 0.0f;
+		float flTime = m_pScene->GetTime();
+		for ( int i = 0; i < m_pScene->GetNumEvents(); i++ )
+		{
+			CChoreoEvent *e = m_pScene->GetEvent( i );
+			if ( e->GetType() == CChoreoEvent::INTERRUPT )
+			{
+				if ( flTime > e->GetEndTime() && e->GetEndTime() > flLastInterrupt )
+				{
+					// Set the scene's time to the last interrupt point's end time
+					flLastInterrupt = e->GetEndTime();
+					break;
+				}
+			}
+		}
+
+		if (flLastInterrupt != 0.0f)
+		{
+			// Set the scene's time to the last interrupt point's end time
+			m_pScene->SetTime( flLastInterrupt );
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
 void CSceneEntity::SetTarget( int nTarget, string_t pTargetName, CBaseEntity *pActivator, CBaseEntity *pCaller )
 {
 	if (/*m_bIsPlayingBack ||*/ !nTarget)
@@ -3296,13 +3366,22 @@ void CSceneEntity::QueueResumePlayback( void )
 		// If it has ".vcd" somewhere in the string, try using it as a scene file first
 		if ( Q_stristr( STRING(m_iszResumeSceneFile), ".vcd" ) ) 
 		{
-			bStartedScene = InstancedScriptedScene( NULL, STRING(m_iszResumeSceneFile), &m_hWaitingForThisResumeScene, 0, false ) != 0;
+#ifdef MAPBASE
+			CBaseFlex *pActor = scene_resume_use_last_speaking.GetBool() ? GetLastSpeakingActor() : FindNamedActor( 0 );
+#else
+			CBaseFlex *pActor = NULL;
+#endif
+			bStartedScene = InstancedScriptedScene( pActor, STRING(m_iszResumeSceneFile), &m_hWaitingForThisResumeScene, 0, false ) != 0;
 		}
 
 		// HACKHACK: For now, get the first target, and see if we can find a response for him
 		if ( !bStartedScene )
 		{
+#ifdef MAPBASE
+			CBaseFlex *pActor = scene_resume_use_last_speaking.GetBool() ? GetLastSpeakingActor() : FindNamedActor( 0 );
+#else
 			CBaseFlex *pActor = FindNamedActor( 0 );
+#endif
 			if ( pActor )
 			{
 				CAI_BaseActor *pBaseActor = dynamic_cast<CAI_BaseActor*>(pActor);
@@ -3315,7 +3394,7 @@ void CSceneEntity::QueueResumePlayback( void )
 					if ( result )
 					{
 						const char* szResponse = response.GetResponsePtr();
-						bStartedScene = InstancedScriptedScene( NULL, szResponse, &m_hWaitingForThisResumeScene, 0, false ) != 0;
+						bStartedScene = InstancedScriptedScene( pActor, szResponse, &m_hWaitingForThisResumeScene, 0, false ) != 0;
 					}
 #else
 					AI_Response *result = pBaseActor->SpeakFindResponse( STRING(m_iszResumeSceneFile), NULL );
