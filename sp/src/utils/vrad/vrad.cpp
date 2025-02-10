@@ -2799,7 +2799,7 @@ void PrintUsage( int argc, char **argv )
 		"  -fast           : Quick and dirty lighting.\n"
 		"  -fastambient    : Per-leaf ambient sampling is lower quality to save compute time.\n"
 		"  -final          : High quality processing. equivalent to -extrasky 16.\n"
-		"  -extrasky #     : trace N times as many rays for indirect light and sky ambient.\n"
+		"  -extrasky #     : trace # times as many rays for indirect light and sky ambient.\n"
 #ifdef MAPBASE
 		"  -extrapasses #  : Lets you scale how many extra passes you want your map to go through (default 4), differences above this value are minimal.\n"
 #endif
