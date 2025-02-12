@@ -28,49 +28,8 @@ public:
 	CProtagonistSystem() : m_Strings( 256, 0, &StringLessThan ) { }
 	~CProtagonistSystem() { PurgeProtagonists(); }
 
-	bool Init();
-	void Shutdown();
-	void LevelInitPreEntity();
-	void LevelShutdownPostEntity();
-
-	//----------------------------------------------------------------------------
-
-	void LoadProtagonistManifest( const char *pszFile );
-	void LoadProtagonistFile( const char *pszFile );
-
-	//----------------------------------------------------------------------------
-
-	int FindProtagonistIndex( const char *pszName );
-
-	void PrecacheProtagonist( CBaseEntity *pSource, int nIdx );
-
-	//----------------------------------------------------------------------------
-
-#ifdef CLIENT_DLL
-#else
-	const char *GetProtagonist_PlayerModel( const CBasePlayer *pPlayer );
-	int GetProtagonist_PlayerModelSkin( const CBasePlayer *pPlayer );
-	int GetProtagonist_PlayerModelBody( const CBasePlayer *pPlayer );
-	const char *GetProtagonist_HandModel( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	int GetProtagonist_HandModelSkin( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	int GetProtagonist_HandModelBody( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	const char *GetProtagonist_ResponseContexts( const CBasePlayer *pPlayer );
-#endif
-
-	const char *GetProtagonist_ViewModel( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	float *GetProtagonist_ViewModelFOV( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	bool *GetProtagonist_UsesHands( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	int *GetProtagonist_HandRig( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon );
-	
-	//----------------------------------------------------------------------------
-
-	void PurgeProtagonists();
-	void PrintProtagonistData();
-
-	//----------------------------------------------------------------------------
-
 private:
-
+	
 	struct ProtagonistData_t
 	{
 		ProtagonistData_t()
@@ -96,6 +55,9 @@ private:
 
 		// Responses
 		const char *pszResponseContexts = NULL;
+
+		// Multiplayer
+		int nTeam = TEAM_ANY;
 #endif
 
 		// Weapon Data
@@ -110,26 +72,63 @@ private:
 		CUtlDict<WeaponDataOverride_t> dictWpnData;
 	};
 
+public:
+
+	bool Init();
+	void Shutdown();
+	void LevelInitPreEntity();
+	void LevelShutdownPostEntity();
+
+	//----------------------------------------------------------------------------
+
+	void LoadProtagonistManifest( const char *pszFile );
+	void LoadProtagonistFile( const char *pszFile );
+
+	//----------------------------------------------------------------------------
+
+	int FindProtagonistIndex( const char *pszName );
+	const char *FindProtagonistByModel( const char *pszModelName );
+
+	void PrecacheProtagonist( CBaseEntity *pSource, int nIdx );
+
+	//----------------------------------------------------------------------------
+
+	#define DeclareProtagonistFunc(type, name, ...) \
+		type GetProtagonist_##name( const CBasePlayer *pPlayer, ##__VA_ARGS__ ); \
+		type GetProtagonist_##name( const int nProtagonistIndex, ##__VA_ARGS__ ); \
+	private: \
+		type DoGetProtagonist_##name( ProtagonistData_t &pProtag, ##__VA_ARGS__ ); \
+	public: \
+
+#ifdef CLIENT_DLL
+#else
+	DeclareProtagonistFunc( const char*,	PlayerModel )
+	DeclareProtagonistFunc( int,			PlayerModelSkin )
+	DeclareProtagonistFunc( int,			PlayerModelBody )
+	DeclareProtagonistFunc( const char*,	HandModel, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( int,			HandModelSkin, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( int,			HandModelBody, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( bool,			ResponseContexts, char *pszContexts, int nContextsSize )
+	DeclareProtagonistFunc( int,			Team )
+#endif
+	
+	DeclareProtagonistFunc( const char*,	ViewModel, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( float*,			ViewModelFOV, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( bool*,			UsesHands, const CBaseCombatWeapon *pWeapon )
+	DeclareProtagonistFunc( int*,			HandRig, const CBaseCombatWeapon *pWeapon )
+	
+	//----------------------------------------------------------------------------
+
+	void PurgeProtagonists();
+	void PrintProtagonistData();
+
+	//----------------------------------------------------------------------------
+
+private:
+
 	ProtagonistData_t *GetPlayerProtagonist( const CBasePlayer *pPlayer );
 	ProtagonistData_t *FindProtagonist( const char *pszName );
 	ProtagonistData_t *FindProtagonist( int nIndex );
-
-	// For recursion
-#ifdef CLIENT_DLL
-#else
-	const char *DoGetProtagonist_PlayerModel( ProtagonistData_t &pProtag );
-	int DoGetProtagonist_PlayerModelSkin( ProtagonistData_t &pProtag );
-	int DoGetProtagonist_PlayerModelBody( ProtagonistData_t &pProtag );
-	const char *DoGetProtagonist_HandModel( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	int DoGetProtagonist_HandModelSkin( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	int DoGetProtagonist_HandModelBody( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	void DoGetProtagonist_ResponseContexts( ProtagonistData_t &pProtag, char *pszContexts, int nContextsSize );
-#endif
-
-	const char *DoGetProtagonist_ViewModel( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	float *DoGetProtagonist_ViewModelFOV( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	bool *DoGetProtagonist_UsesHands( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
-	int *DoGetProtagonist_HandRig( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon );
 
 	//----------------------------------------------------------------------------
 

@@ -81,6 +81,8 @@ C_BaseHLPlayer::C_BaseHLPlayer()
 #ifdef MAPBASE
 	ConVarRef scissor("r_flashlightscissor");
 	scissor.SetValue("0");
+
+	m_nProtagonistIndex = -1;
 #endif
 }
 

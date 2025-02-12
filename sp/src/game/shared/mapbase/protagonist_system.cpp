@@ -11,6 +11,9 @@
 #include "weapon_parse.h"
 #include "filesystem.h"
 #include "hl2_player_shared.h"
+#ifdef HL2MP
+#include "hl2mp_gamerules.h"
+#endif
 
 CProtagonistSystem g_ProtagonistSystem;
 
@@ -166,6 +169,28 @@ void CProtagonistSystem::LoadProtagonistFile( const char *pszFile )
 				{
 					pProtag->pszResponseContexts = AllocateString( pSubKey->GetString() );
 				}
+
+				//----------------------------------------------------------------------------
+				// Multiplayer
+				//----------------------------------------------------------------------------
+				else if (FStrEq( pszSubKeyName, "team" ))
+				{
+#ifdef HL2MP
+					if (FStrEq( pszSubKeyName, "combine" ))
+					{
+						pProtag->nTeam = TEAM_COMBINE;
+					}
+					else if (FStrEq( pszSubKeyName, "rebels" ))
+					{
+						pProtag->nTeam = TEAM_REBELS;
+					}
+					else
+#endif
+					{
+						// Try to get a direct integer
+						pProtag->nTeam = atoi( pszSubKeyName );
+					}
+				}
 #endif
 				//----------------------------------------------------------------------------
 				// Weapon Data
@@ -245,7 +270,7 @@ CProtagonistSystem::ProtagonistData_t *CProtagonistSystem::GetPlayerProtagonist(
 		return NULL;
 
 	int i = pHL2Player->GetProtagonistIndex();
-	if (i >= 0)
+	if (i >= 0 && i < m_Protagonists.Count())
 	{
 		return &g_ProtagonistSystem.m_Protagonists[i];
 	}
@@ -287,6 +312,21 @@ int CProtagonistSystem::FindProtagonistIndex( const char *pszName )
 	return -1;
 }
 
+const char *CProtagonistSystem::FindProtagonistByModel( const char *pszModelName )
+{
+#ifndef CLIENT_DLL
+	FOR_EACH_VEC( m_Protagonists, i )
+	{
+		if (m_Protagonists[i].pszPlayerModel && FStrEq( pszModelName, m_Protagonists[i].pszPlayerModel ))
+		{
+			return m_Protagonists[i].szName;
+		}
+	}
+#endif
+
+	return NULL;
+}
+
 void CProtagonistSystem::PrecacheProtagonist( CBaseEntity *pSource, int nIdx )
 {
 #ifndef CLIENT_DLL
@@ -323,85 +363,71 @@ void CProtagonistSystem::PrecacheProtagonist( CBaseEntity *pSource, int nIdx )
 
 //----------------------------------------------------------------------------
 
-#define GetProtagonistParam( funcName, ... ) \
+#define GetProtagParamInner( name, ... )	DoGetProtagonist_##name( *pProtag, ##__VA_ARGS__ )
+
+#define GetProtagParam( name, type, invoke, ... ) \
+type CProtagonistSystem::GetProtagonist_##name( const CBasePlayer *pPlayer, ##__VA_ARGS__ ) \
+{ \
 	ProtagonistData_t *pProtag = GetPlayerProtagonist( pPlayer ); \
 	if (!pProtag) \
 		return NULL; \
-	return funcName( *pProtag, ##__VA_ARGS__ ); \
+	return invoke; \
+} \
+type CProtagonistSystem::GetProtagonist_##name( const int nProtagonistIndex, ##__VA_ARGS__ ) \
+{ \
+	ProtagonistData_t *pProtag = FindProtagonist( nProtagonistIndex ); \
+	if (!pProtag) \
+		return NULL; \
+	return invoke; \
+} \
+
+#define GetProtagParamBody( name, type, invoke, body, ... ) \
+type CProtagonistSystem::GetProtagonist_##name( const CBasePlayer *pPlayer, ##__VA_ARGS__ ) \
+{ \
+	ProtagonistData_t *pProtag = GetPlayerProtagonist( pPlayer ); \
+	if (!pProtag) \
+		return NULL; \
+	type returnVal = invoke; \
+	body \
+	return returnVal; \
+} \
+type CProtagonistSystem::GetProtagonist_##name( const int nProtagonistIndex, ##__VA_ARGS__ ) \
+{ \
+	ProtagonistData_t *pProtag = FindProtagonist( nProtagonistIndex ); \
+	if (!pProtag) \
+		return NULL; \
+	type returnVal = invoke; \
+	body \
+	return returnVal; \
+} \
 
 #ifdef CLIENT_DLL
 #else
-const char *CProtagonistSystem::GetProtagonist_PlayerModel( const CBasePlayer *pPlayer )
-{
-	GetProtagonistParam( DoGetProtagonist_PlayerModel )
-}
-
-int CProtagonistSystem::GetProtagonist_PlayerModelSkin( const CBasePlayer *pPlayer )
-{
-	GetProtagonistParam( DoGetProtagonist_PlayerModelSkin )
-}
-
-int CProtagonistSystem::GetProtagonist_PlayerModelBody( const CBasePlayer *pPlayer )
-{
-	GetProtagonistParam( DoGetProtagonist_PlayerModelBody )
-}
-
-const char *CProtagonistSystem::GetProtagonist_HandModel( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_HandModel, pWeapon )
-}
-
-int CProtagonistSystem::GetProtagonist_HandModelSkin( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_HandModelSkin, pWeapon )
-}
-
-int CProtagonistSystem::GetProtagonist_HandModelBody( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_HandModelBody, pWeapon )
-}
-
-const char *CProtagonistSystem::GetProtagonist_ResponseContexts( const CBasePlayer *pPlayer )
-{
-	ProtagonistData_t *pProtag = g_ProtagonistSystem.GetPlayerProtagonist( pPlayer );
-	if (!pProtag)
-		return NULL;
-
-	// Collect contexts from base as well as parents
-	char szContexts[128] = { 0 };
-	g_ProtagonistSystem.DoGetProtagonist_ResponseContexts( *pProtag, szContexts, sizeof( szContexts ) );
-
-	// Replace trailing comma
-	int nLast = V_strlen( szContexts )-1;
-	if (szContexts[nLast] == ',')
-		szContexts[nLast] = '\0';
-
-	if (!szContexts[0])
-		return NULL;
-
-	return AllocateString( szContexts );
-}
+GetProtagParam( PlayerModel,			const char*,	GetProtagParamInner( PlayerModel ) )
+GetProtagParam( PlayerModelSkin,		int,			GetProtagParamInner( PlayerModelSkin ) )
+GetProtagParam( PlayerModelBody,		int,			GetProtagParamInner( PlayerModelBody ) )
+GetProtagParam( HandModel,			const char*,	GetProtagParamInner( HandModel, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParam( HandModelSkin,		int,			GetProtagParamInner( HandModelSkin, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParam( HandModelBody,		int,			GetProtagParamInner( HandModelBody, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParamBody( ResponseContexts,	bool,			GetProtagParamInner( ResponseContexts, pszContexts, nContextsSize ), {
+		if (pszContexts[0] != '\0')
+		{
+			// Replace trailing comma
+			int nLast = V_strlen( pszContexts )-1;
+			if (pszContexts[nLast] == ',')
+			{
+				Msg( "Removing trailing comma from \"%s\"\n", pszContexts );
+				pszContexts[nLast] = '\0';
+			}
+		}
+	}, char *pszContexts, int nContextsSize )
+GetProtagParam( Team,				int,			GetProtagParamInner( Team ) )
 #endif
 
-const char *CProtagonistSystem::GetProtagonist_ViewModel( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_ViewModel, pWeapon )
-}
-
-float *CProtagonistSystem::GetProtagonist_ViewModelFOV( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_ViewModelFOV, pWeapon )
-}
-
-bool *CProtagonistSystem::GetProtagonist_UsesHands( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_UsesHands, pWeapon )
-}
-
-int *CProtagonistSystem::GetProtagonist_HandRig( const CBasePlayer *pPlayer, const CBaseCombatWeapon *pWeapon )
-{
-	GetProtagonistParam( DoGetProtagonist_HandRig, pWeapon )
-}
+GetProtagParam( ViewModel,			const char*,	GetProtagParamInner( ViewModel, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParam( ViewModelFOV,		float*,			GetProtagParamInner( ViewModelFOV, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParam( UsesHands,			bool*,			GetProtagParamInner( UsesHands, pWeapon ), const CBaseCombatWeapon *pWeapon )
+GetProtagParam( HandRig,			int*,			GetProtagParamInner( HandRig, pWeapon ), const CBaseCombatWeapon *pWeapon )
 
 //----------------------------------------------------------------------------
 
@@ -494,7 +520,7 @@ int CProtagonistSystem::DoGetProtagonist_HandModelBody( ProtagonistData_t &pProt
 	return NULL;
 }
 
-void CProtagonistSystem::DoGetProtagonist_ResponseContexts( ProtagonistData_t &pProtag, char *pszContexts, int nContextsSize )
+bool CProtagonistSystem::DoGetProtagonist_ResponseContexts( ProtagonistData_t &pProtag, char *pszContexts, int nContextsSize )
 {
 	if (pProtag.pszResponseContexts)
 	{
@@ -504,6 +530,19 @@ void CProtagonistSystem::DoGetProtagonist_ResponseContexts( ProtagonistData_t &p
 
 	// Recursively search parent protagonists
 	GetProtagonistRecurseNoReturn( DoGetProtagonist_ResponseContexts, pszContexts, nContextsSize )
+
+	return pszContexts[0] != '\0';
+}
+
+int CProtagonistSystem::DoGetProtagonist_Team( ProtagonistData_t &pProtag )
+{
+	if (pProtag.nTeam >= -1)
+		return pProtag.nTeam;
+
+	// Recursively search parent protagonists
+	GetProtagonistRecurse( DoGetProtagonist_Team )
+
+	return TEAM_ANY;
 }
 #endif
 

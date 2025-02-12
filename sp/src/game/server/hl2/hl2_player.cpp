@@ -4541,9 +4541,10 @@ void CHL2_Player::ResetProtagonist()
 	}
 
 	// RemoveContext will automatically remove contexts by name, regardless of how values are specified
-	const char *pszProtagContexts = g_ProtagonistSystem.GetProtagonist_ResponseContexts( this );
-	if (pszProtagContexts)
-		RemoveContext( pszProtagContexts );
+	char szContexts[128] = { 0 };
+	g_ProtagonistSystem.GetProtagonist_ResponseContexts( this, szContexts, sizeof( szContexts ) );
+	if (szContexts[0])
+		RemoveContext( szContexts );
 
 	m_iszProtagonistName = NULL_STRING;
 	m_nProtagonistIndex = -1;
@@ -4566,9 +4567,10 @@ void CHL2_Player::RefreshProtagonistData()
 	m_nSkin = g_ProtagonistSystem.GetProtagonist_PlayerModelSkin( this );
 	m_nBody = g_ProtagonistSystem.GetProtagonist_PlayerModelBody( this );
 
-	const char *pszProtagContexts = g_ProtagonistSystem.GetProtagonist_ResponseContexts( this );
-	if (pszProtagContexts)
-		AddContext( pszProtagContexts );
+	char szContexts[128] = { 0 };
+	g_ProtagonistSystem.GetProtagonist_ResponseContexts( this, szContexts, sizeof( szContexts ) );
+	if (szContexts[0])
+		AddContext( szContexts );
 
 	RefreshProtagonistWeaponData( GetActiveWeapon() );
 }
