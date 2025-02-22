@@ -34,7 +34,10 @@ private:
 	{
 		ProtagonistData_t()
 		{
-
+#ifndef CLIENT_DLL
+			for (int i = 0; i < NUM_HAND_RIG_TYPES; i++)
+				pszHandModels[i] = NULL;
+#endif
 		}
 
 		char szName[MAX_PROTAGONIST_NAME];
@@ -49,7 +52,7 @@ private:
 		int nPlayerBody = -1;
 
 		// Hands
-		const char *pszHandModels[NUM_HAND_RIG_TYPES] = {};
+		const char *pszHandModels[NUM_HAND_RIG_TYPES];
 		int nHandSkin = -1;
 		int nHandBody = -1;
 

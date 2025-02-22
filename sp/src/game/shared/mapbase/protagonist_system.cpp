@@ -488,7 +488,7 @@ int CProtagonistSystem::DoGetProtagonist_PlayerModelBody( ProtagonistData_t &pPr
 
 const char *CProtagonistSystem::DoGetProtagonist_HandModel( ProtagonistData_t &pProtag, const CBaseCombatWeapon *pWeapon )
 {
-	int nRigType = pWeapon->GetHandRig();
+	int nRigType = pWeapon ? pWeapon->GetHandRig() : HANDRIG_DEFAULT;
 	if (pProtag.pszHandModels[nRigType])
 		return pProtag.pszHandModels[nRigType];
 
