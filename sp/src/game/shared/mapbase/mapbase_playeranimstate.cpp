@@ -88,6 +88,10 @@ Activity CMapbasePlayerAnimState::CalcMainActivity()
     if (m_pPlayer->GetLaggedMovementValue() != 1.0f)
         speed *= m_pPlayer->GetLaggedMovementValue();
 
+	// May not always be precise
+	if (speed < 0.01f)
+		speed = 0.0f;
+
     if ( HandleJumping() )
 	{
 		return ACT_HL2MP_JUMP;
@@ -102,7 +106,7 @@ Activity CMapbasePlayerAnimState::CalcMainActivity()
 	    }
         else
         {
-            bool bDucking = GetOuter()->GetFlags() & FL_DUCKING;
+            bool bDucking = (GetOuter()->GetFlags() & FL_DUCKING) ? true : false;
 
             // (currently singleplayer-exclusive since clients can't read whether other players are holding down IN_DUCK)
             if (m_pPlayer->m_Local.m_flDucktime > 0 && gpGlobals->maxClients == 1)
@@ -168,6 +172,10 @@ void CMapbasePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
         m_iFireSequence = SelectWeightedSequence( TranslateActivity( ACT_HL2MP_GESTURE_RANGE_ATTACK ) );
         m_bFiring = m_iFireSequence != -1;
         m_flFireCycle = 0;
+
+		// Be sure to stop reloading
+		m_bReloading = false;
+		m_flReloadCycle = 0;
     }
     else if ( playerAnim == PLAYER_ATTACK2 )
     {
@@ -178,6 +186,10 @@ void CMapbasePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
 #endif
         m_bFiring = m_iFireSequence != -1;
         m_flFireCycle = 0;
+
+		// Be sure to stop reloading
+		m_bReloading = false;
+		m_flReloadCycle = 0;
     }
     else if ( playerAnim == PLAYER_JUMP )
     {
@@ -185,7 +197,7 @@ void CMapbasePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
         if (!m_bJumping)
         {
             m_bJumping = true;
-            m_bDuckJumping = GetOuter()->GetFlags() & FL_DUCKING; //m_pPlayer->m_nButtons & IN_DUCK;
+            m_bDuckJumping = (GetOuter()->GetFlags() & FL_DUCKING) ? true : false; //m_pPlayer->m_nButtons & IN_DUCK;
             m_bFirstJumpFrame = true;
             m_flJumpStartTime = gpGlobals->curtime;
         }
@@ -225,8 +237,8 @@ void CMapbasePlayerAnimState::SetPlayerAnimation( PLAYER_ANIM playerAnim )
 //-----------------------------------------------------------------------------
 Activity CMapbasePlayerAnimState::TranslateActivity( Activity actDesired )
 {
-#ifdef CLIENT_DLL
-    return actDesired;
+#if defined(CLIENT_DLL) && !defined(MAPBASE_MP)
+	return actDesired;
 #else
     return m_pPlayer->Weapon_TranslateActivity( actDesired );
 #endif
@@ -342,6 +354,10 @@ void CMapbasePlayerAnimState::ClearAnimationState()
 void CMapbasePlayerAnimState::ClearAnimationLayers()
 {
 	VPROF( "CBasePlayerAnimState::ClearAnimationLayers" );
+
+	// In c_baseanimatingoverlay.cpp, this sometimes desyncs from the interpolated overlays and causes a crash in ResizeAnimationLayerCallback when the player dies. (pVec->Count() != pVecIV->Count())
+	// Is there a better way of getting around this issue?
+#ifndef CLIENT_DLL
 	if ( !m_pOuter )
 		return;
 
@@ -358,6 +374,7 @@ void CMapbasePlayerAnimState::ClearAnimationLayers()
 		m_pOuter->GetAnimOverlay( i )->m_fFlags = 0;
 #endif
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
