@@ -13,6 +13,7 @@
 #pragma once
 #endif
 
+#ifndef MAPBASE_VSCRIPT
 #include "dt_send.h"
 #include "datamap.h"
 
@@ -184,6 +185,7 @@ public:
 	// Fills in a passed table with property info for the provided entity
 	bool GetPropInfo( HSCRIPT hEnt, const char *pstrProperty, int element, HSCRIPT hTable );
 };
+#endif
 
 
 #endif // NETPROPMANAGER_H

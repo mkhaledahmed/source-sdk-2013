@@ -1,4 +1,4 @@
-//========== Copyright ï¿½ 2008, Valve Corporation, All rights reserved. ========
+//========== Copyright © 2008, Valve Corporation, All rights reserved. ========
 //
 // Purpose:
 //
@@ -51,6 +51,11 @@
 #include "dota_animation.h"
 #endif
 
+#ifdef MAPBASE_VSCRIPT
+#include "world.h"
+#include "mapbase/vscript_singletons.h"
+#endif
+
 extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 
 extern CServerGameDLL g_ServerGameDLL;
@@ -76,6 +81,7 @@ ConVar script_break_in_native_debugger_on_error( "script_break_in_native_debugge
 
 #define VSCRIPT_CONVAR_ALLOWLIST_NAME "cfg/vscript_convar_allowlist.txt"
 
+#ifndef MAPBASE_VSCRIPT
 /// Exposes convars to script
 class CScriptConvarAccessor : public CAutoGameSystem
 {
@@ -262,6 +268,7 @@ DEFINE_SCRIPTFUNC( GetClientConvarValue, "GetClientConvarValue(name) : returns t
 DEFINE_SCRIPTFUNC( SetValue, "SetValue(name, value) : sets the value of the convar. The convar must be in " VSCRIPT_CONVAR_ALLOWLIST_NAME " to be set. Supported types are bool, int, float, string." )
 DEFINE_SCRIPTFUNC( IsConVarOnAllowList, "IsConVarOnAllowList(name) : checks if the convar is allowed to be used and is in " VSCRIPT_CONVAR_ALLOWLIST_NAME ". Please be nice with this and use it for *compatibility* if you need check support and NOT to force server owners to allow hostname to be set... or else this will simply lie and return true in future. ;-) You have been warned!"  )
 END_SCRIPTDESC()
+#endif
 
 
 //-----------------------------------------------------------------------------
@@ -567,12 +574,24 @@ bool VScriptServerScriptErrorFunc( ScriptErrorLevel_t /*eLevel*/, const char *ps
 	return true;
 }
 
+#ifdef MAPBASE_VSCRIPT
+static ScriptHook_t g_Hook_OnEntityCreated;
+static ScriptHook_t g_Hook_OnEntitySpawned;
+static ScriptHook_t g_Hook_OnEntityDeleted;
+#endif
+
 //-----------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------
-class CScriptEntityIterator : public IEntityFindFilter
+class CScriptEntityIterator : public IEntityFindFilter, public IEntityListener
 {
 public:
+#ifdef MAPBASE_VSCRIPT
+	HSCRIPT GetLocalPlayer()
+	{
+		return ToHScript( UTIL_GetLocalPlayerOrListenServerHost() );
+	}
+#endif
 	HSCRIPT First() { return Next(NULL); }
 
 	HSCRIPT Next( HSCRIPT hStartEntity )
@@ -655,10 +674,84 @@ public:
 		return NULL;
 	}
 
+#ifdef MAPBASE_VSCRIPT
+	HSCRIPT FindByClassnameWithinBox( HSCRIPT hStartEntity , const char *szName, const Vector &vecMins, const Vector &vecMaxs )
+	{
+		return ToHScript( gEntList.FindEntityByClassnameWithin( ToEnt( hStartEntity ), szName, vecMins, vecMaxs ) );
+	}
+
+	HSCRIPT FindByClassNearestFacing( const Vector &origin, const Vector &facing, float threshold, const char *classname )
+	{
+		return ToHScript( gEntList.FindEntityClassNearestFacing( origin, facing, threshold, const_cast<char*>(classname) ) );
+	}
+
+	HSCRIPT FindByClassnameNearest2D( const char *szName, const Vector &vecSrc, float flRadius )
+	{
+		return ToHScript( gEntList.FindEntityByClassnameNearest2D( szName, vecSrc, flRadius ) );
+	}
+
+	// 
+	// Custom Procedurals
+	// 
+	void AddCustomProcedural( const char *pszName, HSCRIPT hFunc, bool bCanReturnMultiple )
+	{
+		gEntList.AddCustomProcedural( pszName, hFunc, bCanReturnMultiple );
+	}
+
+	void RemoveCustomProcedural( const char *pszName )
+	{
+		gEntList.RemoveCustomProcedural( pszName );
+	}
+
+	void EnableEntityListening()
+	{
+		// Start getting entity updates!
+		gEntList.AddListenerEntity( this );
+	}
+
+	void DisableEntityListening()
+	{
+		// Stop getting entity updates!
+		gEntList.RemoveListenerEntity( this );
+	}
+
+	void OnEntityCreated( CBaseEntity *pEntity )
+	{
+		if ( g_pScriptVM && GetScriptHookManager().IsEventHooked( "OnEntityCreated" ) )
+		{
+			// entity
+			ScriptVariant_t args[] = { ScriptVariant_t( pEntity->GetScriptInstance() ) };
+			g_Hook_OnEntityCreated.Call( NULL, NULL, args );
+		}
+	};
+
+	void OnEntitySpawned( CBaseEntity *pEntity )
+	{
+		if ( g_pScriptVM && GetScriptHookManager().IsEventHooked( "OnEntitySpawned" ) )
+		{
+			// entity
+			ScriptVariant_t args[] = { ScriptVariant_t( pEntity->GetScriptInstance() ) };
+			g_Hook_OnEntitySpawned.Call( NULL, NULL, args );
+		}
+	};
+
+	void OnEntityDeleted( CBaseEntity *pEntity )
+	{
+		if ( g_pScriptVM && GetScriptHookManager().IsEventHooked( "OnEntityDeleted" ) )
+		{
+			// entity
+			ScriptVariant_t args[] = { ScriptVariant_t( pEntity->GetScriptInstance() ) };
+			g_Hook_OnEntityDeleted.Call( NULL, NULL, args );
+		}
+	};
+#endif
 private:
 } g_ScriptEntityIterator;
 
 BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptEntityIterator, "CEntities", SCRIPT_SINGLETON "The global list of entities" )
+#ifdef MAPBASE_VSCRIPT
+	DEFINE_SCRIPTFUNC( GetLocalPlayer, "Get local player or listen server host" )
+#endif
 	DEFINE_SCRIPTFUNC( First, "Begin an iteration over the list of entities" )
 	DEFINE_SCRIPTFUNC( Next, "Continue an iteration over the list of entities, providing reference to a previously found entity" )
 	DEFINE_SCRIPTFUNC( CreateByClassname, "Creates an entity by classname" )
@@ -672,6 +765,29 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptEntityIterator, "CEntities", SCRIPT_SINGLETO
 	DEFINE_SCRIPTFUNC( FindByClassnameNearest, "Find entities by class name nearest to a point."  )
 	DEFINE_SCRIPTFUNC( FindByClassnameWithin, "Find entities by class name within a radius. Pass 'null' to start an iteration, or reference to a previously found entity to continue a search"  )
 	DEFINE_SCRIPTFUNC( DispatchSpawn, "Dispatches spawn of an entity!" )
+#ifdef MAPBASE_VSCRIPT
+	DEFINE_SCRIPTFUNC( FindByClassnameWithinBox, "Find entities by class name within an AABB. Pass 'null' to start an iteration, or reference to a previously found entity to continue a search"  )
+	DEFINE_SCRIPTFUNC( FindByClassNearestFacing, "Find the nearest entity along the facing direction from the given origin within the angular threshold with the given classname."  )
+	DEFINE_SCRIPTFUNC( FindByClassnameNearest2D, "Find entities by class name nearest to a point in 2D space." )
+
+	DEFINE_SCRIPTFUNC( AddCustomProcedural, "Adds a custom '!' target name. The first parameter is the name of the procedural (which should NOT include the '!'), the second parameter is a function which should support 5 arguments (name, startEntity, searchingEntity, activator, caller), and the third parameter is whether or not this procedural can return multiple entities. Note that these are NOT saved and must be redeclared on restore!"  )
+	DEFINE_SCRIPTFUNC( RemoveCustomProcedural, "Removes a custom '!' target name previously defined with AddCustomProcedural."  )
+
+	DEFINE_SCRIPTFUNC( EnableEntityListening, "Enables the 'OnEntity' hooks. This function must be called before using them." )
+	DEFINE_SCRIPTFUNC( DisableEntityListening, "Disables the 'OnEntity' hooks." )
+
+	BEGIN_SCRIPTHOOK( g_Hook_OnEntityCreated, "OnEntityCreated", FIELD_VOID, "Called when an entity is created. Requires EnableEntityListening() to be fired beforehand." )
+		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
+	END_SCRIPTHOOK()
+
+	BEGIN_SCRIPTHOOK( g_Hook_OnEntitySpawned, "OnEntitySpawned", FIELD_VOID, "Called when an entity spawns. Requires EnableEntityListening() to be fired beforehand." )
+		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
+	END_SCRIPTHOOK()
+
+	BEGIN_SCRIPTHOOK( g_Hook_OnEntityDeleted, "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted. Requires EnableEntityListening() to be fired beforehand." )
+		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
+	END_SCRIPTHOOK()
+#endif
 END_SCRIPTDESC();
 
 CVScriptGameEventListener g_VScriptGameEventListener;
@@ -824,6 +940,7 @@ bool RunScriptHook( const char *pszHookName, HSCRIPT params )
 	return g_VScriptGameEventListener.FireScriptHook( pszHookName, params );
 }
 
+#ifndef MAPBASE_VSCRIPT
 CNetPropManager g_ScriptNetPropManager;
 
 BEGIN_SCRIPTDESC_ROOT_NAMED( CNetPropManager, "CNetPropManager", SCRIPT_SINGLETON "Used to get/set entity network fields" )
@@ -857,6 +974,7 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CNetPropManager, "CNetPropManager", SCRIPT_SINGLETO
 	DEFINE_SCRIPTFUNC( GetPropInfo, "Arguments: ( entity, propertyName, arrayElement, table ) - Fills in a passed table with property info for the provided entity" )
 	DEFINE_SCRIPTFUNC( GetTable, "Arguments: ( entity, iPropType, table ) - Fills in a passed table with all props of a specified type for the provided entity (set iPropType to 0 for SendTable or 1 for DataMap)" )
 END_SCRIPTDESC()
+#endif
 
 //-----------------------------------------------------------------------------
 //
@@ -886,6 +1004,7 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptPanorama, "CPanorama", SCRIPT_SINGLETON "Pan
 END_SCRIPTDESC();
 #endif
 
+#ifndef MAPBASE_VSCRIPT
 // ----------------------------------------------------------------------------
 // KeyValues access - CBaseEntity::ScriptGetKeyFromModel returns root KeyValues
 // ----------------------------------------------------------------------------
@@ -980,7 +1099,7 @@ void CScriptKeyValues::ScriptReleaseKeyValues( )
 
 
 // constructors
-CScriptKeyValues::CScriptKeyValues( KeyValues *pKeyValues )
+CScriptKeyValues::CScriptKeyValues( KeyValues *pKeyValues = NULL )
 {
 	m_pKeyValues = pKeyValues;
 }
@@ -994,6 +1113,7 @@ CScriptKeyValues::~CScriptKeyValues( )
 	}
 	m_pKeyValues = NULL;
 }
+#endif
 
 
 
@@ -1016,6 +1136,18 @@ static float FrameTime()
 	return gpGlobals->frametime;
 }
 
+#ifdef MAPBASE_VSCRIPT
+static int MaxPlayers()
+{
+	return gpGlobals->maxClients;
+}
+
+static int GetLoadType()
+{
+	return gpGlobals->eLoadType;
+}
+#endif
+
 static void SendToConsole( const char *pszCommand )
 {
 	if ( !pszCommand )
@@ -1024,7 +1156,11 @@ static void SendToConsole( const char *pszCommand )
 	CBasePlayer *pPlayer = UTIL_GetLocalPlayerOrListenServerHost();
 	if ( !pPlayer )
 	{
+#ifdef MAPBASE
+		CGMsg( 1, CON_GROUP_VSCRIPT, "Cannot execute \"%s\", no player\n", pszCommand );
+#else
 		DevMsg ("Cannot execute \"%s\", no player\n", pszCommand );
+#endif
 		return;
 	}
 
@@ -1064,7 +1200,11 @@ static const char *DoUniqueString( const char *pszBase )
 	return szBuf;
 }
 
+#ifdef MAPBASE_VSCRIPT
+static int  DoEntFire( const char *pszTarget, const char *pszAction, const char *pszValue, float delay, HSCRIPT hActivator, HSCRIPT hCaller )
+#else
 static void DoEntFire( const char *pszTarget, const char *pszAction, const char *pszValue, float delay, HSCRIPT hActivator, HSCRIPT hCaller )
+#endif
 {
 	const char *target = "", *action = "Use";
 	variant_t value;
@@ -1079,7 +1219,11 @@ static void DoEntFire( const char *pszTarget, const char *pszAction, const char 
 	//    ent_fire point_servercommand command "rcon_password mynewpassword"
 	if ( gpGlobals->maxClients > 1 && V_stricmp( target, "point_servercommand" ) == 0 )
 	{
+#ifdef MAPBASE_VSCRIPT
+		return 0;
+#else
 		return;
+#endif
 	}
 
 	if ( *pszAction )
@@ -1095,15 +1239,20 @@ static void DoEntFire( const char *pszTarget, const char *pszAction, const char 
 		delay = 0;
 	}
 
+#ifdef MAPBASE_VSCRIPT
+	return
+#endif
 	g_EventQueue.AddEvent( target, action, value, delay, ToEnt(hActivator), ToEnt(hCaller) );
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 // Some game events pass entity's by their entindex. This lets scripts translate that
 // into a handle to the entity's script instance.
 HSCRIPT EntIndexToHScript( int entityIndex )
 {
 	return ToHScript( UTIL_EntityByIndex( entityIndex ) );
 }
+#endif
 
 HSCRIPT PlayerInstanceFromIndex( int idx )
 {
@@ -2225,7 +2374,11 @@ HSCRIPT CreateProp( const char *pszEntityName, const Vector &vOrigin, const char
 //--------------------------------------------------------------------------------------------------
 // Use an entity's script instance to add an entity IO event (used for firing events on unnamed entities from vscript)
 //--------------------------------------------------------------------------------------------------
+#ifdef MAPBASE_VSCRIPT
+static int  DoEntFireByInstanceHandle( HSCRIPT hTarget, const char *pszAction, const char *pszValue, float delay, HSCRIPT hActivator, HSCRIPT hCaller )
+#else
 static void DoEntFireByInstanceHandle( HSCRIPT hTarget, const char *pszAction, const char *pszValue, float delay, HSCRIPT hActivator, HSCRIPT hCaller )
+#endif
 {
 	const char *action = "Use";
 	variant_t value;
@@ -2247,10 +2400,18 @@ static void DoEntFireByInstanceHandle( HSCRIPT hTarget, const char *pszAction, c
 
 	if ( !pTarget )
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGWarning( 0, CON_GROUP_VSCRIPT, "VScript error: DoEntFire was passed an invalid entity instance.\n" );
+		return 0;
+#else
 		Warning( "VScript error: DoEntFire was passed an invalid entity instance.\n" );
 		return;
+#endif
 	}
 
+#ifdef MAPBASE_VSCRIPT
+	return
+#endif
 	g_EventQueue.AddEvent( pTarget, action, value, delay, ToEnt(hActivator), ToEnt(hCaller) );
 }
 
@@ -2269,6 +2430,18 @@ static float ScriptTraceLine( const Vector &vecStart, const Vector &vecEnd, HSCR
 		return tr.fraction;
 	}
 }
+
+#ifdef MAPBASE_VSCRIPT
+static bool CancelEntityIOEvent( int event )
+{
+	return g_EventQueue.RemoveEvent(event);
+}
+
+static float GetEntityIOEventTimeLeft( int event )
+{
+	return g_EventQueue.GetTimeLeft(event);
+}
+#endif // MAPBASE_VSCRIPT
 
 static float ScriptTraceLinePlayersIncluded( const Vector &vecStart, const Vector &vecEnd, HSCRIPT entIgnore )
 {
@@ -2463,6 +2636,18 @@ bool VScriptServerInit()
 		ScriptLanguage_t scriptLanguage = SL_DEFAULT;
 
 		char const *pszScriptLanguage;
+#ifdef MAPBASE_VSCRIPT
+		if (GetWorldEntity()->GetScriptLanguage() != SL_NONE)
+		{
+			// Allow world entity to override script language
+			scriptLanguage = GetWorldEntity()->GetScriptLanguage();
+
+			// Less than SL_NONE means the script language should literally be none
+			if (scriptLanguage < SL_NONE)
+				scriptLanguage = SL_NONE;
+		}
+		else
+#endif
 		if ( CommandLine()->CheckParm( "-scriptlang", &pszScriptLanguage ) )
 		{
 			if( !Q_stricmp(pszScriptLanguage, "gamemonkey") )
@@ -2477,9 +2662,19 @@ bool VScriptServerInit()
 			{
 				scriptLanguage = SL_PYTHON;
 			}
+#ifdef MAPBASE_VSCRIPT
+			else if( !Q_stricmp(pszScriptLanguage, "lua") )
+			{
+				scriptLanguage = SL_LUA;
+			}
+#endif
 			else
 			{
+#ifdef MAPBASE_VSCRIPT
+				CGWarning( 1, CON_GROUP_VSCRIPT, "-server_script does not recognize a language named '%s'. virtual machine did NOT start.\n", pszScriptLanguage );
+#else
 				DevWarning("-server_script does not recognize a language named '%s'. virtual machine did NOT start.\n", pszScriptLanguage );
+#endif
 				scriptLanguage = SL_NONE;
 			}
 
@@ -2496,10 +2691,27 @@ bool VScriptServerInit()
 
 			if( g_pScriptVM )
 			{
+#ifdef MAPBASE_VSCRIPT
+				CGMsg( 0, CON_GROUP_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#else
 				Log_Msg( LOG_VScript, "VSCRIPT: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#endif
 				g_pScriptVM->SetErrorCallback( &VScriptServerScriptErrorFunc );
 
+#ifdef MAPBASE_VSCRIPT
+				GetScriptHookManager().OnInit();
+#endif
+
+#ifdef MAPBASE_VSCRIPT
+				// MULTIPLAYER
+				// NOTE: 'PlayerInstanceFromIndex' and 'GetPlayerFromUserID' are used in L4D2 and Source 2,
+				// but the GetPlayerBy* names are more consistent.
+				// ScriptRegisterFunctionNamed( g_pScriptVM, UTIL_PlayerByIndex, "GetPlayerByIndex", "PlayerInstanceFromIndex" );
+				// ScriptRegisterFunctionNamed( g_pScriptVM, UTIL_PlayerByUserId, "GetPlayerByUserID", "GetPlayerFromUserID" );
+
 				ScriptRegisterFunctionNamed( g_pScriptVM, UTIL_ShowMessageAll, "ShowMessage", "Print a hud message on all clients" );
+#endif
+
 				ScriptRegisterFunction( g_pScriptVM, SendToConsole, "Send a string to the console as a command" );
 				ScriptRegisterFunction( g_pScriptVM, SendToServerConsole, "Send a string that gets executed on the server as a ServerCommand. Respects sv_allow_point_servercommand." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, SendToServerConsole, "SendToConsoleServer", "Copy of SendToServerConsole with another name for compat." );
@@ -2509,7 +2721,9 @@ bool VScriptServerInit()
 				ScriptRegisterFunction( g_pScriptVM, DoIncludeScript, "Execute a script (internal)" );
 				ScriptRegisterFunction( g_pScriptVM, RegisterScriptGameEventListener, "Register as a listener for a game event from script." );
 				ScriptRegisterFunction( g_pScriptVM, RegisterScriptHookListener, "Register as a listener for a script hook from script." );
+#ifndef MAPBASE_VSCRIPT
 				ScriptRegisterFunction( g_pScriptVM, EntIndexToHScript, "Turn an entity index integer to an HScript representing that entity's script instance." );
+#endif
 				ScriptRegisterFunction( g_pScriptVM, PlayerInstanceFromIndex, "Get a script instance of a player by index." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptFireGameEvent, "FireGameEvent", "Fire a game event to a listening callback function in script. Parameters are passed in a squirrel table." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptFireScriptHook, "FireScriptHook", "Fire a script hoook to a listening callback function in script. Parameters are passed in a squirrel table." );
@@ -2590,10 +2804,29 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptTraceLine, "TraceLine", "given 2 points & ent to ignore, return fraction along line that hits world or models" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptTraceLinePlayersIncluded, "TraceLinePlayersIncluded", "given 2 points & ent to ignore, return fraction along line that hits world, models, players or npcs" );
 
+				ScriptRegisterFunction( g_pScriptVM, Time, "Get the current server time" );
 				ScriptRegisterFunction( g_pScriptVM, FrameTime, "Get the time spent on the server in the last frame" );
 				ScriptRegisterFunction( g_pScriptVM, MaxClients, "Get the current number of max clients set by the maxplayers command." );
+#ifdef MAPBASE_VSCRIPT
+				ScriptRegisterFunction( g_pScriptVM, MaxPlayers, "Get the maximum number of players allowed on this server" );
+				ScriptRegisterFunction( g_pScriptVM, GetLoadType, "Get the way the current game was loaded (corresponds to the MapLoad enum)" );
+				ScriptRegisterFunction( g_pScriptVM, DoEntFire, SCRIPT_ALIAS( "EntFire", "Generate an entity i/o event" ) );
+				ScriptRegisterFunction( g_pScriptVM, DoEntFireByInstanceHandle, SCRIPT_ALIAS( "EntFireByHandle", "Generate an entity i/o event. First parameter is an entity instance." ) );
+				// ScriptRegisterFunction( g_pScriptVM, IsValidEntity, "Returns true if the entity is valid." );
+
+				ScriptRegisterFunction( g_pScriptVM, CancelEntityIOEvent, "Remove entity I/O event." );
+				ScriptRegisterFunction( g_pScriptVM, GetEntityIOEventTimeLeft, "Get time left on entity I/O event." );
+#else
 				ScriptRegisterFunctionNamed( g_pScriptVM, DoEntFireByInstanceHandle, "EntFireByHandle", "Generate and entity i/o event. First parameter is an entity instance." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCreateSceneEntity, "CreateSceneEntity", "Create a scene entity to play the specified scene." );
+#endif
+				ScriptRegisterFunction( g_pScriptVM, DoUniqueString, SCRIPT_ALIAS( "UniqueString", "Generate a string guaranteed to be unique across the life of the script VM, with an optional root string. Useful for adding data to tables when not sure what keys are already in use in that table." ) );
+				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCreateSceneEntity, "CreateSceneEntity", "Create a scene entity to play the specified scene." );
+#ifndef MAPBASE_VSCRIPT
+				ScriptRegisterFunctionNamed( g_pScriptVM, NDebugOverlay::Box, "DebugDrawBox", "Draw a debug overlay box" );
+				ScriptRegisterFunctionNamed( g_pScriptVM, NDebugOverlay::Line, "DebugDrawLine", "Draw a debug overlay box" );
+#endif
+				ScriptRegisterFunction( g_pScriptVM, DoIncludeScript, "Execute a script (internal)" );
 				ScriptRegisterFunction( g_pScriptVM, CreateProp, "Create a physics prop" );
 				//ScriptRegisterFunctionNamed( g_pScriptVM, DoRecordAchievementEvent, "RecordAchievementEvent", "Records achievement event or progress" );
 				ScriptRegisterFunction( g_pScriptVM, GetDeveloperLevel, "Gets the level of 'developer'" );
@@ -2611,6 +2844,14 @@ bool VScriptServerInit()
 #endif
 
 				g_pScriptVM->RegisterAllClasses();
+#ifdef MAPBASE_VSCRIPT
+				g_pScriptVM->RegisterAllEnums();
+
+				IGameSystem::RegisterVScriptAllSystems();
+
+				RegisterSharedScriptConstants();
+				RegisterSharedScriptFunctions();
+#endif
 				
 				if ( GameRules() )
 				{
@@ -2624,9 +2865,12 @@ bool VScriptServerInit()
 #if 0
 				g_pScriptVM->RegisterInstance( &g_ScriptPanorama, "Panorama" );
 #endif
-				g_pScriptVM->RegisterInstance( &g_ScriptConvars, "Convars" ) ;
+
 				g_pScriptVM->RegisterInstance( &g_ScriptEntityOutputs, "EntityOutputs" );
+#ifndef MAPBASE_VSCRIPT
+				g_pScriptVM->RegisterInstance( &g_ScriptConvars, "Convars" ) ;
 				g_pScriptVM->RegisterInstance( &g_ScriptNetPropManager, "NetProps" );
+#endif
 
 				ScriptVariant_t	vConstantsTable;
 				g_pScriptVM->CreateTable( vConstantsTable );
@@ -3495,6 +3739,7 @@ DECLARE_SCRIPT_CONST( Server, DIST_EPSILON )
 DECLARE_SCRIPT_CONST_NAMED( Server, "ConstantNamingConvention", "Constants are named as follows: F -> flags, E -> enums, (nothing) -> random values/constants" )
 REGISTER_SCRIPT_CONST_TABLE( Server )
 #endif
+
 				g_pScriptVM->SetValue( "Constants", vConstantsTable );
 
 				if ( scriptLanguage == SL_SQUIRREL )
@@ -3503,7 +3748,16 @@ REGISTER_SCRIPT_CONST_TABLE( Server )
 				}
 				g_VScriptGameEventListener.Init();
 
+				VScriptRunScript( "vscript_server", true );
 				VScriptRunScript( "mapspawn", false );
+
+#ifdef MAPBASE_VSCRIPT
+				RunAddonScripts();
+
+				// Since the world entity spawns before VScript is initted, RunVScripts() is called before the VM has started, so no scripts are run.
+				// This gets around that by calling the same function right after the VM is initted.
+				GetWorldEntity()->RunVScripts();
+#endif
 
 				if ( script_connect_debugger_on_mapspawn.GetBool() )
 				{
@@ -3516,13 +3770,27 @@ REGISTER_SCRIPT_CONST_TABLE( Server )
 			}
 			else
 			{
+#ifdef MAPBASE_VSCRIPT
 				DevWarning("VM Did not start!\n");
+#else
+				CGWarning( 1, CON_GROUP_VSCRIPT, "VM Did not start!\n" );
+#endif
 			}
 		}
+#ifdef MAPBASE_VSCRIPT
+		else
+		{
+			CGMsg( 0, CON_GROUP_VSCRIPT, "VSCRIPT SERVER: Not starting because language is set to 'none'\n" );
+		}
+#endif
 	}
 	else
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGMsg( 0, CON_GROUP_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
+#else
 		Log_Msg( LOG_VScript, "\nVSCRIPT: Scripting is disabled.\n" );
+#endif
 	}
 	g_pScriptVM = NULL;
 	return false;
@@ -3866,13 +4134,21 @@ CON_COMMAND( script_reload_code, "Execute a vscript file, replacing existing fun
 
 	if ( !*args[1] )
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGWarning( 0, CON_GROUP_VSCRIPT, "No script specified\n" );
+#else
 		Log_Warning( LOG_VScript, "No script specified\n" );
+#endif
 		return;
 	}
 
 	if ( !g_pScriptVM )
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGWarning( 0, CON_GROUP_VSCRIPT, "No script specified\n" );
+#else
 		Log_Warning( LOG_VScript, "Scripting disabled or no server running\n" );
+#endif
 		return;
 	}
 
@@ -3894,7 +4170,11 @@ CON_COMMAND( script_reload_entity_code, "Execute all of this entity's VScripts, 
 
 	if ( !g_pScriptVM )
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGWarning( 0, CON_GROUP_VSCRIPT, "No script specified\n" );
+#else
 		Log_Warning( LOG_VScript, "Scripting disabled or no server running\n" );
+#endif
 		return;
 	}
 
@@ -3935,7 +4215,11 @@ CON_COMMAND( script_reload_think, "Execute an activation script, replacing exist
 
 	if ( !g_pScriptVM )
 	{
+#ifdef MAPBASE_VSCRIPT
+		CGWarning( 0, CON_GROUP_VSCRIPT, "No script specified\n" );
+#else
 		Log_Warning( LOG_VScript, "Scripting disabled or no server running\n" );
+#endif
 		return;
 	}
 
@@ -3979,6 +4263,13 @@ public:
 	virtual void LevelShutdownPostEntity( void )
 	{
 		ClearScriptGameEventListeners();
+#ifdef MAPBASE_VSCRIPT
+		g_ScriptEntityIterator.DisableEntityListening();
+
+		g_ScriptNetMsg->LevelShutdownPreVM();
+
+		GetScriptHookManager().OnShutdown();
+#endif
 		VScriptServerTerm();
 	}
 
@@ -3995,175 +4286,19 @@ public:
 
 CVScriptGameSystem g_VScriptGameSystem;
 
+#ifdef MAPBASE_VSCRIPT
+ConVar script_allow_entity_creation_midgame( "script_allow_entity_creation_midgame", "1", FCVAR_NOT_CONNECTED, "Allows VScript files to create entities mid-game, as opposed to only creating entities on startup." );
+#endif
+
 bool IsEntityCreationAllowedInScripts( void )
 {
+#ifdef MAPBASE_VSCRIPT
+	if (script_allow_entity_creation_midgame.GetBool())
+		return true;
+#endif
+
 	return g_VScriptGameSystem.m_bAllowEntityCreationInScripts;
 }
-
-static short VSCRIPT_SERVER_SAVE_RESTORE_VERSION = 2;
-
-
-//-----------------------------------------------------------------------------
-
-class CVScriptSaveRestoreBlockHandler : public CDefSaveRestoreBlockHandler
-{
-public:
-	CVScriptSaveRestoreBlockHandler() :
-		m_InstanceMap( DefLessFunc(const char *) )
-	{
-	}
-	const char *GetBlockName()
-	{
-		return "VScriptServer";
-	}
-
-	//---------------------------------
-
-	void Save( ISave *pSave )
-	{
-		pSave->StartBlock();
-
-		int temp = g_pScriptVM != NULL;
-		pSave->WriteInt( &temp );
-		if ( g_pScriptVM )
-		{
-			temp = g_pScriptVM->GetLanguage();
-			pSave->WriteInt( &temp );
-			CUtlBuffer buffer;
-			g_pScriptVM->WriteState( &buffer );
-			temp = buffer.TellPut();
-			pSave->WriteInt( &temp );
-			if ( temp > 0 )
-			{
-				pSave->WriteData( (const char *)buffer.Base(), temp );
-			}
-		}
-
-		pSave->EndBlock();
-	}
-
-	//---------------------------------
-
-	void WriteSaveHeaders( ISave *pSave )
-	{
-		pSave->WriteShort( &VSCRIPT_SERVER_SAVE_RESTORE_VERSION );
-	}
-
-	//---------------------------------
-
-	void ReadRestoreHeaders( IRestore *pRestore )
-	{
-		// No reason why any future version shouldn't try to retain backward compatability. The default here is to not do so.
-		short version;
-		pRestore->ReadShort( &version );
-		m_fDoLoad = ( version == VSCRIPT_SERVER_SAVE_RESTORE_VERSION );
-	}
-
-	//---------------------------------
-
-	void Restore( IRestore *pRestore, bool createPlayers )
-	{
-		if ( !m_fDoLoad && g_pScriptVM )
-		{
-			return;
-		}
-		CBaseEntity *pEnt = gEntList.FirstEnt();
-		while ( pEnt )
-		{
-			if ( pEnt->m_iszScriptId != NULL_STRING )
-			{
-				g_pScriptVM->RegisterClass( pEnt->GetScriptDesc() );
-				m_InstanceMap.Insert( STRING( pEnt->m_iszScriptId ), pEnt );
-			}
-			pEnt = gEntList.NextEnt( pEnt );
-		}
-
-		pRestore->StartBlock();
-		if ( pRestore->ReadInt() && pRestore->ReadInt() == g_pScriptVM->GetLanguage() )
-		{
-			int nBytes = pRestore->ReadInt();
-			if ( nBytes > 0 )
-			{
-				CUtlBuffer buffer;
-				buffer.EnsureCapacity( nBytes );
-				pRestore->ReadData( (char *)buffer.AccessForDirectRead( nBytes ), nBytes, 0 );
-				g_pScriptVM->ReadState( &buffer );
-			}
-		}
-		pRestore->EndBlock();
-	}
-
-	void PostRestore( void )
-	{
-		for ( int i = m_InstanceMap.FirstInorder(); i != m_InstanceMap.InvalidIndex(); i = m_InstanceMap.NextInorder( i ) )
-		{
-			CBaseEntity *pEnt = m_InstanceMap[i];
-			if ( pEnt->m_hScriptInstance )
-			{
-				ScriptVariant_t variant;
-				if ( g_pScriptVM->GetValue( STRING(pEnt->m_iszScriptId), &variant ) && variant.GetType() == FIELD_HSCRIPT)
-				{
-					pEnt->m_ScriptScope.Init( variant, false );
-					pEnt->RunPrecacheScripts();
-				}
-			}
-			else
-			{
-				// Script system probably has no internal references
-				pEnt->m_iszScriptId = NULL_STRING;
-			}
-		}
-		m_InstanceMap.Purge();
-	}
-
-
-	CUtlMap<const char *, CBaseEntity *> m_InstanceMap;
-
-private:
-	bool m_fDoLoad;
-};
-
-//-----------------------------------------------------------------------------
-
-CVScriptSaveRestoreBlockHandler g_VScriptSaveRestoreBlockHandler;
-
-//-------------------------------------
-
-ISaveRestoreBlockHandler *GetVScriptSaveRestoreBlockHandler()
-{
-	return &g_VScriptSaveRestoreBlockHandler;
-}
-
-//-----------------------------------------------------------------------------
-
-bool CBaseEntityScriptInstanceHelper::ToString( void *p, char *pBuf, int bufSize )	
-{
-	CBaseEntity *pEntity = (CBaseEntity *)p;
-	if ( pEntity->GetEntityName() != NULL_STRING )
-	{
-		V_snprintf( pBuf, bufSize, "([%d] %s: %s)", pEntity->entindex(), STRING(pEntity->m_iClassname), STRING( pEntity->GetEntityName() ) );
-	}
-	else
-	{
-		V_snprintf( pBuf, bufSize, "([%d] %s)", pEntity->entindex(), STRING(pEntity->m_iClassname) );
-	}
-	return true; 
-}
-
-void *CBaseEntityScriptInstanceHelper::BindOnRead( HSCRIPT hInstance, void *pOld, const char *pszId )
-{
-	int iEntity = g_VScriptSaveRestoreBlockHandler.m_InstanceMap.Find( pszId );
-	if ( iEntity != g_VScriptSaveRestoreBlockHandler.m_InstanceMap.InvalidIndex() )
-	{
-		CBaseEntity *pEnt = g_VScriptSaveRestoreBlockHandler.m_InstanceMap[iEntity];
-		pEnt->m_hScriptInstance = hInstance;
-		return pEnt;
-	}
-	return NULL;
-}
-
-
-CBaseEntityScriptInstanceHelper g_BaseEntityScriptInstanceHelper;
 
 #ifdef TF_DLL
 bool CNavAreaScriptInstanceHelper::ToString( void *p, char *pBuf, int bufSize )	

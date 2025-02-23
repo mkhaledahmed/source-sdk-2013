@@ -22,6 +22,17 @@ public:
 
     int GetJuice() const { return m_iJuice; }
 
+#ifdef MAPBASE
+	void InputRecharge( inputdata_t &inputdata );
+	void InputSetCharge( inputdata_t &inputdata );
+	void InputSetChargeNoMax( inputdata_t &inputdata );
+	void UpdateJuice( int newJuice );
+	float MaxJuice() const;
+	void SetInitialCharge( void );
+	int		m_iMaxJuice;
+	int		m_iIncrementValue;
+#endif
+
 	float m_flNextCharge; 
 	int		m_iReactivate ; // DeathMatch Delay until reactvated
 	int		m_iJuice;
@@ -32,6 +43,11 @@ public:
 	int		m_iCaps;
 
 	COutputFloat m_OutRemainingHealth;
+#ifdef MAPBASE
+	COutputEvent m_OnHalfEmpty;
+	COutputEvent m_OnEmpty;
+	COutputEvent m_OnFull;
+#endif
 	COutputEvent m_OnPlayerUse;
 
 	void StudioFrameAdvance ( void );

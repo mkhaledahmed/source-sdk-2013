@@ -84,6 +84,7 @@ public:
 	virtual void	StudioFrameAdvance(); // advance animation frame to some time in the future
 	void StudioFrameAdvanceManual( float flInterval );
 	bool	IsValidSequence( int iSequence );
+	virtual void	ReachedEndOfSequence() { return; }
 
 	inline float					GetPlaybackRate();
 	inline void						SetPlaybackRate( float rate );
@@ -101,6 +102,9 @@ public:
 	float	SequenceDuration( CStudioHdr *pStudioHdr, int iSequence );
 	inline float SequenceDuration( int iSequence ) { return SequenceDuration(GetModelPtr(), iSequence); }
 	float	ScriptGetSequenceDuration( int iSequence );
+#ifdef MAPBASE_VSCRIPT
+	inline float ScriptSequenceDuration( int iSequence ) { return SequenceDuration(GetModelPtr(), iSequence); }
+#endif
 	float	GetSequenceCycleRate( CStudioHdr *pStudioHdr, int iSequence );
 	inline float	GetSequenceCycleRate( int iSequence ) { return GetSequenceCycleRate(GetModelPtr(),iSequence); }
 	float	GetLastVisibleCycle( CStudioHdr *pStudioHdr, int iSequence );
@@ -152,6 +156,9 @@ public:
 		return this->DispatchAnimEvents( pAnimating );
 	}
 	virtual void HandleAnimEvent( animevent_t *pEvent );
+#ifdef MAPBASE_VSCRIPT
+	bool ScriptHookHandleAnimEvent( animevent_t *pEvent );
+#endif
 
 	int		LookupPoseParameter( CStudioHdr *pStudioHdr, const char *szName );
 	inline int	LookupPoseParameter( const char *szName ) { return LookupPoseParameter(GetModelPtr(), szName); }
@@ -161,7 +168,12 @@ public:
 	inline float SetPoseParameter( const char *szName, float flValue ) { return SetPoseParameter( GetModelPtr(), szName, flValue ); }
 	float	SetPoseParameter( CStudioHdr *pStudioHdr, int iParameter, float flValue );
 	inline float SetPoseParameter( int iParameter, float flValue ) { return SetPoseParameter( GetModelPtr(), iParameter, flValue ); }
+#ifdef VSCRIPT_PRIORITIZE_TF2_SYNTAX
+#ifdef MAPBASE_VSCRIPT
+	inline float ScriptGetPoseParameter( int iParameter ) { return GetPoseParameter( iParameter ); }
+#endif
 	inline float ScriptSetPoseParameter( int iParameter, float flValue ) { return SetPoseParameter( iParameter, flValue ); }
+#endif
 
 	float	GetPoseParameter( const char *szName );
 	float	GetPoseParameter( int iParameter );
@@ -200,6 +212,26 @@ public:
 	bool GetAttachment( int iAttachment, Vector &absOrigin, QAngle &absAngles );
 	int GetAttachmentBone( int iAttachment );
 	virtual bool GetAttachment( int iAttachment, matrix3x4_t &attachmentToWorld );
+
+#ifdef MAPBASE_VSCRIPT
+	HSCRIPT ScriptGetAttachmentMatrix(int iAttachment);
+#ifndef VSCRIPT_PRIORITIZE_TF2_SYNTAX
+	float	ScriptGetPoseParameter(const char* szName);
+	void	ScriptSetPoseParameter(const char* szName, float fValue);
+#endif
+
+	void	ScriptGetBoneTransform( int iBone, HSCRIPT hTransform );
+
+	int		ScriptGetSequenceActivity( int iSequence ) { return GetSequenceActivity( iSequence ); }
+	float	ScriptGetSequenceMoveDist( int iSequence ) { return GetSequenceMoveDist( GetModelPtr(), iSequence ); }
+	int		ScriptSelectHeaviestSequence( int activity ) { return SelectHeaviestSequence( (Activity)activity ); }
+	int		ScriptSelectWeightedSequence( int activity, int curSequence ) { return SelectWeightedSequence( (Activity)activity, curSequence ); }
+
+	HSCRIPT ScriptGetSequenceKeyValues( int iSequence );
+
+	static ScriptHook_t	g_Hook_OnServerRagdoll;
+	static ScriptHook_t	g_Hook_HandleAnimEvent;
+#endif
 
 	// These return the attachment in the space of the entity
 	bool GetAttachmentLocal( const char *szName, Vector &origin, QAngle &angles );
@@ -320,6 +352,11 @@ public:
 	void InputIgniteNumHitboxFires( inputdata_t &inputdata );
 	void InputIgniteHitboxFireScale( inputdata_t &inputdata );
 	void InputBecomeRagdoll( inputdata_t &inputdata );
+#ifdef MAPBASE
+	void InputCreateSeparateRagdoll( inputdata_t &inputdata );
+	void InputCreateSeparateRagdollClient( inputdata_t &inputdata );
+	void InputSetPoseParameter( inputdata_t &inputdata );
+#endif
 
 	// Dissolve, returns true if the ragdoll has been created
 	bool Dissolve( const char *pMaterialName, float flStartTime, bool bNPCOnly = true, int nDissolveType = 0, Vector vDissolverOrigin = vec3_origin, int iMagnitude = 0 );
@@ -331,11 +368,19 @@ public:
 	float				m_flLastEventCheck;	// cycle index of when events were last checked
 
 	virtual void SetLightingOriginRelative( CBaseEntity *pLightingOriginRelative );
+#ifdef MAPBASE
+	void SetLightingOriginRelative( string_t strLightingOriginRelative, inputdata_t *inputdata = NULL );
+#else
 	void SetLightingOriginRelative( string_t strLightingOriginRelative );
+#endif
 	CBaseEntity *GetLightingOriginRelative();
 
 	virtual void SetLightingOrigin( CBaseEntity *pLightingOrigin );
+#ifdef MAPBASE
+	void SetLightingOrigin( string_t strLightingOrigin, inputdata_t *inputdata = NULL );
+#else
 	void SetLightingOrigin( string_t strLightingOrigin );
+#endif
 	CBaseEntity *GetLightingOrigin();
 
 	const float* GetPoseParameterArray() { return m_flPoseParameter.Base(); }
@@ -365,6 +410,9 @@ private:
 	void InputSetModel( inputdata_t &inputdata );
 	void InputSetCycle( inputdata_t &inputdata );
 	void InputSetPlaybackRate( inputdata_t &inputdata );
+#ifdef MAPBASE
+public: // From Alien Swarm SDK
+#endif
 
 	bool CanSkipAnimation( void );
 
@@ -443,6 +491,9 @@ protected:
 
 public:
 	COutputEvent m_OnIgnite;
+#ifdef MAPBASE
+	COutputEHANDLE m_OnServerRagdoll;
+#endif
 
 private:
 	CStudioHdr			*m_pStudioHdr;

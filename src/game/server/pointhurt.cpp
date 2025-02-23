@@ -15,6 +15,7 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
+
 BEGIN_DATADESC( CPointHurt )
 
 	DEFINE_KEYFIELD( m_flRadius, FIELD_FLOAT, "DamageRadius" ),
@@ -153,4 +154,22 @@ void CPointHurt::InputHurt( inputdata_t &data )
 
 	HurtThink();
 }
+
+#ifdef MAPBASE
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CPointHurt::KeyValue( const char *szKeyName, const char *szValue )
+{
+	// Additional OR flags
+	if (FStrEq( szKeyName, "damageor" ) || FStrEq( szKeyName, "damagepresets" ))
+	{
+		m_bitsDamageType |= atoi(szValue);
+	}
+	else
+		return BaseClass::KeyValue( szKeyName, szValue );
+
+	return true;
+}
+#endif
 

@@ -110,6 +110,11 @@ public:
 	CVariantBase( const char *val , bool bCopy = false );
 	CVariantBase( const Quaternion &val, bool bCopy = false );
 
+#ifdef MAPBASE_VSCRIPT
+	CVariantBase( const QAngle &val, bool bCopy = false );
+	CVariantBase( const QAngle *val, bool bCopy = false );
+#endif
+
 	CVariantBase( const CVariantBase<CValueAllocator> &variant ) :m_flags( 0 ), m_type( FIELD_VOID )	{ variant.AssignTo( this ); }
 	void operator=( const CVariantBase<CValueAllocator> &variant )										{ variant.AssignTo( this ); }
 
@@ -192,7 +197,9 @@ public:
 
 	void ConvertToCopiedData(bool silent = false );
 
+#ifndef MAPBASE_VSCRIPT
 private:
+#endif
 	void *Allocate( uint nSize );
 	template< typename T > T* Allocate();
 	void Free( void* pMemory );
@@ -392,6 +399,20 @@ inline CVariantBase<CValueAllocator>::CVariantBase( const Quaternion &val, bool 
 {
 	CopyData( val, bCopy );
 }
+
+#ifdef MAPBASE_VSCRIPT
+template< class CValueAllocator >
+inline CVariantBase<CValueAllocator>::CVariantBase( const QAngle &val, bool bCopy ) : m_flags( 0 ), m_type( FIELD_VOID )
+{ 
+	CopyData( val, bCopy );
+}
+
+template< class CValueAllocator >
+inline CVariantBase<CValueAllocator>::CVariantBase( const QAngle *val, bool bCopy ) : m_flags( 0 ), m_type( FIELD_VOID )
+{ 
+	CopyData( *val, bCopy );
+}
+#endif
 
 
 //-----------------------------------------------------------------------------

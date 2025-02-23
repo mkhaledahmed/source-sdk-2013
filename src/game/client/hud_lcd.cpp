@@ -1188,16 +1188,16 @@ void CLCD::DumpPlayer()
 	C_Team *team = player->GetTeam();
 	if ( team )
 	{
-		CDescribeData helper( team );
-		helper.DumpDescription( team->GetPredDescMap() );
+		CDescribeData helperLocl( team );
+		helperLocl.DumpDescription( team->GetPredDescMap() );
 	}
 
 	Msg( "(playerresource)\n\n" );
 
 	if ( g_PR )
 	{
-		CDescribeData helper( g_PR );
-		helper.DumpDescription( g_PR->GetPredDescMap() );
+		CDescribeData helperLocl( g_PR );
+		helperLocl.DumpDescription( g_PR->GetPredDescMap() );
 	}
 
 	Msg( "(localplayerweapon)\n\n" );
@@ -1205,8 +1205,8 @@ void CLCD::DumpPlayer()
 	C_BaseCombatWeapon *active = player->GetActiveWeapon();
 	if ( active )
 	{
-		CDescribeData helper( active );
-		helper.DumpDescription( active->GetPredDescMap() );
+		CDescribeData helperLocl( active );
+		helperLocl.DumpDescription( active->GetPredDescMap() );
 	}
 
 	Msg( "Other replacements:\n\n" );

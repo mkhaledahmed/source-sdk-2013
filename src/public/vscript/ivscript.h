@@ -1,4 +1,4 @@
-//========== Copyright � 2008, Valve Corporation, All rights reserved. ========
+//========== Copyright ? 2008, Valve Corporation, All rights reserved. ========
 //
 // Purpose: VScript
 //
@@ -95,6 +95,14 @@
 #ifndef IVSCRIPT_H
 #define IVSCRIPT_H
 
+#ifdef MAPBASE_VSCRIPT
+#include <type_traits>
+#include <utility>
+
+#include "utlmap.h"
+#include "utlvector.h"
+#endif
+
 #include "platform.h"
 #include "datamap.h"
 #include "appframework/IAppSystem.h"
@@ -131,6 +139,15 @@ class CUtlBuffer;
 //-----------------------------------------------------------------------------
 
 class IScriptVM;
+#ifdef MAPBASE_VSCRIPT
+class KeyValues;
+
+// This has been moved up a bit for IScriptManager
+DECLARE_POINTER_HANDLE( HSCRIPT );
+#define INVALID_HSCRIPT ((HSCRIPT)-1)
+
+typedef unsigned int HScriptRaw;
+#endif
 
 enum ScriptLanguage_t
 {
@@ -148,14 +165,16 @@ class IScriptManager : public IAppSystem
 public:
 	virtual IScriptVM *CreateVM( ScriptLanguage_t language = SL_DEFAULT ) = 0;
 	virtual void DestroyVM( IScriptVM * ) = 0;
+
+#ifdef MAPBASE_VSCRIPT
+	virtual HSCRIPT CreateScriptKeyValues( IScriptVM *pVM, KeyValues *pKV, bool bAllowDestruct ) = 0;
+	virtual KeyValues *GetKeyValuesFromScriptKV( IScriptVM *pVM, HSCRIPT hSKV ) = 0;
+#endif
 };
 
 //-----------------------------------------------------------------------------
 // 
 //-----------------------------------------------------------------------------
-
-DECLARE_POINTER_HANDLE( HSCRIPT );
-#define INVALID_HSCRIPT ((HSCRIPT)-1)
 
 inline bool IsValid( HSCRIPT hScript )
 {
@@ -200,6 +219,26 @@ struct ScriptFuncDescriptor_t
 	ScriptDataType_t m_ReturnType;
 	CUtlVector<ScriptDataType_t> m_Parameters;
 };
+
+#ifdef MAPBASE_VSCRIPT
+//---------------------------------------------------------
+// VScript Member Variables
+// 
+// An odd concept. Because IScriptInstanceHelper now supports
+// get/set metamethods, classes are capable of pretending they
+// have member variables which VScript can get and set.
+// 
+// There's no default way of documenting these variables, so even though
+// these are not actually binding anything, this is here to allow VScript
+// to describe these fake member variables in its documentation.
+//---------------------------------------------------------
+struct ScriptMemberDesc_t
+{
+	const char			*m_pszScriptName;
+	const char			*m_pszDescription;
+	ScriptDataType_t	m_ReturnType;
+};
+#endif
 
 
 //---------------------------------------------------------
@@ -251,15 +290,35 @@ public:
 	virtual void *GetProxied( void *p, ScriptFunctionBinding_t *pBinding )			{ return p; }
 	virtual bool ToString( void *p, char *pBuf, int bufSize )						{ return false; }
 	virtual void *BindOnRead( HSCRIPT hInstance, void *pOld, const char *pszId )	{ return NULL; }
+
+#ifdef MAPBASE_VSCRIPT
+	virtual bool Get( void *p, const char *pszKey, ScriptVariant_t &variant )		{ return false; }
+	virtual bool Set( void *p, const char *pszKey, ScriptVariant_t &variant )		{ return false; }
+
+	virtual ScriptVariant_t *Add( void *p, ScriptVariant_t &variant )				{ return NULL; }
+	virtual ScriptVariant_t *Subtract( void *p, ScriptVariant_t &variant )			{ return NULL; }
+	virtual ScriptVariant_t *Multiply( void *p, ScriptVariant_t &variant )			{ return NULL; }
+	virtual ScriptVariant_t *Divide( void *p, ScriptVariant_t &variant )			{ return NULL; }
+#endif
 };
 
 //---------------------------------------------------------
 
+#ifdef MAPBASE_VSCRIPT
+struct ScriptHook_t;
+#endif
+
 struct ScriptClassDesc_t
 {
+#ifdef MAPBASE_VSCRIPT
+	ScriptClassDesc_t() : m_pszScriptName( 0 ), m_pszClassname( 0 ), m_pszDescription( 0 ), m_pBaseDesc( 0 ), m_pfnConstruct( 0 ), m_pfnDestruct( 0 ), pHelper(NULL) 
+#else
 	ScriptClassDesc_t( void (*pfnInitializer)() ) : m_pszScriptName( 0 ), m_pszClassname( 0 ), m_pszDescription( 0 ), m_pBaseDesc( 0 ), m_pfnConstruct( 0 ), m_pfnDestruct( 0 ), pHelper(NULL) 
+#endif
 	{
+#ifndef MAPBASE_VSCRIPT
 		(*pfnInitializer)();
+#endif
 		ScriptClassDesc_t **ppHead = GetDescList();
 		m_pNextDesc = *ppHead;
 		*ppHead = this;
@@ -270,6 +329,11 @@ struct ScriptClassDesc_t
 	const char *						m_pszDescription;
 	ScriptClassDesc_t *					m_pBaseDesc;
 	CUtlVector<ScriptFunctionBinding_t> m_FunctionBindings;
+
+#ifdef MAPBASE_VSCRIPT
+	CUtlVector<ScriptHook_t*>			m_Hooks;
+	CUtlVector<ScriptMemberDesc_t>		m_Members;
+#endif
 
 	void *(*m_pfnConstruct)();
 	void (*m_pfnDestruct)( void *);
@@ -283,6 +347,39 @@ struct ScriptClassDesc_t
 		return &pHead;
 	}
 };
+
+#ifdef MAPBASE_VSCRIPT
+//---------------------------------------------------------
+struct ScriptConstantBinding_t
+{
+	const char			*m_pszScriptName;
+	const char			*m_pszDescription;
+	ScriptVariant_t		m_data;
+	unsigned			m_flags;
+};
+
+//---------------------------------------------------------
+struct ScriptEnumDesc_t
+{
+	ScriptEnumDesc_t() : m_pszScriptName( 0 ), m_pszDescription( 0 ), m_flags( 0 )
+	{
+		AllEnumsDesc().AddToTail(this);
+	}
+
+	virtual void		RegisterDesc() = 0;
+
+	const char			*m_pszScriptName;
+	const char			*m_pszDescription;
+	CUtlVector<ScriptConstantBinding_t> m_ConstantBindings;
+	unsigned			m_flags;
+
+	static CUtlVector<ScriptEnumDesc_t*>& AllEnumsDesc()
+	{
+		static CUtlVector<ScriptEnumDesc_t*> enums;
+		return enums;
+	}
+};
+#endif
 
 //-----------------------------------------------------------------------------
 // 
@@ -314,6 +411,65 @@ struct ScriptClassDesc_t
 #define ScriptRegisterFunction( pVM, func, description )									ScriptRegisterFunctionNamed( pVM, func, #func, description )
 #define ScriptRegisterFunctionNamed( pVM, func, scriptName, description )					do { static ScriptFunctionBinding_t binding; binding.m_desc.m_pszDescription = description; binding.m_desc.m_Parameters.RemoveAll(); ScriptInitFunctionBindingNamed( &binding, func, scriptName ); pVM->RegisterFunction( &binding ); } while (0)
 
+#ifdef MAPBASE_VSCRIPT
+//-----------------------------------------------------------------------------
+// 
+//-----------------------------------------------------------------------------
+
+// forwards T (and T&) if T is neither enum or an unsigned integer
+// the overload for int below captures enums and unsigned integers and "bends" them to int
+template<typename T>
+static inline typename std::enable_if<!std::is_enum<typename std::remove_reference<T>::type>::value && !std::is_unsigned<typename std::remove_reference<T>::type>::value, T&&>::type ToConstantVariant(T &&value)
+{
+	return std::forward<T>(value);
+}
+
+static inline int ToConstantVariant(int value)
+{
+	return value;
+}
+
+#define ScriptRegisterConstant( pVM, constant, description )									ScriptRegisterConstantNamed( pVM, constant, #constant, description )
+#define ScriptRegisterConstantNamed( pVM, constant, scriptName, description )					do { static ScriptConstantBinding_t binding; binding.m_pszScriptName = scriptName; binding.m_pszDescription = description; binding.m_data = ToConstantVariant(constant); pVM->RegisterConstant( &binding ); } while (0)
+
+// Could probably use a better name.
+// This is used for registering variants (particularly vectors) not tied to existing variables.
+// The principal difference is that m_data is initted with bCopy set to true.
+#define ScriptRegisterConstantFromTemp( pVM, constant, description )									ScriptRegisterConstantFromTempNamed( pVM, constant, #constant, description )
+#define ScriptRegisterConstantFromTempNamed( pVM, constant, scriptName, description )					do { static ScriptConstantBinding_t binding; binding.m_pszScriptName = scriptName; binding.m_pszDescription = description; binding.m_data = ScriptVariant_t( constant, true ); pVM->RegisterConstant( &binding ); } while (0)
+
+//-----------------------------------------------------------------------------
+// 
+//-----------------------------------------------------------------------------
+
+#define BEGIN_SCRIPTENUM( enumName, description ) \
+		struct ScriptEnum##enumName##Desc_t : public ScriptEnumDesc_t \
+		{ \
+			void RegisterDesc(); \
+		}; \
+		ScriptEnum##enumName##Desc_t g_##enumName##_EnumDesc; \
+		\
+		void ScriptEnum##enumName##Desc_t::RegisterDesc() \
+		{ \
+			static bool bInitialized; \
+			if ( bInitialized ) \
+				return; \
+			\
+			bInitialized = true; \
+			\
+			m_pszScriptName = #enumName; \
+			m_pszDescription = description; \
+
+#define DEFINE_ENUMCONST( constant, description )							DEFINE_ENUMCONST_NAMED( constant, #constant, description )
+#define DEFINE_ENUMCONST_NAMED( constant, scriptName, description )			do { ScriptConstantBinding_t *pBinding = &(m_ConstantBindings[m_ConstantBindings.AddToTail()]); pBinding->m_pszScriptName = scriptName; pBinding->m_pszDescription = description; pBinding->m_data = constant; pBinding->m_flags = SF_MEMBER_FUNC; } while (0);
+
+#define END_SCRIPTENUM() \
+		} \
+
+
+#define GetScriptDescForEnum( enumName ) GetScriptDesc( ( className *)NULL )
+#endif
+
 //-----------------------------------------------------------------------------
 // 
 //-----------------------------------------------------------------------------
@@ -323,6 +479,38 @@ struct ScriptClassDesc_t
 #define BEGIN_SCRIPTDESC( className, baseClass, description )								BEGIN_SCRIPTDESC_NAMED( className, baseClass, #className, description )
 #define BEGIN_SCRIPTDESC_ROOT( className, description )										BEGIN_SCRIPTDESC_ROOT_NAMED( className, #className, description )
 
+#ifdef MAPBASE_VSCRIPT
+#define BEGIN_SCRIPTDESC_NAMED( className, baseClass, scriptName, description ) \
+	template <> ScriptClassDesc_t* GetScriptDesc<baseClass>(baseClass*); \
+	template <> ScriptClassDesc_t* GetScriptDesc<className>(className*); \
+	ScriptClassDesc_t & g_##className##_ScriptDesc = *GetScriptDesc<className>(nullptr); \
+	template <> ScriptClassDesc_t* GetScriptDesc<className>(className*) \
+	{ \
+		static ScriptClassDesc_t g_##className##_ScriptDesc; \
+		typedef className _className; \
+		ScriptClassDesc_t *pDesc = &g_##className##_ScriptDesc; \
+		if (pDesc->m_pszClassname) return pDesc; \
+		pDesc->m_pszDescription = description; \
+		ScriptInitClassDescNamed( pDesc, className, GetScriptDescForClass( baseClass ), scriptName ); \
+		ScriptClassDesc_t *pInstanceHelperBase = pDesc->m_pBaseDesc; \
+		while ( pInstanceHelperBase ) \
+		{ \
+			if ( pInstanceHelperBase->pHelper ) \
+			{ \
+				pDesc->pHelper = pInstanceHelperBase->pHelper; \
+				break; \
+			} \
+			pInstanceHelperBase = pInstanceHelperBase->m_pBaseDesc; \
+		}
+
+
+#define BEGIN_SCRIPTDESC_ROOT_NAMED( className, scriptName, description ) \
+	BEGIN_SCRIPTDESC_NAMED( className, ScriptNoBase_t, scriptName, description )
+
+#define END_SCRIPTDESC() \
+		return pDesc; \
+	}
+#else
 #if defined(_MSC_VER) && (_MSC_VER < 1800)
 	#define DEFINE_SCRIPTDESC_FUNCTION( className, baseClass ) \
 		ScriptClassDesc_t * GetScriptDesc( className * )
@@ -385,6 +573,7 @@ inline IScriptInstanceHelper *GetScriptInstanceHelper_ScriptNoBase_t()
 #define END_SCRIPTDESC() \
 		return; \
 	}
+#endif
 
 #define SCRIPTFUNC_CONCAT_(x, y) x##y
 #define SCRIPTFUNC_CONCAT(x, y) SCRIPTFUNC_CONCAT_(x, y)
@@ -393,12 +582,51 @@ inline IScriptInstanceHelper *GetScriptInstanceHelper_ScriptNoBase_t()
 #define DEFINE_SCRIPTFUNC_WRAPPED( func, description )										DEFINE_SCRIPTFUNC_NAMED( SCRIPTFUNC_CONCAT( Script, func ), #func, description )
 #define DEFINE_SCRIPTFUNC_NAMED( func, scriptName, description )							ScriptAddFunctionToClassDescNamed( pDesc, _className, func, scriptName, description );
 #define DEFINE_SCRIPT_CONSTRUCTOR()															ScriptAddConstructorToClassDesc( pDesc, _className );
-#define DEFINE_SCRIPT_INSTANCE_HELPER( className, p )										template <> IScriptInstanceHelper *GetScriptInstanceHelperOverride< className >( IScriptInstanceHelper * ) { return p; }
-								
+#define DEFINE_SCRIPT_INSTANCE_HELPER( p )													pDesc->pHelper = (p);
+
+#ifdef MAPBASE_VSCRIPT
+// Use this for hooks which have no parameters
+#define DEFINE_SIMPLE_SCRIPTHOOK( hook, hookName, returnType, description ) \
+	if (!hook.m_bDefined) \
+	{ \
+		ScriptHook_t *pHook = &hook; \
+		pHook->m_desc.m_pszScriptName = hookName; pHook->m_desc.m_pszFunction = #hook; pHook->m_desc.m_ReturnType = returnType; pHook->m_desc.m_pszDescription = description; \
+		pDesc->m_Hooks.AddToTail(pHook); \
+	}
+
+#define BEGIN_SCRIPTHOOK( hook, hookName, returnType, description )										\
+	if (!hook.m_bDefined) \
+	{ \
+		ScriptHook_t *pHook = &hook; \
+		pHook->m_desc.m_pszScriptName = hookName; pHook->m_desc.m_pszFunction = #hook; pHook->m_desc.m_ReturnType = returnType; pHook->m_desc.m_pszDescription = description;
+
+#define DEFINE_SCRIPTHOOK_PARAM( paramName, type ) pHook->AddParameter( paramName, type );
+
+#define END_SCRIPTHOOK() \
+		pDesc->m_Hooks.AddToTail(pHook); \
+	}
+
+// Static hooks (or "global" hooks) are not tied to specific classes
+#define END_SCRIPTHOOK_STATIC( pVM ) \
+		pVM->RegisterHook( pHook ); \
+	}
+
+#define ScriptRegisterSimpleHook( pVM, hook, hookName, returnType, description ) \
+	if (!hook.m_bDefined) \
+	{ \
+		ScriptHook_t *pHook = &hook; \
+		pHook->m_desc.m_pszScriptName = hookName; pHook->m_desc.m_pszFunction = #hook; pHook->m_desc.m_ReturnType = returnType; pHook->m_desc.m_pszDescription = description; \
+		pVM->RegisterHook( pHook ); \
+	}
+
+#define DEFINE_MEMBERVAR( varName, returnType, description ) \
+	do { ScriptMemberDesc_t *pBinding = &((pDesc)->m_Members[(pDesc)->m_Members.AddToTail()]); pBinding->m_pszScriptName = varName; pBinding->m_pszDescription = description; pBinding->m_ReturnType = returnType; } while (0);
+#endif
+
 template <typename T> ScriptClassDesc_t *GetScriptDesc(T *);
 
-template <>
-inline ScriptClassDesc_t *GetScriptDesc<ScriptNoBase_t>( ScriptNoBase_t *) { return NULL; }
+struct ScriptNoBase_t;
+template <> inline ScriptClassDesc_t *GetScriptDesc<ScriptNoBase_t>( ScriptNoBase_t *) { return NULL; }
 
 #define GetScriptDescForClass( className ) GetScriptDesc( ( className *)NULL )
 
@@ -444,14 +672,13 @@ enum ScriptStatus_t
 	SCRIPT_RUNNING,
 };
 
-// forward declarations for the ForwardConsoleCommand() workaround
-class CCommandContext;
-class CCommand;
-class CSquirrelMetamethodDelegateImpl;
-
 class IScriptVM
 {
 public:
+#ifdef MAPBASE_VSCRIPT
+	virtual ~IScriptVM() {}
+#endif
+
 	virtual bool Init() = 0;
 	virtual void Shutdown() = 0;
 
@@ -490,19 +717,34 @@ public:
 	// Scope
 	//--------------------------------------------------------
 	virtual HSCRIPT CreateScope( const char *pszScope, HSCRIPT hParent = NULL ) = 0;
+#ifndef MAPBASE_VSCRIPT
 	virtual HSCRIPT ReferenceScope( HSCRIPT hScript ) = 0;
+#endif
 	virtual void ReleaseScope( HSCRIPT hScript ) = 0;
 
 	//--------------------------------------------------------
 	// Script functions
 	//--------------------------------------------------------
+#ifdef MAPBASE_VSCRIPT
+	virtual HSCRIPT LookupFunction( const char *pszFunction, HSCRIPT hScope = NULL ) = 0;
+#else
 	virtual HSCRIPT LookupFunction( const char *pszFunction, HSCRIPT hScope = NULL, bool bNoDelegation = false ) = 0;
+#endif
 	virtual void ReleaseFunction( HSCRIPT hScript ) = 0;
 
 	//--------------------------------------------------------
 	// Script functions (raw, use Call())
 	//--------------------------------------------------------
 	virtual ScriptStatus_t ExecuteFunction( HSCRIPT hFunction, ScriptVariant_t *pArgs, int nArgs, ScriptVariant_t *pReturn, HSCRIPT hScope, bool bWait ) = 0;
+
+#ifdef MAPBASE_VSCRIPT
+	//--------------------------------------------------------
+	// Hooks
+	//--------------------------------------------------------
+	// Persistent unique identifier for an HSCRIPT variable
+	virtual HScriptRaw HScriptToRaw( HSCRIPT val ) = 0;
+	virtual ScriptStatus_t ExecuteHookFunction( const char *pszEventName, ScriptVariant_t *pArgs, int nArgs, ScriptVariant_t *pReturn, HSCRIPT hScope, bool bWait ) = 0;
+#endif
 
 	//--------------------------------------------------------
 	// External functions
@@ -514,27 +756,49 @@ public:
 	//--------------------------------------------------------
 	virtual bool RegisterClass( ScriptClassDesc_t *pClassDesc ) = 0;
 
-	void RegisterAllClasses()
-	{
-		ScriptClassDesc_t *pCurrent = *ScriptClassDesc_t::GetDescList();
-		while ( pCurrent )
-		{
-			RegisterClass( pCurrent );
-			pCurrent = pCurrent->m_pNextDesc;
-		}
-	}
+#ifdef MAPBASE_VSCRIPT
+	//--------------------------------------------------------
+	// External constants
+	//--------------------------------------------------------
+	virtual void RegisterConstant( ScriptConstantBinding_t *pScriptConstant ) = 0;
+
+	//--------------------------------------------------------
+	// External enums
+	//--------------------------------------------------------
+	virtual void RegisterEnum( ScriptEnumDesc_t *pEnumDesc ) = 0;
+
+	//--------------------------------------------------------
+	// External hooks
+	//--------------------------------------------------------
+	virtual void RegisterHook( ScriptHook_t *pHookDesc ) = 0;
+#endif
 
 	//--------------------------------------------------------
 	// External instances. Note class will be auto-registered.
 	//--------------------------------------------------------
 
+#ifdef MAPBASE_VSCRIPT
+	// When a RegisterInstance instance is deleted, VScript normally treats it as a strong reference and only deregisters the instance itself, preserving the registered data
+	// it points to so the game can continue to use it.
+	// bAllowDestruct is supposed to allow VScript to treat it as a weak reference created by the script, destructing the registered data automatically like any other type.
+	// This is useful for classes pretending to be primitive types.
+	virtual HSCRIPT RegisterInstance( ScriptClassDesc_t *pDesc, void *pInstance, bool bAllowDestruct = false ) = 0;
+	virtual void SetInstanceUniqeId( HSCRIPT hInstance, const char *pszId ) = 0;
+	template <typename T> HSCRIPT RegisterInstance( T *pInstance, bool bAllowDestruct = false )																	{ return RegisterInstance( GetScriptDesc( pInstance ), pInstance, bAllowDestruct );	}
+	template <typename T> HSCRIPT RegisterInstance( T *pInstance, const char *pszInstance, HSCRIPT hScope = NULL, bool bAllowDestruct = false)					{ HSCRIPT hInstance = RegisterInstance( GetScriptDesc( pInstance ), pInstance, bAllowDestruct ); SetValue( hScope, pszInstance, hInstance ); return hInstance; }
+#else
 	virtual HSCRIPT RegisterInstance( ScriptClassDesc_t *pDesc, void *pInstance ) = 0;
 	virtual void SetInstanceUniqeId( HSCRIPT hInstance, const char *pszId ) = 0;
 	template <typename T> HSCRIPT RegisterInstance( T *pInstance )																	{ return RegisterInstance( GetScriptDesc( pInstance ), pInstance );	}
 	template <typename T> HSCRIPT RegisterInstance( T *pInstance, const char *pszInstance, HSCRIPT hScope = NULL)					{ HSCRIPT hInstance = RegisterInstance( GetScriptDesc( pInstance ), pInstance ); SetValue( hScope, pszInstance, hInstance ); return hInstance; }
+#endif
 	virtual void RemoveInstance( HSCRIPT ) = 0;
 	void RemoveInstance( HSCRIPT hInstance, const char *pszInstance, HSCRIPT hScope = NULL )										{ ClearValue( hScope, pszInstance ); RemoveInstance( hInstance ); }
+#ifdef MAPBASE_SCRIPT
+	void RemoveInstance( const char *pszInstance, HSCRIPT hScope = NULL )															{ ScriptVariant_t val; if ( GetValue( hScope, pszInstance, &val ) ) { if ( val.m_type == FIELD_HSCRIPT ) { RemoveInstance( val, pszInstance, hScope ); } ReleaseValue( val ); } }
+#else
 	void RemoveInstance( const char *pszInstance, HSCRIPT hScope = NULL )															{ ScriptVariant_t val; if ( GetValue( hScope, pszInstance, &val ) ) { if ( val.GetType() == FIELD_HSCRIPT) { RemoveInstance(val, pszInstance, hScope); } ReleaseValue(val); } }
+#endif
 
 	virtual void *GetInstanceValue( HSCRIPT hInstance, ScriptClassDesc_t *pExpectedType = NULL ) = 0;
 
@@ -550,6 +814,9 @@ public:
 	virtual bool SetValue( HSCRIPT hScope, const char *pszKey, const char *pszValue ) = 0;
 	virtual bool SetValue( HSCRIPT hScope, const char *pszKey, const ScriptVariant_t &value ) = 0;
 	bool SetValue( const char *pszKey, const ScriptVariant_t &value )																{ return SetValue(NULL, pszKey, value ); }
+#ifdef MAPBASE_VSCRIPT
+	virtual bool SetValue( HSCRIPT hScope, const ScriptVariant_t& key, const ScriptVariant_t& val ) = 0;
+#endif
 
 	virtual void CreateTable( ScriptVariant_t &Table ) = 0;
 	virtual int	GetNumTableEntries( HSCRIPT hScope ) = 0;
@@ -557,11 +824,21 @@ public:
 
 	virtual bool GetValue( HSCRIPT hScope, const char *pszKey, ScriptVariant_t *pValue ) = 0;
 	bool GetValue( const char *pszKey, ScriptVariant_t *pValue )																	{ return GetValue(NULL, pszKey, pValue ); }
+#ifdef MAPBASE_VSCRIPT
+	virtual bool GetValue( HSCRIPT hScope, ScriptVariant_t key, ScriptVariant_t* pValue ) = 0;
+#endif
 	virtual void ReleaseValue( ScriptVariant_t &value ) = 0;
 
 	virtual bool ClearValue( HSCRIPT hScope, const char *pszKey ) = 0;
 	bool ClearValue( const char *pszKey)																							{ return ClearValue( NULL, pszKey ); }
+#ifdef MAPBASE_VSCRIPT
+	virtual bool ClearValue( HSCRIPT hScope, ScriptVariant_t pKey ) = 0;
+#endif
 
+#ifdef MAPBASE_VSCRIPT
+	virtual void CreateArray(ScriptVariant_t &arr, int size = 0) = 0;
+	virtual bool ArrayAppend(HSCRIPT hArray, const ScriptVariant_t &val) = 0;
+#endif
 	//----------------------------------------------------------------------------
 
 	// Josh: Some extra helpers here.
@@ -724,6 +1001,27 @@ public:
 		return ExecuteFunction( hFunction, args, ARRAYSIZE(args), pReturn, hScope, bWait );
 	}
 
+#ifdef MAPBASE_VSCRIPT
+	void RegisterAllClasses()
+	{
+		ScriptClassDesc_t *pCurrent = *ScriptClassDesc_t::GetDescList();
+		while ( pCurrent )
+		{
+			RegisterClass( pCurrent );
+			pCurrent = pCurrent->m_pNextDesc;
+		}
+	}
+
+	void RegisterAllEnums()
+	{
+		CUtlVector<ScriptEnumDesc_t*>& enumDescs = ScriptEnumDesc_t::AllEnumsDesc();
+		FOR_EACH_VEC(enumDescs, i)
+		{
+			enumDescs[i]->RegisterDesc();
+			RegisterEnum(enumDescs[i]);
+		}
+	}
+#else
 	//-----------------------------------------------------
 	/// @{
 	/// Machinery for smuggling a _get() metamethod override 
@@ -829,8 +1127,23 @@ public:
 public:
 
 	virtual int GetKeyValue2( HSCRIPT hScope, int nIterator, ScriptVariant_t *pKey, ScriptVariant_t *pValue ) = 0;
+#endif
 };
 
+//-----------------------------------------------------------------------------
+// 
+//-----------------------------------------------------------------------------
+
+#ifdef MAPBASE_VSCRIPT
+template <typename T> T *HScriptToClass( HSCRIPT hObj )
+{
+	extern IScriptVM *g_pScriptVM;
+	return (hObj) ? (T*)g_pScriptVM->GetInstanceValue( hObj, GetScriptDesc( (T*)NULL ) ) : NULL;
+}
+#else
+DECLARE_POINTER_HANDLE( HSCRIPT );
+#define INVALID_HSCRIPT ((HSCRIPT)-1)
+#endif
 
 //-----------------------------------------------------------------------------
 // Script scope helper class
@@ -960,7 +1273,11 @@ public:
 
 	HSCRIPT LookupFunction( const char *pszFunction, bool bNoDelegation = false )
 	{
+#ifdef MAPBASE_VSCRIPT
+		return GetVM()->LookupFunction( pszFunction, m_hScope );
+#else
 		return GetVM()->LookupFunction( pszFunction, m_hScope, bNoDelegation );
+#endif
 	}
 
 	void ReleaseFunction( HSCRIPT hScript )
@@ -1278,6 +1595,395 @@ typedef CScriptScopeT<> CScriptScope;
 
 #define VScriptAddEnumToRoot( enumVal )					g_pScriptVM->SetValue( #enumVal, (int)enumVal )
 
+#ifdef MAPBASE_VSCRIPT
+
+//
+// Map pointer iteration
+//
+#define FOR_EACH_MAP_PTR( mapName, iteratorName ) \
+	for ( int iteratorName = (mapName)->FirstInorder(); (mapName)->IsUtlMap && iteratorName != (mapName)->InvalidIndex(); iteratorName = (mapName)->NextInorder( iteratorName ) )
+
+#define FOR_EACH_MAP_PTR_FAST( mapName, iteratorName ) \
+	for ( int iteratorName = 0; (mapName)->IsUtlMap && iteratorName < (mapName)->MaxElement(); ++iteratorName ) if ( !(mapName)->IsValidIndex( iteratorName ) ) continue; else
+
+#define FOR_EACH_VEC_PTR( vecName, iteratorName ) \
+	for ( int iteratorName = 0; iteratorName < (vecName)->Count(); iteratorName++ )
+
+//-----------------------------------------------------------------------------
+
+static void __UpdateScriptHooks( HSCRIPT hooksList );
+
+//-----------------------------------------------------------------------------
+//
+// Keeps track of which events and scopes are hooked without polling this from the script VM on each request.
+// Local cache is updated each time there is a change to script hooks: on Add, on Remove, on game restore
+//
+//-----------------------------------------------------------------------------
+class CScriptHookManager
+{
+private:
+	typedef CUtlVector< char* > contextmap_t;
+	typedef CUtlMap< HScriptRaw, contextmap_t* > scopemap_t;
+	typedef CUtlMap< char*, scopemap_t* > hookmap_t;
+
+	HSCRIPT m_hfnHookFunc;
+
+	// { [string event], { [HSCRIPT scope], { [string context], [HSCRIPT callback] } } }
+	hookmap_t m_HookList;
+
+public:
+
+	CScriptHookManager() : m_HookList( DefLessFunc(char*) ), m_hfnHookFunc(NULL)
+	{
+	}
+
+	HSCRIPT GetHookFunction()
+	{
+		return m_hfnHookFunc;
+	}
+
+	// For global hooks
+	bool IsEventHooked( const char *szEvent )
+	{
+		return m_HookList.Find( const_cast< char* >( szEvent ) ) != m_HookList.InvalidIndex();
+	}
+
+	bool IsEventHookedInScope( const char *szEvent, HSCRIPT hScope )
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		Assert( hScope );
+
+		int eventIdx = m_HookList.Find( const_cast< char* >( szEvent ) );
+		if ( eventIdx == m_HookList.InvalidIndex() )
+			return false;
+
+		scopemap_t *scopeMap = m_HookList.Element( eventIdx );
+		return scopeMap->Find( g_pScriptVM->HScriptToRaw( hScope ) ) != scopeMap->InvalidIndex();
+	}
+
+	//
+	// On VM init, registers script func and caches the hook func.
+	//
+	void OnInit()
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		ScriptRegisterFunctionNamed( g_pScriptVM, __UpdateScriptHooks, "__UpdateScriptHooks", SCRIPT_HIDE );
+
+		ScriptVariant_t hHooks;
+		g_pScriptVM->GetValue( "Hooks", &hHooks );
+
+		Assert( hHooks.GetType() == FIELD_HSCRIPT);
+
+		if ( hHooks.GetType() == FIELD_HSCRIPT )
+		{
+			m_hfnHookFunc = g_pScriptVM->LookupFunction( "Call", hHooks );
+		}
+
+		Clear();
+	}
+
+	//
+	// On VM shutdown, clear the cache.
+	// Not exactly necessary, as the cache will be cleared on VM init next time.
+	//
+	void OnShutdown()
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		if ( m_hfnHookFunc )
+			g_pScriptVM->ReleaseFunction( m_hfnHookFunc );
+
+		m_hfnHookFunc = NULL;
+
+		Clear();
+	}
+
+	//
+	// On VM restore, update local cache.
+	//
+	void OnRestore()
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		ScriptVariant_t hHooks;
+		g_pScriptVM->GetValue( "Hooks", &hHooks );
+
+		if ( hHooks.GetType() == FIELD_HSCRIPT )
+		{
+			// Existing m_hfnHookFunc is invalid
+			m_hfnHookFunc = g_pScriptVM->LookupFunction( "Call", hHooks );
+
+			HSCRIPT func = g_pScriptVM->LookupFunction( "__UpdateHooks", hHooks );
+			g_pScriptVM->Call( func );
+			g_pScriptVM->ReleaseFunction( func );
+			g_pScriptVM->ReleaseValue( hHooks );
+		}
+	}
+
+	//
+	// Clear local cache.
+	//
+	void Clear()
+	{
+		if ( m_HookList.Count() )
+		{
+			FOR_EACH_MAP_FAST( m_HookList, i )
+			{
+				scopemap_t *scopeMap = m_HookList.Element(i);
+
+				FOR_EACH_MAP_PTR_FAST( scopeMap, j )
+				{
+					contextmap_t *contextMap = scopeMap->Element(j);
+					contextMap->PurgeAndDeleteElements();
+				}
+
+				char *szEvent = m_HookList.Key(i);
+				free( szEvent );
+
+				scopeMap->PurgeAndDeleteElements();
+			}
+
+			m_HookList.PurgeAndDeleteElements();
+		}
+	}
+
+	//
+	// Called from script, update local cache.
+	//
+	void Update( HSCRIPT hooksList )
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		// Rebuild from scratch
+		Clear();
+		{
+			ScriptVariant_t varEvent, varScopeMap;
+			int it = -1;
+			while ( ( it = g_pScriptVM->GetKeyValue( hooksList, it, &varEvent, &varScopeMap ) ) != -1 )
+			{
+				// types are checked in script
+				Assert( varEvent.m_type == FIELD_CSTRING );
+				Assert( varScopeMap.m_type == FIELD_HSCRIPT );
+
+				scopemap_t *scopeMap;
+
+				int eventIdx = m_HookList.Find( const_cast< char* >( varEvent.Get<const char*>() ) );
+				if ( eventIdx != m_HookList.InvalidIndex() )
+				{
+					scopeMap = m_HookList.Element( eventIdx );
+				}
+				else
+				{
+					scopeMap = new scopemap_t( DefLessFunc(HScriptRaw) );
+					m_HookList.Insert( strdup( varEvent.Get<const char*>() ), scopeMap );
+				}
+
+				ScriptVariant_t varScope, varContextMap;
+				int it2 = -1;
+				while ( ( it2 = g_pScriptVM->GetKeyValue( varScopeMap, it2, &varScope, &varContextMap ) ) != -1 )
+				{
+					Assert( varScope.m_type == FIELD_HSCRIPT );
+					Assert( varContextMap.m_type == FIELD_HSCRIPT);
+
+					contextmap_t *contextMap;
+
+					int scopeIdx = scopeMap->Find( g_pScriptVM->HScriptToRaw( varScope.Get<HSCRIPT>() ) );
+					if ( scopeIdx != scopeMap->InvalidIndex() )
+					{
+						contextMap = scopeMap->Element( scopeIdx );
+					}
+					else
+					{
+						contextMap = new contextmap_t();
+						scopeMap->Insert( g_pScriptVM->HScriptToRaw( varScope.Get<HSCRIPT>() ), contextMap );
+					}
+
+					ScriptVariant_t varContext, varCallback;
+					int it3 = -1;
+					while ( ( it3 = g_pScriptVM->GetKeyValue( varContextMap, it3, &varContext, &varCallback ) ) != -1 )
+					{
+						Assert( varContext.m_type == FIELD_CSTRING );
+						Assert( varCallback.m_type == FIELD_HSCRIPT );
+
+						bool skip = false;
+
+						FOR_EACH_VEC_PTR( contextMap, k )
+						{
+							char *szContext = contextMap->Element(k);
+							if ( V_strcmp( szContext, varContext.Get<const char*>() ) == 0 )
+							{
+								skip = true;
+								break;
+							}
+						}
+
+						if ( !skip )
+							contextMap->AddToTail( strdup( varContext.Get<const char*>() ) );
+
+						g_pScriptVM->ReleaseValue( varContext );
+						g_pScriptVM->ReleaseValue( varCallback );
+					}
+
+					g_pScriptVM->ReleaseValue( varScope );
+					g_pScriptVM->ReleaseValue( varContextMap );
+				}
+
+				g_pScriptVM->ReleaseValue( varEvent );
+				g_pScriptVM->ReleaseValue( varScopeMap );
+			}
+		}
+	}
+#ifdef _DEBUG
+	void Dump()
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		FOR_EACH_MAP( m_HookList, i )
+		{
+			scopemap_t *scopeMap = m_HookList.Element(i);
+			char *szEvent = m_HookList.Key(i);
+
+			Msg( "%s [%p]\n", szEvent, (void*)scopeMap );
+			Msg( "{\n" );
+
+			FOR_EACH_MAP_PTR( scopeMap, j )
+			{
+				HScriptRaw hScope = scopeMap->Key(j);
+				contextmap_t *contextMap = scopeMap->Element(j);
+
+				Msg( "\t(0x%X) [%p]\n", hScope, (void*)contextMap );
+				Msg( "\t{\n" );
+
+				FOR_EACH_VEC_PTR( contextMap, k )
+				{
+					char *szContext = contextMap->Element(k);
+
+					Msg( "\t\t%-.50s\n", szContext );
+				}
+
+				Msg( "\t}\n" );
+			}
+
+			Msg( "}\n" );
+		}
+	}
+#endif
+};
+
+inline CScriptHookManager &GetScriptHookManager()
+{
+	static CScriptHookManager g_ScriptHookManager;
+	return g_ScriptHookManager;
+}
+
+static void __UpdateScriptHooks( HSCRIPT hooksList )
+{
+	GetScriptHookManager().Update( hooksList );
+}
+
+
+//-----------------------------------------------------------------------------
+// Function bindings allow script functions to run C++ functions.
+// Hooks allow C++ functions to run script functions.
+// 
+// This was previously done with raw function lookups, but Mapbase adds more and
+// it's hard to keep track of them without proper standards or documentation.
+//-----------------------------------------------------------------------------
+struct ScriptHook_t
+{
+	ScriptFuncDescriptor_t	m_desc;
+	CUtlVector<const char*> m_pszParameterNames;
+	bool m_bDefined;
+
+	void AddParameter( const char *pszName, ScriptDataType_t type )
+	{
+		int iCur = m_desc.m_Parameters.Count();
+		m_desc.m_Parameters.SetGrowSize( 1 ); m_desc.m_Parameters.EnsureCapacity( iCur + 1 ); m_desc.m_Parameters.AddToTail( type );
+		m_pszParameterNames.SetGrowSize( 1 ); m_pszParameterNames.EnsureCapacity( iCur + 1 ); m_pszParameterNames.AddToTail( pszName );
+	}
+
+	// -----------------------------------------------------------------
+
+	// Only valid between CanRunInScope() and Call()
+	HSCRIPT m_hFunc;
+
+	ScriptHook_t() :
+		m_hFunc(NULL)
+	{
+	}
+
+#ifdef _DEBUG
+	//
+	// An uninitialised script scope will pass as null scope which is considered a valid hook scope (global hook)
+	// This should catch CanRunInScope() calls without CScriptScope::IsInitalised() checks first.
+	//
+	bool CanRunInScope( CScriptScope &hScope )
+	{
+		Assert( hScope.IsInitialized() );
+		return hScope.IsInitialized() && CanRunInScope( (HSCRIPT)hScope );
+	}
+#endif
+
+	// Checks if there's a function of this name which would run in this scope
+	bool CanRunInScope( HSCRIPT hScope )
+	{
+		// For now, assume null scope (which is used for global hooks) is always hooked
+		if ( !hScope || GetScriptHookManager().IsEventHookedInScope( m_desc.m_pszScriptName, hScope ) )
+		{
+			m_hFunc = NULL;
+			return true;
+		}
+
+		extern IScriptVM *g_pScriptVM;
+
+		// Legacy support if the new system is not being used
+		m_hFunc = g_pScriptVM->LookupFunction( m_desc.m_pszScriptName, hScope );
+
+		return !!m_hFunc;
+	}
+
+	// Call the function
+	// NOTE: `bRelease` only exists for weapon_custom_scripted legacy script func caching
+	bool Call( HSCRIPT hScope, ScriptVariant_t *pReturn, ScriptVariant_t *pArgs, bool bRelease = true )
+	{
+		extern IScriptVM *g_pScriptVM;
+
+		// Call() should not be called without CanRunInScope() check first, it caches m_hFunc for legacy support
+		Assert( CanRunInScope( hScope ) );
+
+		// Legacy
+		if ( m_hFunc )
+		{
+			for (int i = 0; i < m_desc.m_Parameters.Count(); i++)
+			{
+				g_pScriptVM->SetValue( m_pszParameterNames[i], pArgs[i] );
+			}
+
+			ScriptStatus_t status = g_pScriptVM->ExecuteFunction( m_hFunc, NULL, 0, pReturn, hScope, true );
+
+			if ( bRelease )
+				g_pScriptVM->ReleaseFunction( m_hFunc );
+			m_hFunc = NULL;
+
+			for (int i = 0; i < m_desc.m_Parameters.Count(); i++)
+			{
+				g_pScriptVM->ClearValue( m_pszParameterNames[i] );
+			}
+
+			return status == SCRIPT_DONE;
+		}
+		// New Hook System
+		else
+		{
+			ScriptStatus_t status = g_pScriptVM->ExecuteHookFunction( m_desc.m_pszScriptName, pArgs, m_desc.m_Parameters.Count(), pReturn, hScope, true );
+			return status == SCRIPT_DONE;
+		}
+	}
+};
+#endif
+
 //-----------------------------------------------------------------------------
 // Script function proxy support
 //-----------------------------------------------------------------------------
@@ -1305,6 +2011,7 @@ public:
 		if ( !m_hScriptFunc_##FuncName.IsNull() ) \
 		{ \
 			ScriptVariant_t returnVal; \
+			Assert( N == m_desc.m_Parameters.Count() ); \
 			ScriptStatus_t result = Call( m_hScriptFunc_##FuncName.hFunction, &returnVal, FUNC_CALL_ARGS_##N ); \
 			if ( result != SCRIPT_ERROR ) \
 			{ \
@@ -1329,6 +2036,7 @@ public:
 		\
 		if ( !m_hScriptFunc_##FuncName.IsNull() ) \
 		{ \
+			Assert( N == m_desc.m_Parameters.Count() ); \
 			ScriptStatus_t result = Call( m_hScriptFunc_##FuncName.hFunction, NULL, FUNC_CALL_ARGS_##N ); \
 			if ( result != SCRIPT_ERROR ) \
 			{ \

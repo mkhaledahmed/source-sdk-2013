@@ -17,19 +17,7 @@
 #pragma once
 #endif
 
-class ISaveRestoreBlockHandler;
-
 bool VScriptServerReplaceClosures( const char *pszScriptName, HSCRIPT hScope, bool bWarnMissing = false );
-ISaveRestoreBlockHandler *GetVScriptSaveRestoreBlockHandler();
-
-
-class CBaseEntityScriptInstanceHelper : public IScriptInstanceHelper
-{
-	bool ToString( void *p, char *pBuf, int bufSize );
-	void *BindOnRead( HSCRIPT hInstance, void *pOld, const char *pszId );
-};
-
-extern CBaseEntityScriptInstanceHelper g_BaseEntityScriptInstanceHelper;
 
 #ifdef TF_DLL
 class CNavAreaScriptInstanceHelper : public IScriptInstanceHelper
@@ -50,6 +38,7 @@ extern INextBotComponentScriptInstanceHelper g_NextBotComponentScriptInstanceHel
 // Only allow scripts to create entities during map initialization
 bool IsEntityCreationAllowedInScripts( void );
 
+#ifndef MAPBASE_VSCRIPT // Mapbase adds this to the base library so that CScriptKeyValues can be accessed anywhere, like VBSP.
 // ----------------------------------------------------------------------------
 // KeyValues access
 // ----------------------------------------------------------------------------
@@ -71,6 +60,7 @@ public:
 
 	KeyValues *m_pKeyValues;	// actual KeyValue entity
 };
+#endif
 
 class CVScriptGameEventListener : public CGameEventListener
 {

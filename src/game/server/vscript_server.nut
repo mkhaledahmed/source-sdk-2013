@@ -1,32 +1,87 @@
-//========== Copyright Â© 2008, Valve Corporation, All rights reserved. ========
+static char g_Script_vscript_client[] = R"vscript(
+//========== Copyright © 2008, Valve Corporation, All rights reserved. ========
 //
 // Purpose:
 //
 //=============================================================================
+
+local DoEntFire = DoEntFire
+local DoEntFireByInstanceHandle = DoEntFireByInstanceHandle
+local DoDispatchParticleEffect = DoDispatchParticleEffect
+local DoUniqueString = DoUniqueString
 
 function UniqueString( string = "" )
 {
 	return DoUniqueString( string.tostring() );
 }
 
-function EntFire( target, action, value = null, delay = 0.0, activator = null )
+function EntFire( target, action, value = null, delay = 0.0, activator = null, caller = null )
 {
 	if ( !value )
 	{
 		value = "";
 	}
-	
-	local caller = null;
+
 	if ( "self" in this )
 	{
-		caller = self;
+		if ( !caller )
+		{
+			caller = self;
+		}
+
 		if ( !activator )
 		{
 			activator = self;
 		}
 	}
-	
-	DoEntFire( target.tostring(), action.tostring(), value.tostring(), delay, activator, caller ); 
+
+	return DoEntFire( "" + target, "" + action, "" + value, delay, activator, caller );
+}
+
+function EntFireByHandle( target, action, value = null, delay = 0.0, activator = null, caller = null )
+{
+	if ( !value )
+	{
+		value = "";
+	}
+
+	if ( "self" in this )
+	{
+		if ( !caller )
+		{
+			caller = self;
+		}
+
+		if ( !activator )
+		{
+			activator = self;
+		}
+	}
+
+	return DoEntFireByInstanceHandle( target, "" + action, "" + value, delay, activator, caller );
+}
+
+function DispatchParticleEffect( particleName, origin, angles, entity = null )
+{
+	return DoDispatchParticleEffect( particleName, origin, angles, entity );
+}
+
+function ImpulseScale( flTargetMass, flDesiredSpeed )
+{
+	return flTargetMass * flDesiredSpeed;
+}
+__Documentation.RegisterHelp( "ImpulseScale", "float ImpulseScale(float, float)", "Returns an impulse scale required to push an object." );
+
+local PrecacheModel = PrecacheModel
+function PrecacheModel( a, b = true )
+{
+    return PrecacheModel( a, b )
+}
+
+local PrecacheOther = PrecacheOther
+function PrecacheOther( a, b = "" )
+{
+    PrecacheOther( a, b )
 }
 
 function __ReplaceClosures( script, scope )
@@ -35,11 +90,11 @@ function __ReplaceClosures( script, scope )
 	{
 		scope = getroottable();
 	}
-	
+
 	local tempParent = { getroottable = function() { return null; } };
 	local temp = { runscript = script };
-	temp.setdelegate( tempParent );
-	
+	temp.setdelegate(tempParent);
+
 	temp.runscript()
 	foreach( key,val in temp )
 	{
@@ -57,22 +112,24 @@ We're not suing the auto-connecting of outputs, always calling ConnectOuput expl
 The regexp object doesn't save/load properly and causes a crash when used to match after a save/load.
 Instead of fixing this, we're disabling the feature. If this class of problem comes up more we might
 revisit, otherwise we'll leave if off and broken.
-
-__OutputsPattern <- regexp("^On.*Output$");
-
-function ConnectOutputs( table )
+*/
+if (!VSCRIPT_PRIORITIZE_TF2_SYNTAX)
 {
-	const nCharsToStrip = 6;
-	foreach( key, val in table )
+	local __OutputsPattern = regexp("^On.*Output$");
+
+	function ConnectOutputs( table )
 	{
-		if ( typeof( val ) == "function" && __OutputsPattern.match( key ) )
+		local nCharsToStrip = 6;
+		foreach( key, val in table )
 		{
-			//printl(key.slice( 0, nCharsToStrip ) );
-			table.self.ConnectOutput( key.slice( 0, key.len() - nCharsToStrip ), key );
+			if ( typeof( val ) == "function" && __OutputsPattern.match( key ) )
+			{
+				//printl(key.slice( 0, nCharsToStrip ) );
+				table.self.ConnectOutput( key.slice( 0, key.len() - nCharsToStrip ), key );
+			}
 		}
 	}
 }
-*/
 
 function IncludeScript( name, scope = null )
 {
@@ -721,3 +778,4 @@ function EndScriptDebug()
 }
 
 //-----------------------------------------------------------------------------
+)vscript";

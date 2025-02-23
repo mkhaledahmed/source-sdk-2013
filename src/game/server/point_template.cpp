@@ -56,14 +56,23 @@ BEGIN_DATADESC( CPointTemplate )
 	DEFINE_KEYFIELD( m_iszTemplateEntityNames[14], FIELD_STRING, "Template15"),
 	DEFINE_KEYFIELD( m_iszTemplateEntityNames[15], FIELD_STRING, "Template16"),
 	DEFINE_UTLVECTOR( m_hTemplateEntities, FIELD_CLASSPTR ),
+#ifdef MAPBASE
+	DEFINE_KEYFIELD( m_bFixupExpanded, FIELD_BOOLEAN, "FixupMode" ),
+#endif
 
 	DEFINE_UTLVECTOR( m_hTemplates, FIELD_EMBEDDED ),
 
 	// Inputs
 	DEFINE_INPUTFUNC( FIELD_VOID, "ForceSpawn", InputForceSpawn ),
+#ifdef MAPBASE
+	DEFINE_INPUTFUNC( FIELD_VOID, "ForceSpawnRandomTemplate", InputForceSpawnRandomTemplate ),
+#endif
 
 	// Outputs
 	DEFINE_OUTPUT( m_pOutputOnSpawned, "OnEntitySpawned" ),
+#ifdef MAPBASE
+	DEFINE_OUTPUT( m_pOutputOutEntity, "OutSpawnedEntity" ),
+#endif
 
 END_DATADESC()
 
@@ -129,6 +138,7 @@ void CPointTemplate::Spawn( void )
 {
 	Precache();
 	ScriptInstallPreSpawnHook();
+	ValidateScriptScope();
 }
 
 void CPointTemplate::Precache()
@@ -391,6 +401,7 @@ bool CPointTemplate::CreateInstance( const Vector &vecOrigin, const QAngle &vecA
 			pSpawnList[i].m_hEntity = NULL;
 			UTIL_RemoveImmediate( pEntity );
 		}
+
 		pSpawnList[i].m_nDepth = 0;
 		pSpawnList[i].m_pDeferredParent = NULL;
 	}
@@ -407,6 +418,81 @@ bool CPointTemplate::CreateInstance( const Vector &vecOrigin, const QAngle &vecA
 
 	return true;
 }
+
+#ifdef MAPBASE
+//-----------------------------------------------------------------------------
+// Purpose: Spawn one of the entities I contain
+// Input  : &vecOrigin - 
+//			&vecAngles - 
+//			pEntities - 
+// Output : Returns true on success, false on failure.
+//-----------------------------------------------------------------------------
+bool CPointTemplate::CreateSpecificInstance( int iTemplate, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity **pOutEntity )
+{
+	// Go through all our templated map data and spawn all the entities in it
+	int iTemplates = m_hTemplates.Count();
+	if ( !iTemplates )
+	{
+		Msg("CreateInstance called on a point_template that has no templates: %s\n", STRING(GetEntityName()) );
+		return false;
+	}
+
+	// Tell the template system we're about to start a new template
+	Templates_StartUniqueInstance();
+
+	CBaseEntity *pEntity = NULL;
+	char *pMapData;
+	int iTemplateIndex = m_hTemplates[iTemplate].iTemplateIndex;
+
+	// Some templates have Entity I/O connecting the entities within the template.
+	// Unique versions of these templates need to be created whenever they're instanced.
+	if ( AllowNameFixup() && ( Templates_IndexRequiresEntityIOFixup( iTemplateIndex ) || m_ScriptScope.IsInitialized() ) )
+	{
+		// This template requires instancing. 
+		// Create a new mapdata block and ask the template system to fill it in with
+		// a unique version (with fixed Entity I/O connections).
+		pMapData = Templates_GetEntityIOFixedMapData( iTemplateIndex );
+	}
+	else
+	{
+		// Use the unmodified mapdata
+		pMapData = (char*)STRING( Templates_FindByIndex( iTemplateIndex ) );
+	}
+
+	// Create the entity from the mapdata
+	MapEntity_ParseEntity( pEntity, pMapData, NULL );
+	if ( pEntity == NULL )
+	{
+		Msg("Failed to initialize templated entity with mapdata: %s\n", pMapData );
+		return false;
+	}
+
+	// Get a matrix that'll convert from world to the new local space
+	VMatrix matNewTemplateToWorld, matStoredLocalToWorld;
+	matNewTemplateToWorld.SetupMatrixOrgAngles( vecOrigin, vecAngles );
+	MatrixMultiply( matNewTemplateToWorld, m_hTemplates[iTemplate].matEntityToTemplate, matStoredLocalToWorld );
+
+	// Get the world origin & angles from the stored local coordinates
+	Vector vecNewOrigin;
+	QAngle vecNewAngles;
+	vecNewOrigin = matStoredLocalToWorld.GetTranslation();
+	MatrixToAngles( matStoredLocalToWorld, vecNewAngles );
+
+	// Set its origin & angles
+	pEntity->SetAbsOrigin( vecNewOrigin );
+	pEntity->SetAbsAngles( vecNewAngles );
+
+	// Spawn it
+	DispatchSpawn( pEntity );
+
+	if (pOutEntity)
+	{
+		*pOutEntity = pEntity;
+	}
+
+	return true;
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // 
@@ -513,8 +599,10 @@ void ScriptPostSpawn( CScriptScope *pScriptScope, CBaseEntity **ppEntities, int 
 // Entity for template spawning entities from script
 //-----------------------------------------------------------------------------
 BEGIN_ENT_SCRIPTDESC( CPointScriptTemplate, CBaseEntity, "point_script_template" )
+#ifndef MAPBASE_VSCRIPT
 	DEFINE_SCRIPTFUNC( AddTemplate, "Add an entity to the template spawner" )
 	DEFINE_SCRIPTFUNC( SetGroupSpawnTables, "Cache the group spawn tables" )
+#endif
 END_SCRIPTDESC()
 
 LINK_ENTITY_TO_CLASS( point_script_template, CPointScriptTemplate );
@@ -580,8 +668,10 @@ void CPointScriptTemplate::Spawn( void )
 //-----------------------------------------------------------------------------
 void CPointScriptTemplate::SetGroupSpawnTables( HSCRIPT templateSpawnTable, HSCRIPT groupSpawnTables )
 {
+#ifndef MAPBASE_VSCRIPT
 	m_hTemplateSpawnTable = g_pScriptVM->ReferenceScope( templateSpawnTable );
 	m_hGroupSpawnTables = g_pScriptVM->ReferenceScope( groupSpawnTables );
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -589,11 +679,13 @@ void CPointScriptTemplate::SetGroupSpawnTables( HSCRIPT templateSpawnTable, HSCR
 //-----------------------------------------------------------------------------
 void CPointScriptTemplate::AddTemplate( const char *pClassname, HSCRIPT spawnTable )
 {
+#ifndef MAPBASE_VSCRIPT
 	scriptTemplate_t newTemplate;
 	newTemplate.szClassname = MAKE_STRING( pClassname );
 	newTemplate.hSpawnTable = g_pScriptVM->ReferenceScope( spawnTable );
 
 	m_hTemplates.AddToTail( newTemplate );
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -715,5 +807,30 @@ void CPointScriptTemplate::InputForceSpawn( inputdata_t &inputdata )
 
 	// Fire our output
 	m_pOutputOnSpawned.FireOutput( this, this );
+
+#ifdef MAPBASE
+	for ( int i = 0; i < hNewEntities.Count(); i++ )
+	{
+		m_pOutputOutEntity.Set(hNewEntities[i], hNewEntities[i], this);
+	}
+#endif
 }
 
+#ifdef MAPBASE
+//-----------------------------------------------------------------------------
+// Purpose: Randomly spawns one of our templates.
+//			This is copied from CreateInstance().
+// Input  : &inputdata - 
+//-----------------------------------------------------------------------------
+void CPointTemplate::InputForceSpawnRandomTemplate( inputdata_t &inputdata )
+{
+	// Spawn our template
+	CBaseEntity *pEntity = NULL;
+	if ( !CreateSpecificInstance( RandomInt(0, GetNumTemplates() - 1), GetAbsOrigin(), GetAbsAngles(), &pEntity ) )
+		return;
+
+	// Fire our output
+	m_pOutputOnSpawned.FireOutput( this, this );
+	m_pOutputOutEntity.Set(pEntity, pEntity, this);
+}
+#endif

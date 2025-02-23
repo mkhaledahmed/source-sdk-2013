@@ -13,6 +13,13 @@
 #pragma once
 #endif
 
+#if defined(MAPBASE_VSCRIPT) && (defined(TF_DLL) || defined(TF_CLIENT_DLL))
+// Mapbase and TF2 VScript have functions with the same names which do different things and/or take different parameters.
+// If enabled, the code will prioritize the syntax from TF2 VScript.
+// If disabled, it will prioritize the syntax from Mapbase VScript.
+#define VSCRIPT_PRIORITIZE_TF2_SYNTAX 1
+#endif
+
 DECLARE_LOGGING_CHANNEL( LOG_VScript );
 
 extern IScriptVM * g_pScriptVM;
@@ -37,6 +44,7 @@ bool IsEntityCreationAllowedInScripts( void );
 // 
 //-----------------------------------------------------------------------------
 
+#ifndef MAPBASE_VSCRIPT // TODO: Add to Mapbase VScript? This requires ReleaseScope in interface
 /*! An auto-referenced wrapper for HSCRIPTs to automatically handle refcount bookkeeping and make 
 	storing script references in C++ objects safe.
 
@@ -153,5 +161,27 @@ inline CScriptAutoRef & CScriptAutoRef::operator=( const HSCRIPT &other )
 	Set( other );
 	return *this;
 }
+#endif
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+
+class ISaveRestoreBlockHandler;
+ISaveRestoreBlockHandler *GetVScriptSaveRestoreBlockHandler();
+
+class CBaseEntityScriptInstanceHelper : public IScriptInstanceHelper
+{
+	bool ToString( void *p, char *pBuf, int bufSize );
+	void *BindOnRead( HSCRIPT hInstance, void *pOld, const char *pszId );
+};
+
+extern CBaseEntityScriptInstanceHelper g_BaseEntityScriptInstanceHelper;
+
+#ifdef MAPBASE_VSCRIPT
+void RegisterSharedScriptConstants();
+void RegisterSharedScriptFunctions();
+
+void RunAddonScripts();
+#endif
 
 #endif // VSCRIPT_SHARED_H

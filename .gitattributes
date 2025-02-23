@@ -32,9 +32,9 @@ vpc binary
 *.inl text
 *.asm text
 
+.github/CONTRIBUTING.md text
 .gitignore text
 README.md text
-CONTRIBUTING text
 LICENSE text
 
 *.exe binary

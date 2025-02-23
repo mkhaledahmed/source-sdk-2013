@@ -10,6 +10,9 @@
 #include "utlhashtable.h"
 #include "igamesystem.h"
 #include "gamestringpool.h"
+#if defined(MAPBASE) && defined(GAME_DLL)
+#include "mapbase/GlobalStrings.h"
+#endif
 
 #include "tier1/stringpool.h"
 
@@ -22,6 +25,10 @@
 class CGameStringPool : public CStringPool,	public CBaseGameSystem
 {
 	virtual char const *Name() { return "CGameStringPool"; }
+
+#if defined(MAPBASE) && defined(GAME_DLL)
+	virtual void LevelInitPreEntity() { InitGlobalStrings(); }
+#endif
 
 	virtual void LevelShutdownPostEntity() 
 	{

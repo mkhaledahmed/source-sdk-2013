@@ -345,6 +345,15 @@ void IGameSystem::PreClientUpdateAllSystems()
 
 #endif
 
+#ifdef MAPBASE_VSCRIPT
+
+void IGameSystem::RegisterVScriptAllSystems()
+{
+	InvokeMethod( &IGameSystem::RegisterVScript );
+}
+
+#endif
+
 
 //-----------------------------------------------------------------------------
 // Invokes a method on all installed game systems in proper order
