@@ -1267,6 +1267,7 @@ HSCRIPT PlayerInstanceFromIndex( int idx )
 	return ToHScript( pPlayer );
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_singletons.cpp
 // Fires a game event from a script file to any listening script hooks.
 // NOTE: this only goes from script, to script. No C code game event listeners
 // will be notified.
@@ -1278,6 +1279,7 @@ bool ScriptFireGameEvent( const char* szName, HSCRIPT params )
 	g_VScriptGameEventListener.RunGameEventCallbacks( szName, params );
 	return true;
 }
+#endif
 
 bool ScriptFireScriptHook( const char* szName, HSCRIPT params )
 {
@@ -1418,6 +1420,7 @@ static CBaseEntity *VScript_ParseEntity( const char *pszClassname, HSCRIPT hSpaw
 	return pEntity;
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 //-----------------------------------------------------------------------------
 CBaseEntity *ScriptCreateEntityFromTable( const char *pszClassname, HSCRIPT hSpawnTable )
 {
@@ -1490,6 +1493,7 @@ static bool Script_SpawnEntityGroupFromTable( HSCRIPT groupSpawnTables )
 
 	return true;
 }
+#endif
 
 //-----------------------------------------------------------------------------
 static void Script_EmitSoundOn( const char *pszSoundName, HSCRIPT hEnt )
@@ -1720,6 +1724,7 @@ static void Script_OverlayClear( void )
 		DevMsg("No debugoverlay to clear with\n");
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 static const Vector& Script_GetPhysVelocity( HSCRIPT hEnt )
 {
 	DevMsg("Using legacy GetPhysVelocity.\nDo not use me! Use GetPhysVelocity on the entity instead.\n");
@@ -1758,6 +1763,7 @@ static const Vector& Script_GetPhysAngularVelocity( HSCRIPT hEnt )
 	}
 	return vAng;
 }
+#endif
 
 // the prototype in client.h is actually wrong
 extern void Host_Say( edict_t *pEdict, const CCommand &args, bool teamonly );
@@ -1783,6 +1789,7 @@ static void Script_Say( HSCRIPT srcEnt, const char *pszStr, bool bTeamOnly = fal
 	}
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 static ConVarRef ref_script_think_interval("sv_script_think_interval", "0.1");
 static void Script_AddThinkToEnt( HSCRIPT srcEnt, const char *pszThinkFunc )
 {
@@ -1799,6 +1806,7 @@ static void Script_AddThinkToEnt( HSCRIPT srcEnt, const char *pszThinkFunc )
 	else 
 		pEntity->SetContextThink(NULL, 0, "ScriptThink" );  		//pEntity->m_iszScriptThinkFunction = NULL_STRING;
 }
+#endif
 
 static HSCRIPT Script_GetPlayerFromUserID( int userID )
 {
@@ -1855,6 +1863,7 @@ static bool CreateAndValidateFileLocation( char (&pDest)[maxLenInChars], const c
 	return true;
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 static bool Script_StringToFile( const char *pszFileName, const char *pszTmp )
 {
 	if ( !pszFileName || !*pszFileName )
@@ -1924,6 +1933,7 @@ static const char *Script_FileToString( const char *pszFileName )
 //	DevMsg("Think we loaded, rval was %d and iflen was %d for file %s\n", rval, iFLen, pszFileName );
 	return fileReadBuf;
 }
+#endif
 
 void TraceToScriptVM( HSCRIPT hTable, Vector vStart, Vector vEnd, trace_t& tr )
 {
@@ -2133,6 +2143,7 @@ static void Script_ScreenFade( HSCRIPT hEntity, int r, int g, int b, int a, floa
 	}
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 int Script_PrecacheModel( const char *modelname )
 {
 	if ( !modelname || !*modelname )
@@ -2150,6 +2161,7 @@ int Script_PrecacheModel( const char *modelname )
 
 	return nModelIndex;
 }
+#endif
 
 extern bool g_bPermitDirectSoundPrecache;
 
@@ -2715,24 +2727,27 @@ bool VScriptServerInit()
 				ScriptRegisterFunction( g_pScriptVM, SendToConsole, "Send a string to the console as a command" );
 				ScriptRegisterFunction( g_pScriptVM, SendToServerConsole, "Send a string that gets executed on the server as a ServerCommand. Respects sv_allow_point_servercommand." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, SendToServerConsole, "SendToConsoleServer", "Copy of SendToServerConsole with another name for compat." );
-				ScriptRegisterFunction( g_pScriptVM, Time, "Get the current server time" );
 				ScriptRegisterFunction( g_pScriptVM, DoEntFire, SCRIPT_ALIAS( "EntFire", "Generate and entity i/o event" ) );
 				ScriptRegisterFunction( g_pScriptVM, DoUniqueString, SCRIPT_ALIAS( "UniqueString", "Generate a string guaranteed to be unique across the life of the script VM, with an optional root string. Useful for adding data to tables when not sure what keys are already in use in that table." ) );
 				ScriptRegisterFunction( g_pScriptVM, DoIncludeScript, "Execute a script (internal)" );
 				ScriptRegisterFunction( g_pScriptVM, RegisterScriptGameEventListener, "Register as a listener for a game event from script." );
 				ScriptRegisterFunction( g_pScriptVM, RegisterScriptHookListener, "Register as a listener for a script hook from script." );
-#ifndef MAPBASE_VSCRIPT
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunction( g_pScriptVM, EntIndexToHScript, "Turn an entity index integer to an HScript representing that entity's script instance." );
 #endif
 				ScriptRegisterFunction( g_pScriptVM, PlayerInstanceFromIndex, "Get a script instance of a player by index." );
+#ifndef MAPBASE_VSCRIPT // See vscript_singletons.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptFireGameEvent, "FireGameEvent", "Fire a game event to a listening callback function in script. Parameters are passed in a squirrel table." );
+#endif
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptFireScriptHook, "FireScriptHook", "Fire a script hoook to a listening callback function in script. Parameters are passed in a squirrel table." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptSendGlobalGameEvent, "SendGlobalGameEvent", "Sends a real game event to everything. Parameters are passed in a squirrel table." );
 				ScriptRegisterFunction( g_pScriptVM, ScriptHooksEnabled, "Returns whether script hooks are currently enabled." );
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_SpawnEntityFromTable, "SpawnEntityFromTable", "Spawn entity from KeyValues in table - 'name' is entity name, rest are KeyValues for spawn." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_SpawnEntityGroupFromTable, "SpawnEntityGroupFromTable", "Hierarchically spawn an entity group from a set of spawn tables." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_PrecacheItemFromTable, "PrecacheEntityFromTable", "Precache an entity from KeyValues in table" );
+#endif
 
 				ScriptRegisterFunction( g_pScriptVM, RotatePosition, "Rotate a Vector around a point." );
 				ScriptRegisterFunction( g_pScriptVM, RotateOrientation, "Rotate a QAngle by another QAngle." );
@@ -2740,10 +2755,14 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_EmitSoundOnClient, "EmitSoundOnClient", "Play named sound only on the client for the passed in player. NOTE: This only supports soundscripts. Legacy only, use EmitSoundEx." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_EmitSoundEx, "EmitSoundEx", "Play a sound. Takes in a script table of params." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_StopSoundOn, "StopSoundOn", "Stop named sound on Entity." );
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_GetPhysVelocity, "GetPhysVelocity","Get Velocity for VPHYS or normal object" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_GetPhysAngularVelocity, "GetPhysAngularVelocity","Get Angular Velocity for VPHYS or normal object" );
+#endif
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_Say, "Say", "Have Entity say string, and teamOnly or not" );
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_AddThinkToEnt, "AddThinkToEnt", "Adds a late bound think function to the C++ think tables for the obj" );
+#endif
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_GetFriction, "GetFriction", "Returns the Friction on a player entity, meaningless if not a player");
 
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_GetPlayerFromUserID, "GetPlayerFromUserID", "Given a user id, return the entity, or null");
@@ -2769,13 +2788,17 @@ bool VScriptServerInit()
 
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_PickupObject, "PickupObject", "Have a player pickup a nearby named entity" );
 
+#ifndef MAPBASE_VSCRIPT // See vscript_singletons.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_StringToFile, "StringToFile", "Store a string to a file for later reading" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_FileToString, "FileToString", "Reads a string from a file to send to script" );
+#endif
 
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_TraceLineEx, "TraceLineEx", "Pass table - Inputs: start, end, mask, ignore  -- outputs: pos, fraction, hit, enthit, allsolid, startpos, endpos, startsolid, plane_normal, plane_dist, surface_name, surface_flags, surface_props" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_TraceHull, "TraceHull", "Pass table - Inputs: start, end, hullmin, hullmax, mask, ignore  -- outputs: pos, fraction, hit, enthit, allsolid, startpos, endpos, startsolid, plane_normal, plane_dist, surface_name, surface_flags, surface_props" );
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_GetFrameCount, "GetFrameCount", "Returns the engines current frame count" );
+#endif
 
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_ClientPrint, "ClientPrint", "Print a client message" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptEmitAmbientSoundOn, "EmitAmbientSoundOn", "Play named ambient sound on an entity." );
@@ -2784,7 +2807,9 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_ScreenShake, "ScreenShake", "Start a screenshake with the following parameters. vecCenter, flAmplitude, flFrequency, flDuration, flRadius, eCommand( SHAKE_START = 0, SHAKE_STOP = 1 ), bAirShake" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_ScreenFade, "ScreenFade", "Start a screenfade with the following parameters. player, red, green, blue, alpha, flFadeTime, flFadeHold, flags" );
 //				ScriptRegisterFunctionNamed( g_pScriptVM, Script_ChangeLevel, "ChangeLevel", "Tell engine to change level." );
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_PrecacheModel, "PrecacheModel", "Precache a model. Returns the modelindex." );
+#endif
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_PrecacheSound, "PrecacheSound", "Precache a sound." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_PrecacheScriptSound, "PrecacheScriptSound", "Precache a sound." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_IsModelPrecached, "IsModelPrecached", "Checks if the modelname is precached." );
@@ -2810,7 +2835,6 @@ bool VScriptServerInit()
 #ifdef MAPBASE_VSCRIPT
 				ScriptRegisterFunction( g_pScriptVM, MaxPlayers, "Get the maximum number of players allowed on this server" );
 				ScriptRegisterFunction( g_pScriptVM, GetLoadType, "Get the way the current game was loaded (corresponds to the MapLoad enum)" );
-				ScriptRegisterFunction( g_pScriptVM, DoEntFire, SCRIPT_ALIAS( "EntFire", "Generate an entity i/o event" ) );
 				ScriptRegisterFunction( g_pScriptVM, DoEntFireByInstanceHandle, SCRIPT_ALIAS( "EntFireByHandle", "Generate an entity i/o event. First parameter is an entity instance." ) );
 				// ScriptRegisterFunction( g_pScriptVM, IsValidEntity, "Returns true if the entity is valid." );
 
@@ -2820,13 +2844,11 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, DoEntFireByInstanceHandle, "EntFireByHandle", "Generate and entity i/o event. First parameter is an entity instance." );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCreateSceneEntity, "CreateSceneEntity", "Create a scene entity to play the specified scene." );
 #endif
-				ScriptRegisterFunction( g_pScriptVM, DoUniqueString, SCRIPT_ALIAS( "UniqueString", "Generate a string guaranteed to be unique across the life of the script VM, with an optional root string. Useful for adding data to tables when not sure what keys are already in use in that table." ) );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCreateSceneEntity, "CreateSceneEntity", "Create a scene entity to play the specified scene." );
 #ifndef MAPBASE_VSCRIPT
 				ScriptRegisterFunctionNamed( g_pScriptVM, NDebugOverlay::Box, "DebugDrawBox", "Draw a debug overlay box" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, NDebugOverlay::Line, "DebugDrawLine", "Draw a debug overlay box" );
 #endif
-				ScriptRegisterFunction( g_pScriptVM, DoIncludeScript, "Execute a script (internal)" );
 				ScriptRegisterFunction( g_pScriptVM, CreateProp, "Create a physics prop" );
 				//ScriptRegisterFunctionNamed( g_pScriptVM, DoRecordAchievementEvent, "RecordAchievementEvent", "Records achievement event or progress" );
 				ScriptRegisterFunction( g_pScriptVM, GetDeveloperLevel, "Gets the level of 'developer'" );

@@ -41,33 +41,6 @@
 extern IScriptManager *scriptmanager;
 
 #ifndef CLIENT_DLL
-void EmitSoundOn( const char *pszSound, HSCRIPT hEnt )
-{
-	CBaseEntity *pEnt = ToEnt( hEnt );
-	if (!pEnt)
-		return;
-
-	pEnt->EmitSound( pszSound );
-}
-
-void EmitSoundOnClient( const char *pszSound, HSCRIPT hEnt, HSCRIPT hPlayer )
-{
-	CBaseEntity *pEnt = ToEnt( hEnt );
-	CBasePlayer *pPlayer = ToBasePlayer( ToEnt( hPlayer ) );
-	if (!pEnt || !pPlayer)
-		return;
-
-	CSingleUserRecipientFilter filter( pPlayer );
-
-	EmitSound_t params;
-	params.m_pSoundName = pszSound;
-	params.m_flSoundTime = 0.0f;
-	params.m_pflSoundDuration = NULL;
-	params.m_bWarnOnDirectWaveReference = true;
-
-	pEnt->EmitSound( filter, pEnt->entindex(), params );
-}
-
 void AddThinkToEnt( HSCRIPT entity, const char *pszFuncName )
 {
 	CBaseEntity *pEntity = ToEnt( entity );
@@ -933,13 +906,6 @@ bool ScriptMatcherMatch( const char *pszQuery, const char *szValue ) { return Ma
 //=============================================================================
 //=============================================================================
 
-#ifndef CLIENT_DLL
-bool IsDedicatedServer()
-{
-	return engine->IsDedicatedServer();
-}
-#endif
-
 bool ScriptIsServer()
 {
 #ifdef GAME_DLL
@@ -1021,9 +987,6 @@ void RegisterSharedScriptFunctions()
 	// 
 
 #ifndef CLIENT_DLL
-	ScriptRegisterFunction( g_pScriptVM, EmitSoundOn, "Play named sound on an entity." );
-	ScriptRegisterFunction( g_pScriptVM, EmitSoundOnClient, "Play named sound only on the client for the specified player." );
-
 	ScriptRegisterFunction( g_pScriptVM, AddThinkToEnt, "This will put a think function onto an entity, or pass null to remove it. This is NOT chained, so be careful." );
 	ScriptRegisterFunction( g_pScriptVM, PrecacheEntityFromTable, "Precache an entity from KeyValues in a table." );
 	ScriptRegisterFunction( g_pScriptVM, SpawnEntityFromTable, "Native function for entity spawning." );
@@ -1110,9 +1073,6 @@ void RegisterSharedScriptFunctions()
 	ScriptRegisterFunctionNamed( g_pScriptVM, ScriptPredictedPosition, "PredictedPosition", "Predicts what an entity's position will be in a given amount of time." );
 #endif
 
-#ifndef CLIENT_DLL
-	ScriptRegisterFunction( g_pScriptVM, IsDedicatedServer, "Is this a dedicated server?" );
-#endif
 	ScriptRegisterFunctionNamed( g_pScriptVM, ScriptIsServer, "IsServer", "Returns true if the script is being run on the server." );
 	ScriptRegisterFunctionNamed( g_pScriptVM, ScriptIsClient, "IsClient", "Returns true if the script is being run on the client." );
 	ScriptRegisterFunction( g_pScriptVM, IntervalPerTick, "Simulation tick interval" );

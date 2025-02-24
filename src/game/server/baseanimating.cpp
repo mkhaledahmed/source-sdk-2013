@@ -309,27 +309,19 @@ BEGIN_ENT_SCRIPTDESC( CBaseAnimating, CBaseEntity, "Animating models" )
 #ifdef MAPBASE_VSCRIPT
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetAttachmentMatrix, "GetAttachmentMatrix", "Get the attachement id's matrix transform" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetPoseParameter, "GetPoseParameter", "Get the specified pose parameter's value" )
-	DEFINE_SCRIPTFUNC( LookupBone, "Get the named bone id" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetBoneTransform, "GetBoneTransform", "Get the transform for the specified bone" )
 	DEFINE_SCRIPTFUNC( GetPhysicsBone, "Get physics bone from bone index" )
 	DEFINE_SCRIPTFUNC( GetNumBones, "Get the number of bones" )
-	DEFINE_SCRIPTFUNC( GetSequence, "Gets the current sequence" )
-	DEFINE_SCRIPTFUNC( SetSequence, "Sets the current sequence" )
 	DEFINE_SCRIPTFUNC( SequenceLoops, "Does the current sequence loop?" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSequenceDuration, "SequenceDuration", "Get the specified sequence duration" )
-	DEFINE_SCRIPTFUNC( LookupSequence, "Gets the index of the specified sequence name" )
-	DEFINE_SCRIPTFUNC( LookupActivity, "Gets the ID of the specified activity name" )
 	DEFINE_SCRIPTFUNC_NAMED( HasMovement, "SequenceHasMovement", "Checks if the specified sequence has movement" )
 	DEFINE_SCRIPTFUNC( GetSequenceMoveYaw, "Gets the move yaw of the specified sequence" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetSequenceMoveDist, "GetSequenceMoveDist", "Gets the move distance of the specified sequence" )
-	DEFINE_SCRIPTFUNC( GetSequenceName, "Gets the name of the specified sequence index" )
-	DEFINE_SCRIPTFUNC( GetSequenceActivityName, "Gets the activity name of the specified sequence index" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetSequenceActivity, "GetSequenceActivity", "Gets the activity ID of the specified sequence index" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSelectWeightedSequence, "SelectWeightedSequence", "Selects a sequence for the specified activity ID" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSelectHeaviestSequence, "SelectHeaviestSequence", "Selects the sequence with the heaviest weight for the specified activity ID" )
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetSequenceKeyValues, "GetSequenceKeyValues", "Get a KeyValue class instance on the specified sequence. WARNING: This uses the same KeyValue pointer as GetModelKeyValues!" )
 	DEFINE_SCRIPTFUNC( ResetSequenceInfo, "" )
-	DEFINE_SCRIPTFUNC( StudioFrameAdvance, "" )
 #endif
 	DEFINE_SCRIPTFUNC( IsSequenceFinished, "Ask whether the main sequence is done playing" )
 	DEFINE_SCRIPTFUNC( SetBodygroup, "Sets a bodygroup")
@@ -341,7 +333,22 @@ BEGIN_ENT_SCRIPTDESC( CBaseAnimating, CBaseEntity, "Animating models" )
 	DEFINE_SCRIPTFUNC( SetPlaybackRate, "Set the current playback rate." )
 	DEFINE_SCRIPTFUNC( GetPlaybackRate, "Set the current playback rate." )
 	DEFINE_SCRIPTFUNC( GetModelScale, "" )
+#ifdef MAPBASE_VSCRIPT
+
+	// Mapbase's SetModelScale did not support a second parameter.
+	// When Mapbase syntax is prioritized, allow this through SetModelScaleEx.
+	// When TF2 syntax is prioritized, hide SetModelScaleEx but allow it to be used.
+#ifdef VSCRIPT_PRIORITIZE_TF2_SYNTAX
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSetModelScale, "SetModelScale", "(scale, change_duration) Changes a model's scale over time" )
+	DEFINE_SCRIPTFUNC_NAMED( ScriptSetModelScale, "SetModelScaleEx", SCRIPT_HIDE )
+#else
+	DEFINE_SCRIPTFUNC( SetModelScale, "(scale) Changes a model's scale over time" )
+	DEFINE_SCRIPTFUNC_NAMED( ScriptSetModelScale, "SetModelScaleEx", "(scale, change_duration) Changes a model's scale over time" )
+#endif
+
+#else
+	DEFINE_SCRIPTFUNC_NAMED( ScriptSetModelScale, "SetModelScale", "(scale, change_duration) Changes a model's scale over time" )
+#endif
 	DEFINE_SCRIPTFUNC_NAMED( ScriptSetPoseParameter, "SetPoseParameter", "(id, value) Sets a pose parameter value" )
 	DEFINE_SCRIPTFUNC( GetSkin, "Gets the current skin index." )
 	DEFINE_SCRIPTFUNC( SetSkin, "Sets the skin." )
@@ -356,8 +363,6 @@ BEGIN_ENT_SCRIPTDESC( CBaseAnimating, CBaseEntity, "Animating models" )
 #ifdef MAPBASE_VSCRIPT
 	DEFINE_SCRIPTFUNC( GetBodygroupCount, "Gets the number of models in a bodygroup" )
 	DEFINE_SCRIPTFUNC( GetNumBodyGroups, "Gets the number of bodygroups" )
-	DEFINE_SCRIPTFUNC( GetModelScale, "Gets the model's scale" )
-	DEFINE_SCRIPTFUNC( SetModelScale, "Sets the model's scale with the specified change duration" )
 
 	DEFINE_SCRIPTFUNC( Dissolve, "Use 'sprites/blueglow1.vmt' for the default material, Time() for the default start time, false for npcOnly if you don't want it to check if the entity is a NPC first, 0 for the default dissolve type, Vector(0,0,0) for the default dissolver origin, and 0 for the default magnitude." )
 	DEFINE_SCRIPTFUNC( Ignite, "'NPCOnly' only lets this fall through if the entity is a NPC and 'CalledByLevelDesigner' determines whether to treat this like the Ignite input or just an internal ignition call." )
