@@ -1458,10 +1458,21 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	else
 	{
 		Assert(script_retval.m_type == pFunc->m_desc.m_ReturnType);
+		Assert( ( pFunc->m_desc.m_ReturnType != FIELD_VOID ) || !( pFunc->m_flags & SF_REFCOUNTED_RET ) );
 
 		if (pFunc->m_desc.m_ReturnType != FIELD_VOID)
 		{
 			PushVariant(vm, script_retval);
+
+			if ( ( pFunc->m_flags & SF_REFCOUNTED_RET ) && script_retval.m_hScript )
+            {
+                Assert( script_retval.m_type == FIELD_HSCRIPT );
+
+                // Release the intermediary ref held from RegisterInstance
+                sq_release(vm, (HSQOBJECT*)script_retval.m_hScript);
+                delete (HSQOBJECT*)script_retval.m_hScript;
+            }
+
 			sq_retval = 1;
 		}
 		else
@@ -1473,17 +1484,6 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	// strings never get copied here, Vector and QAngle are stored in script_retval_storage
 	// everything else is stored inline, so there should be no memory to free
 	Assert(!(script_retval.m_flags & SV_FREE));
-
-	Assert( ( pFunc->m_desc.m_ReturnType != FIELD_VOID ) || !( pFunc->m_flags & SF_REFCOUNTED_RET ) );
-
-	if ( ( pFunc->m_flags & SF_REFCOUNTED_RET ) && script_retval.m_hScript )
-	{
-		Assert( script_retval.m_type == FIELD_HSCRIPT );
-
-		// Release the intermediary ref held from RegisterInstance
-		sq_release(vm, (HSQOBJECT*)script_retval.m_hScript);
-		delete (HSQOBJECT*)script_retval.m_hScript;
-	}
 
 	for ( int i = 0; i <= nLastHScriptIdx; ++i )
 	{
