@@ -1465,13 +1465,13 @@ SQInteger function_stub(HSQUIRRELVM vm)
 			PushVariant(vm, script_retval);
 
 			if ( ( pFunc->m_flags & SF_REFCOUNTED_RET ) && script_retval.m_hScript )
-            {
-                Assert( script_retval.m_type == FIELD_HSCRIPT );
+			{
+				Assert( script_retval.m_type == FIELD_HSCRIPT );
 
-                // Release the intermediary ref held from RegisterInstance
-                sq_release(vm, (HSQOBJECT*)script_retval.m_hScript);
-                delete (HSQOBJECT*)script_retval.m_hScript;
-            }
+				// Release the intermediary ref held from RegisterInstance
+				sq_release(vm, (HSQOBJECT*)script_retval.m_hScript);
+				delete (HSQOBJECT*)script_retval.m_hScript;
+			}
 
 			sq_retval = 1;
 		}
