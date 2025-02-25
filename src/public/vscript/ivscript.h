@@ -582,7 +582,11 @@ inline IScriptInstanceHelper *GetScriptInstanceHelper_ScriptNoBase_t()
 #define DEFINE_SCRIPTFUNC_WRAPPED( func, description )										DEFINE_SCRIPTFUNC_NAMED( SCRIPTFUNC_CONCAT( Script, func ), #func, description )
 #define DEFINE_SCRIPTFUNC_NAMED( func, scriptName, description )							ScriptAddFunctionToClassDescNamed( pDesc, _className, func, scriptName, description );
 #define DEFINE_SCRIPT_CONSTRUCTOR()															ScriptAddConstructorToClassDesc( pDesc, _className );
+#ifdef MAPBASE_VSCRIPT
 #define DEFINE_SCRIPT_INSTANCE_HELPER( p )													pDesc->pHelper = (p);
+#else
+#define DEFINE_SCRIPT_INSTANCE_HELPER( className, p )										template <> IScriptInstanceHelper *GetScriptInstanceHelperOverride< className >( IScriptInstanceHelper * ) { return p; }
+#endif
 
 #ifdef MAPBASE_VSCRIPT
 // Use this for hooks which have no parameters

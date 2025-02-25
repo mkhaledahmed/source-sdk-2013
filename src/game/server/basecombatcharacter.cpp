@@ -4239,11 +4239,13 @@ void CBaseCombatCharacter::InputGiveWeapon( inputdata_t &inputdata )
 	{
 		if (IsNPC())
 		{
+#ifdef HL2_DLL
 			if( Classify() == CLASS_PLAYER_ALLY_VITAL )
 			{
 				MyNPCPointer()->m_iszPendingWeapon = iszWeaponName;
 			}
 			else
+#endif
 			{
 				MyNPCPointer()->GiveWeapon( iszWeaponName );
 			}

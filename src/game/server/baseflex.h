@@ -76,7 +76,8 @@ public:
 
 	// Start the specifics of an scene event
 #ifdef MAPBASE
-	virtual bool		StartSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget, CSceneEntity *pSceneEnt = NULL );
+	virtual bool		StartSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget, CSceneEntity *pSceneEnt );
+	virtual bool		StartSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget ) { return StartSceneEvent( info, scene, event, actor, pTarget, NULL ); }
 #else
 	virtual bool		StartSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget );
 #endif

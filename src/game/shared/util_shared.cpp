@@ -1359,7 +1359,7 @@ char *UTIL_GetFilteredChatText( int iPlayerIndex, char *pszText, int nTextBuffer
 }
 #endif // CLIENT_DLL
 
-const char* ReadAndAllocStringValue( KeyValues *pSub, const char *pName, const char *pFilename )
+char* ReadAndAllocStringValue( KeyValues *pSub, const char *pName, const char *pFilename )
 {
 	const char *pValue = pSub->GetString( pName, NULL );
 	if ( !pValue )

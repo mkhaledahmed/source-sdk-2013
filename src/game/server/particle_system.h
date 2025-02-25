@@ -63,6 +63,9 @@ protected:
 	CNetworkArray( Vector, m_vControlPointVecs, kMAXCONTROLPOINTS );
 	CNetworkArray( unsigned char, m_iControlPointParents, kMAXCONTROLPOINTS );
 	CNetworkVar( bool,	m_bWeatherEffect );
+#ifdef MAPBASE
+	CNetworkVar( bool, m_bUsesCoordinates );
+#endif
 };
 
 //-----------------------------------------------------------------------------

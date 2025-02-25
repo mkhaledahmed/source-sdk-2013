@@ -56,7 +56,9 @@ ConVar mapbase_flush_talker("mapbase_flush_talker", "1", FCVAR_NONE, "Normally, 
 
 extern void MapbaseGameLog_Init();
 
+#ifdef HL2_DLL
 extern void ParseCustomActbusyFile(const char *file);
+#endif
 
 extern bool LoadResponseSystemFile(const char *scriptfile);
 extern void ReloadResponseSystem();
@@ -466,7 +468,9 @@ public:
 				} break;
 			//case MANIFEST_SOUNDSCAPES: { g_SoundscapeSystem.AddSoundscapeFile(value); } break;
 			//case MANIFEST_SENTENCES: { engine->PrecacheSentenceFile(value); } break;
+#ifdef HL2_DLL
 			case MANIFEST_ACTBUSY: { ParseCustomActbusyFile(value); } break;
+#endif
 #endif
 #ifdef MAPBASE_VSCRIPT
 			case MANIFEST_VSCRIPT:		{ VScriptRunScript(value, false); } break;

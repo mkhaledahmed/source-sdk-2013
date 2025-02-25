@@ -1420,7 +1420,6 @@ static CBaseEntity *VScript_ParseEntity( const char *pszClassname, HSCRIPT hSpaw
 	return pEntity;
 }
 
-#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 //-----------------------------------------------------------------------------
 CBaseEntity *ScriptCreateEntityFromTable( const char *pszClassname, HSCRIPT hSpawnTable )
 {
@@ -1436,6 +1435,7 @@ CBaseEntity *ScriptCreateEntityFromTable( const char *pszClassname, HSCRIPT hSpa
 	return pEntity;
 }
 
+#ifndef MAPBASE_VSCRIPT // See vscript_funcs_shared.cpp
 //-----------------------------------------------------------------------------
 static HSCRIPT Script_SpawnEntityFromTable( const char *pszName, HSCRIPT spawn_table )
 {

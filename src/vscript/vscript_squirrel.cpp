@@ -1090,13 +1090,17 @@ bool CreateParamCheck(const ScriptFunctionBinding_t& func, char* output)
 		switch (func.m_desc.m_Parameters[i])
 		{
 		case FIELD_FLOAT:
+		case FIELD_FLOAT64:
 		case FIELD_INTEGER:
+		case FIELD_UINT:
+		case FIELD_UINT64:
 			*output++ = 'n';
 			break;
 		case FIELD_CSTRING:
 			*output++ = 's';
 			break;
 		case FIELD_VECTOR:
+		case FIELD_QANGLE:
 			*output++ = 'x'; // Generic instance, we validate on arrival
 			break;
 		case FIELD_BOOLEAN:
@@ -1137,6 +1141,7 @@ void PushVariant(HSQUIRRELVM vm, const ScriptVariant_t& value)
 			sq_pushnull(vm);
 		break;
 	case FIELD_VECTOR:
+	case FIELD_QANGLE:
 	{
 		SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getforeignptr(vm);
 		assert(pSquirrelVM);
@@ -1196,6 +1201,7 @@ void GetVariantScriptString(const ScriptVariant_t& value, char *szValue, int iSi
 			V_snprintf( szValue, iSize, "\"%s\"", value.m_pszString );
 			break;
 		case FIELD_VECTOR:
+		case FIELD_QANGLE: // Could show "QAngle" instead, but Mapbase VScript never did that
 			V_snprintf( szValue, iSize, "Vector( %f, %f, %f )", value.m_pVector->x, value.m_pVector->y, value.m_pVector->z );
 			break;
 		case FIELD_INTEGER:
@@ -1343,6 +1349,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 			break;
 		}
 		case FIELD_VECTOR:
+		case FIELD_QANGLE:
 		{
 			Vector* val;
 			if (SQ_FAILED(sq_getinstanceup(vm, i + 2, (SQUserPointer*)&val, TYPETAG_VECTOR)))
@@ -1433,7 +1440,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	PushVariant(vm, retval);
 
-	if (retval.m_type == FIELD_VECTOR)
+	if (retval.m_type == FIELD_VECTOR || retval.m_type == FIELD_QANGLE)
 		delete retval.m_pVector;
 
 	return pFunc->m_desc.m_ReturnType != FIELD_VOID;
@@ -1753,23 +1760,6 @@ void errorfunc(HSQUIRRELVM SQ_UNUSED_ARG(v), const SQChar* format, ...)
 	Warning("%s", buffer);
 }
 
-const char * ScriptDataTypeToName(ScriptDataType_t datatype)
-{
-	switch (datatype)
-	{
-	case FIELD_VOID:		return "void";
-	case FIELD_FLOAT:		return "float";
-	case FIELD_CSTRING:		return "string";
-	case FIELD_VECTOR:		return "Vector";
-	case FIELD_INTEGER:		return "int";
-	case FIELD_BOOLEAN:		return "bool";
-	case FIELD_CHARACTER:	return "char";
-	case FIELD_HSCRIPT:		return "handle";
-	case FIELD_VARIANT:		return "variant";
-	default:				return "<unknown>";
-	}
-}
-
 
 #define PushDocumentationRegisterFunction( szName )	\
 	sq_pushroottable(vm);							\
@@ -1805,14 +1795,14 @@ void RegisterDocumentation(HSQUIRRELVM vm, const ScriptFuncDescriptor_t& pFuncDe
 
 
 	char signature[256] = "";
-	V_snprintf(signature, sizeof(signature), "%s %s(", ScriptDataTypeToName(pFuncDesc.m_ReturnType), name);
+	V_snprintf(signature, sizeof(signature), "%s %s(", VariantFieldTypeName(pFuncDesc.m_ReturnType), name);
 
 	for (int i = 0; i < pFuncDesc.m_Parameters.Count(); ++i)
 	{
 		if (i != 0)
 			V_strcat_safe(signature, ", ");
 
-		V_strcat_safe(signature, ScriptDataTypeToName(pFuncDesc.m_Parameters[i]));
+		V_strcat_safe(signature, VariantFieldTypeName(pFuncDesc.m_Parameters[i]));
 	}
 
 	V_strcat_safe(signature, ")");
@@ -1901,7 +1891,7 @@ void RegisterConstantDocumentation( HSQUIRRELVM vm, const ScriptConstantBinding_
 	V_strcat_safe(name, pConstDesc->m_pszScriptName);
 
 	char signature[256] = "";
-	V_snprintf(signature, sizeof(signature), "%s (%s)", pszAsString, ScriptDataTypeToName(pConstDesc->m_data.m_type));
+	V_snprintf(signature, sizeof(signature), "%s (%s)", pszAsString, VariantFieldTypeName(pConstDesc->m_data.m_type));
 
 	// RegisterConstHelp(name, signature, description)
 	PushDocumentationRegisterFunction( "RegisterConstHelp" );
@@ -1933,14 +1923,14 @@ void RegisterHookDocumentation(HSQUIRRELVM vm, const ScriptHook_t* pHook, const 
 
 
 	char signature[256] = "";
-	V_snprintf(signature, sizeof(signature), "%s %s(", ScriptDataTypeToName(pFuncDesc.m_ReturnType), name);
+	V_snprintf(signature, sizeof(signature), "%s %s(", VariantFieldTypeName(pFuncDesc.m_ReturnType), name);
 
 	for (int i = 0; i < pFuncDesc.m_Parameters.Count(); ++i)
 	{
 		if (i != 0)
 			V_strcat_safe(signature, ", ");
 
-		V_strcat_safe(signature, ScriptDataTypeToName(pFuncDesc.m_Parameters[i]));
+		V_strcat_safe(signature, VariantFieldTypeName(pFuncDesc.m_Parameters[i]));
 		V_strcat_safe(signature, " [");
 		V_strcat_safe(signature, pHook->m_pszParameterNames[i]);
 		V_strcat_safe(signature, "]");
@@ -1978,7 +1968,7 @@ void RegisterMemberDocumentation(HSQUIRRELVM vm, const ScriptMemberDesc_t& pDesc
 		V_strcat_safe(name, pDesc.m_pszScriptName);
 
 	char signature[256] = "";
-	V_snprintf(signature, sizeof(signature), "%s %s", ScriptDataTypeToName(pDesc.m_ReturnType), name);
+	V_snprintf(signature, sizeof(signature), "%s %s", VariantFieldTypeName(pDesc.m_ReturnType), name);
 
 	// RegisterMemberHelp(name, signature, description)
 	PushDocumentationRegisterFunction( "RegisterMemberHelp" );

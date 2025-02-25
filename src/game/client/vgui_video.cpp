@@ -400,7 +400,7 @@ void VideoPanel::Paint( void )
 	// Draw the polys to draw this out
 	CMatRenderContextPtr pRenderContext( materials );
 
-#ifdef MAPBASE
+#if defined(MAPBASE) && !defined(TF_CLIENT_DLL) // TODO: Figure out actual purpose of this
 	pRenderContext->ClearColor4ub( 255, 255, 255, alpha * 255.0f );
 #endif
 	

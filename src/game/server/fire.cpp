@@ -18,7 +18,9 @@
 #include "collisionutils.h"
 #include "tier0/vprof.h"
 #ifdef MAPBASE
+#ifdef HL2_DLL
 #include "weapon_flaregun.h"
+#endif
 #include "mapbase/GlobalStrings.h"
 #endif
 
@@ -1417,6 +1419,7 @@ void CEnvFireSensor::Think()
 #ifdef MAPBASE
 	if (HasSpawnFlags(SF_FIRESENSOR_ACCEPT_FLARES))
 	{
+#ifdef HL2_DLL
 		// Also look for nearby flares
 		CBaseEntity *pEntity = gEntList.FindEntityByClassnameWithin( NULL, "env_flare", GetAbsOrigin(), m_radius );
 		while (pEntity)
@@ -1429,6 +1432,7 @@ void CEnvFireSensor::Think()
 
 			pEntity = gEntList.FindEntityByClassnameWithin( pEntity, "env_flare", GetAbsOrigin(), m_radius );
 		}
+#endif
 	}
 #endif
 

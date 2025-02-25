@@ -709,8 +709,10 @@ bool CAI_BaseNPC::FriendlyFireEnabled()
 	if (m_FriendlyFireOverride != TRS_NONE)
 		return m_FriendlyFireOverride == TRS_TRUE;
 
+#ifdef HL2_DLL
 	if (HL2GameRules()->GlobalFriendlyFire() != TRS_NONE)
 		return HL2GameRules()->GlobalFriendlyFire() == TRS_TRUE;
+#endif
 
 	return !(CapabilitiesGet() & bits_CAP_FRIENDLY_DMG_IMMUNE);
 }
@@ -15922,6 +15924,7 @@ bool CanNPCsTradePlaces( CAI_BaseNPC *pNPC1, CAI_BaseNPC *pNPC2, bool bDebug )
 #ifdef MAPBASE
 bool CAI_BaseNPC::InteractionIsAllowed( CAI_BaseNPC *pOtherNPC, ScriptedNPCInteraction_t *pInteraction )
 {
+#ifdef HL2_DLL
 	// Now that female citizens have hunter interactions, Alyx is vulnerable to being murdered by hunters *dynamically*!
 	// Citizens also have antlion interaction kill animations, so antlions could potentially murder her as well.
 	// 
@@ -15929,6 +15932,7 @@ bool CAI_BaseNPC::InteractionIsAllowed( CAI_BaseNPC *pOtherNPC, ScriptedNPCInter
 	// Hopefully there aren't any maps that already have hunters murder Barneys.
 	if (pOtherNPC->Classify() == CLASS_PLAYER_ALLY_VITAL)
 		return false;
+#endif
 
 	if (m_iDynamicInteractionsAllowed == TRS_FALSE)
 		return false;

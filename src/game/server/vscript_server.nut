@@ -1,4 +1,3 @@
-static char g_Script_vscript_client[] = R"vscript(
 //========== Copyright © 2008, Valve Corporation, All rights reserved. ========
 //
 // Purpose:
@@ -295,7 +294,6 @@ function FireScriptEvent( event, params )
 {
 	__RunEventCallbacks( event, params, "OnScriptEvent_", "ScriptEventCallbacks", false )
 }
-
 
 //-----------------------------------------------------------------------------
 // Debug watches & trace
@@ -778,4 +776,3 @@ function EndScriptDebug()
 }
 
 //-----------------------------------------------------------------------------
-)vscript";

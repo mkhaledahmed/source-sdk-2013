@@ -50,11 +50,12 @@ ConVar locator_icon_max_size_non_ss( "locator_icon_max_size_non_ss", "1.5", FCVA
 
 enum
 {
-	DRAW_ARROW_NO = 0,
-	DRAW_ARROW_UP,
-	DRAW_ARROW_DOWN,
-	DRAW_ARROW_LEFT,
-	DRAW_ARROW_RIGHT
+	// "LOCATOR_" prefix added for TF2 compatibility (collision in tf_shareddefs.h)
+	LOCATOR_DRAW_ARROW_NO = 0,
+	LOCATOR_DRAW_ARROW_UP,
+	LOCATOR_DRAW_ARROW_DOWN,
+	LOCATOR_DRAW_ARROW_LEFT,
+	LOCATOR_DRAW_ARROW_RIGHT
 };
 
 ConVar locator_fade_time( "locator_fade_time", "0.3", FCVAR_NONE, "Number of seconds it takes for a lesson to fully fade in/out." );
@@ -126,7 +127,7 @@ void CLocatorTarget::Activate( int serialNumber )
 	m_lastXPos = iStartX;
 	m_lastYPos = iStartY;
 
-	m_drawArrowDirection	= DRAW_ARROW_NO;
+	m_drawArrowDirection	= LOCATOR_DRAW_ARROW_NO;
 	m_lerpStart				= gpGlobals->curtime;
 	m_pulseStart			= gpGlobals->curtime;
 	m_declutterIndex		= 0;
@@ -1369,7 +1370,7 @@ void CLocatorPanel::ComputeTargetIconPosition( CLocatorTarget *pTarget, bool bSe
 		}
 	}
 
-	pTarget->m_drawArrowDirection = DRAW_ARROW_NO;
+	pTarget->m_drawArrowDirection = LOCATOR_DRAW_ARROW_NO;
 
 	float fTitleSafeInset = ScreenWidth() * 0.075f;
 
@@ -1392,9 +1393,9 @@ void CLocatorPanel::ComputeTargetIconPosition( CLocatorTarget *pTarget, bool bSe
 
 		Vector vCenter = pTarget->m_vecOrigin;
 		if( MainViewRight().Dot( vCenter - MainViewOrigin() ) > 0 )
-			pTarget->m_drawArrowDirection = DRAW_ARROW_RIGHT;
+			pTarget->m_drawArrowDirection = LOCATOR_DRAW_ARROW_RIGHT;
 		else
-			pTarget->m_drawArrowDirection = DRAW_ARROW_LEFT;
+			pTarget->m_drawArrowDirection = LOCATOR_DRAW_ARROW_LEFT;
 	}
 	else if( iconY < fTitleSafeInset || iconY > ScreenHeight() - fTitleSafeInset )
 	{
@@ -1415,9 +1416,9 @@ void CLocatorPanel::ComputeTargetIconPosition( CLocatorTarget *pTarget, bool bSe
 
 		Vector vCenter = pTarget->m_vecOrigin;
 		if( MainViewUp().Dot( vCenter - MainViewOrigin() ) > 0 )
-			pTarget->m_drawArrowDirection = DRAW_ARROW_UP;
+			pTarget->m_drawArrowDirection = LOCATOR_DRAW_ARROW_UP;
 		else
-			pTarget->m_drawArrowDirection = DRAW_ARROW_DOWN;
+			pTarget->m_drawArrowDirection = LOCATOR_DRAW_ARROW_DOWN;
 	}
 	else
 	{
@@ -2093,28 +2094,28 @@ void CLocatorPanel::DrawIndicatorArrow( int x, int y, int iconWide, int iconTall
 
 	switch( direction )
 	{
-	case DRAW_ARROW_LEFT:
+	case LOCATOR_DRAW_ARROW_LEFT:
 		vgui::surface()->DrawSetTexture( m_textureID_ArrowLeft );
 		x -= wide;
 		y += iconTall / 2 - tall / 2;
 		vgui::surface()->DrawTexturedRect( x, y, x + wide, y + tall );
 		break;
 
-	case DRAW_ARROW_RIGHT:
+	case LOCATOR_DRAW_ARROW_RIGHT:
 		vgui::surface()->DrawSetTexture( m_textureID_ArrowRight );
 		x += iconWide + textWidth;
 		y += iconTall / 2 - tall / 2;
 		vgui::surface()->DrawTexturedRect( x, y, x + wide, y + tall );
 		break;
 
-	case DRAW_ARROW_UP:
+	case LOCATOR_DRAW_ARROW_UP:
 		vgui::surface()->DrawSetTexture( m_textureID_ArrowUp );
 		x += iconWide / 2 - wide / 2;
 		y -= tall;
 		vgui::surface()->DrawTexturedRect( x, y, x + wide, y + tall );
 		break;
 
-	case DRAW_ARROW_DOWN:
+	case LOCATOR_DRAW_ARROW_DOWN:
 		vgui::surface()->DrawSetTexture( m_textureID_ArrowDown );
 		x += iconWide / 2 - wide / 2;
 		y += iconTall;

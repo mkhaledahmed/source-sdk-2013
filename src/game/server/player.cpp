@@ -86,8 +86,11 @@
 #include "weapon_physcannon.h"
 #ifdef MAPBASE
 #include "mapbase/GlobalStrings.h"
-#include "mapbase/matchers.h"
 #endif
+#endif
+
+#ifdef MAPBASE
+#include "mapbase/matchers.h"
 #endif
 
 #ifdef MAPBASE_VSCRIPT

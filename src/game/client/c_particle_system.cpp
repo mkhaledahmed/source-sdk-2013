@@ -47,6 +47,9 @@ protected:
 	unsigned char m_iControlPointParents[kMAXCONTROLPOINTS];
 
 	bool		m_bWeatherEffect;
+#ifdef MAPBASE
+	bool		m_bUsesCoordinates;
+#endif
 };
 
 IMPLEMENT_CLIENTCLASS(C_ParticleSystem, DT_ParticleSystem, CParticleSystem);
@@ -69,6 +72,9 @@ BEGIN_RECV_TABLE_NOBASE( C_ParticleSystem, DT_ParticleSystem )
 	RecvPropArray3( RECVINFO_ARRAY(m_vControlPointVecs), RecvPropVector( RECVINFO( m_vControlPointVecs[0] ) ) ),
 	RecvPropArray3( RECVINFO_ARRAY(m_iControlPointParents), RecvPropInt( RECVINFO(m_iControlPointParents[0]))), 
 	RecvPropBool( RECVINFO( m_bWeatherEffect ) ),
+#ifdef MAPBASE
+	RecvPropBool( RECVINFO( m_bUsesCoordinates ) ),
+#endif
 END_RECV_TABLE();
 
 //-----------------------------------------------------------------------------
@@ -77,6 +83,9 @@ END_RECV_TABLE();
 C_ParticleSystem::C_ParticleSystem()
 {
 	m_bWeatherEffect = false;
+#ifdef MAPBASE
+	m_bDestroyImmediately = false;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -152,7 +161,7 @@ void C_ParticleSystem::ClientThink( void )
 			AssertMsg1( pEffect, "Particle system couldn't make %s", pszName );
 			if (pEffect)
 			{
-				if (m_vControlPointVecs[0] != GetAbsOrigin() && m_hControlPointEnts[0] == NULL)
+				if ( m_bUsesCoordinates )
 				{
 					// we are using info_particle_system_coordinate
 					for (int i = 0; i < kMAXCONTROLPOINTS; ++i)

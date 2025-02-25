@@ -5,7 +5,7 @@
 //=============================================================================//
 #include "cbase.h"
 #include "func_ladder.h"
-#ifdef MAPBASE
+#if defined(MAPBASE) && (defined(HL2_DLL) || defined(HL2_CLIENT_DLL))
 #include "hl_gamemovement.h"
 #endif
 
@@ -16,7 +16,7 @@
 /*static*/ ConVar sv_showladders( "sv_showladders", "0", 0, "Show bbox and dismount points for all ladders (must be set before level load.)\n" );
 #endif
 
-#if MAPBASE
+#if defined(MAPBASE) && (defined(HL2_DLL) || defined(HL2_CLIENT_DLL))
 extern IGameMovement *g_pGameMovement;
 #endif
 
@@ -415,7 +415,11 @@ void CFuncLadder::InputDisable( inputdata_t &inputdata )
 //-----------------------------------------------------------------------------
 void CFuncLadder::InputForcePlayerOn( inputdata_t &inputdata )
 {
+#if (defined(HL2_DLL) || defined(HL2_CLIENT_DLL))
 	static_cast<CHL2GameMovement*>(g_pGameMovement)->ForcePlayerOntoLadder(this);
+#else
+	Warning( "This game does not support ForcePlayerOn\n" );
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -424,7 +428,11 @@ void CFuncLadder::InputForcePlayerOn( inputdata_t &inputdata )
 //-----------------------------------------------------------------------------
 void CFuncLadder::InputCheckPlayerOn( inputdata_t &inputdata )
 {
+#if (defined(HL2_DLL) || defined(HL2_CLIENT_DLL))
 	static_cast<CHL2GameMovement*>(g_pGameMovement)->MountPlayerOntoLadder(this);
+#else
+	Warning( "This game does not support CheckPlayerOn\n" );
+#endif
 }
 #endif
 

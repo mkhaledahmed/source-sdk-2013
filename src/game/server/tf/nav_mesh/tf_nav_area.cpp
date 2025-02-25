@@ -31,9 +31,14 @@ ConVar tf_show_incursion_range_max( "tf_show_incursion_range_max", "0", FCVAR_CH
 // Script access to manipulate the nav
 //--------------------------------------------------------------------------------------------------------------
 
+#ifndef MAPBASE_VSCRIPT // TODO: Need better way of supporting this
 DEFINE_SCRIPT_INSTANCE_HELPER( CTFNavArea, &g_NavAreaScriptInstanceHelper )
+#endif
 
 BEGIN_ENT_SCRIPTDESC_ROOT( CTFNavArea, "Navigation areas class" )
+#ifdef MAPBASE_VSCRIPT
+	DEFINE_SCRIPT_INSTANCE_HELPER( &g_NavAreaScriptInstanceHelper )
+#endif
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetID, "GetID", "Get area ID." )
 	DEFINE_SCRIPTFUNC( GetAttributes, "Get area attribute bits" )
 	DEFINE_SCRIPTFUNC( SetAttributes, "Set area attribute bits" )

@@ -34,6 +34,9 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE(CParticleSystem, DT_ParticleSystem)
 	SendPropArray3( SENDINFO_ARRAY3(m_vControlPointVecs), SendPropVector( SENDINFO_ARRAY(m_vControlPointVecs) ) ),
 	SendPropArray3( SENDINFO_ARRAY3(m_iControlPointParents), SendPropInt( SENDINFO_ARRAY(m_iControlPointParents), 3, SPROP_UNSIGNED ) ),
 	SendPropBool( SENDINFO(m_bWeatherEffect) ),
+#ifdef MAPBASE
+	SendPropBool( SENDINFO(m_bUsesCoordinates) ),
+#endif
 END_SEND_TABLE()
 
 BEGIN_DATADESC( CParticleSystem )
@@ -140,6 +143,9 @@ LINK_ENTITY_TO_CLASS( info_particle_system_coordinate, CParticleSystemCoordinate
 CParticleSystem::CParticleSystem()
 {
 	m_bWeatherEffect = false;
+#ifdef MAPBASE
+	m_bDestroyImmediately = false;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -284,6 +290,7 @@ void CParticleSystem::ReadControlPointEnts( void )
 			}
 
 			m_hControlPointEnts.Set( i, pPointEnt );
+			m_bUsesCoordinates = true;
 		}
 	}
 }
