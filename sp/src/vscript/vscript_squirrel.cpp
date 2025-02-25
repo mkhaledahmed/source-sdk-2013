@@ -196,7 +196,7 @@ public:
 	// External instances. Note class will be auto-registered.
 	//--------------------------------------------------------
 
-	virtual HSCRIPT RegisterInstance(ScriptClassDesc_t* pDesc, void* pInstance, bool bAllowDestruct = false) override;
+	virtual HSCRIPT RegisterInstance(ScriptClassDesc_t* pDesc, void* pInstance, bool bRefCounted = false) override;
 	virtual void SetInstanceUniqeId(HSCRIPT hInstance, const char* pszId) override;
 	virtual void RemoveInstance(HSCRIPT hInstance) override;
 
@@ -227,6 +227,7 @@ public:
 
 	virtual void CreateArray(ScriptVariant_t &arr, int size = 0) override;
 	virtual bool ArrayAppend(HSCRIPT hArray, const ScriptVariant_t &val) override;
+	virtual HSCRIPT CopyObject(HSCRIPT obj) override;
 
 	//----------------------------------------------------------------------------
 
@@ -1094,19 +1095,19 @@ namespace SQVector
 
 struct ClassInstanceData
 {
-	ClassInstanceData(void* instance, ScriptClassDesc_t* desc, const char* instanceId = nullptr, bool allowDestruct = false) :
+	ClassInstanceData(void* instance, ScriptClassDesc_t* desc, const char* instanceId = nullptr, bool refCounted = false) :
 		instance(instance),
 		desc(desc),
 		instanceId(instanceId),
-		allowDestruct(allowDestruct)
+		refCounted(refCounted)
 	{}
 
 	void* instance;
 	ScriptClassDesc_t* desc;
 	CUtlConstString instanceId;
 
-	// Indicates this game-created instance is a weak reference and can be destructed (Blixibon)
-	bool allowDestruct;
+	// keep for setting instance release hook in save/restore
+	bool refCounted;
 };
 
 bool CreateParamCheck(const ScriptFunctionBinding_t& func, char* output)
@@ -1329,7 +1330,8 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	ScriptFunctionBinding_t* pFunc = (ScriptFunctionBinding_t*)userptr;
 
-	auto nargs = pFunc->m_desc.m_Parameters.Count();
+	int nargs = pFunc->m_desc.m_Parameters.Count();
+	int nLastHScriptIdx = -1;
 
 	if (nargs > top)
 	{
@@ -1406,9 +1408,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 			{
 				HSQOBJECT* pObject = new HSQOBJECT;
 				*pObject = val;
-				sq_addref(vm, pObject);
 				params[i] = (HSCRIPT)pObject;
 			}
+
+			nLastHScriptIdx = i;
 			break;
 		}
 		default:
@@ -1471,6 +1474,23 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	// everything else is stored inline, so there should be no memory to free
 	Assert(!(script_retval.m_flags & SV_FREE));
 
+	Assert( ( pFunc->m_desc.m_ReturnType != FIELD_VOID ) || !( pFunc->m_flags & SF_REFCOUNTED_RET ) );
+
+	if ( ( pFunc->m_flags & SF_REFCOUNTED_RET ) && script_retval.m_hScript )
+	{
+		Assert( script_retval.m_type == FIELD_HSCRIPT );
+
+		// Release the intermediary ref held from RegisterInstance
+		sq_release(vm, (HSQOBJECT*)script_retval.m_hScript);
+		delete (HSQOBJECT*)script_retval.m_hScript;
+	}
+
+	for ( int i = 0; i <= nLastHScriptIdx; ++i )
+	{
+		if ( pFunc->m_desc.m_Parameters[i] == FIELD_HSCRIPT )
+			delete (HSQOBJECT*)params[i].m_hScript;
+	}
+
 	return sq_retval;
 }
 
@@ -1478,6 +1498,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 SQInteger destructor_stub(SQUserPointer p, SQInteger size)
 {
 	auto classInstanceData = (ClassInstanceData*)p;
+
+	// if instance is not deleted, then it's leaking
+	// this should never happen
+	Assert( classInstanceData->desc->m_pfnDestruct );
 
 	if (classInstanceData->desc->m_pfnDestruct)
 		classInstanceData->desc->m_pfnDestruct(classInstanceData->instance);
@@ -1489,7 +1513,7 @@ SQInteger destructor_stub(SQUserPointer p, SQInteger size)
 SQInteger destructor_stub_instance(SQUserPointer p, SQInteger size)
 {
 	auto classInstanceData = (ClassInstanceData*)p;
-	// We don't call destructor here because this is owned by the game
+	// This instance is owned by the game, don't delete it
 	classInstanceData->~ClassInstanceData();
 	return 0;
 }
@@ -2627,7 +2651,7 @@ void SquirrelVM::RegisterHook(ScriptHook_t* pHookDesc)
 	RegisterHookDocumentation(vm_, pHookDesc, pHookDesc->m_desc, nullptr);
 }
 
-HSCRIPT SquirrelVM::RegisterInstance(ScriptClassDesc_t* pDesc, void* pInstance, bool bAllowDestruct)
+HSCRIPT SquirrelVM::RegisterInstance(ScriptClassDesc_t* pDesc, void* pInstance, bool bRefCounted)
 {
 	SquirrelSafeCheck safeCheck(vm_);
 
@@ -2649,15 +2673,19 @@ HSCRIPT SquirrelVM::RegisterInstance(ScriptClassDesc_t* pDesc, void* pInstance, 
 	}
 
 	{
-		SQUserPointer p;
-		sq_getinstanceup(vm_, -1, &p, 0);
-		new(p) ClassInstanceData(pInstance, pDesc, nullptr, bAllowDestruct);
+		ClassInstanceData *self;
+		sq_getinstanceup(vm_, -1, (SQUserPointer*)&self, 0);
+		new(self) ClassInstanceData(pInstance, pDesc, nullptr, bRefCounted);
+
+		// can't delete the instance if it doesn't have a destructor
+		// if the instance doesn't have a constructor,
+		// the class needs to register the destructor with DEFINE_SCRIPT_REFCOUNTED_INSTANCE()
+		Assert( !bRefCounted || self->desc->m_pfnDestruct );
 	}
 
-	sq_setreleasehook(vm_, -1, bAllowDestruct ? &destructor_stub : &destructor_stub_instance);
+	sq_setreleasehook(vm_, -1, bRefCounted ? &destructor_stub : &destructor_stub_instance);
 
 	HSQOBJECT* obj = new HSQOBJECT;
-	sq_resetobject(obj);
 	sq_getstackobj(vm_, -1, obj);
 	sq_addref(vm_, obj);
 	sq_pop(vm_, 3);
@@ -2685,22 +2713,22 @@ void SquirrelVM::SetInstanceUniqeId(HSCRIPT hInstance, const char* pszId)
 
 void SquirrelVM::RemoveInstance(HSCRIPT hInstance)
 {
+	if (!hInstance)
+		return;
+
 	SquirrelSafeCheck safeCheck(vm_);
 
-	if (!hInstance) return;
 	HSQOBJECT* obj = (HSQOBJECT*)hInstance;
+	ClassInstanceData *self;
+
 	sq_pushobject(vm_, *obj);
-
-	SQUserPointer self;
-	sq_getinstanceup(vm_, -1, &self, nullptr);
-
-	((ClassInstanceData*)self)->~ClassInstanceData();
-
+	sq_getinstanceup(vm_, -1, (SQUserPointer*)&self, nullptr);
 	sq_setinstanceup(vm_, -1, nullptr);
 	sq_setreleasehook(vm_, -1, nullptr);
 	sq_pop(vm_, 1);
-
 	sq_release(vm_, obj);
+
+	self->~ClassInstanceData();
 	delete obj;
 }
 
@@ -3134,6 +3162,17 @@ bool SquirrelVM::ArrayAppend(HSCRIPT hArray, const ScriptVariant_t &val)
 	return ret;
 }
 
+HSCRIPT SquirrelVM::CopyObject(HSCRIPT obj)
+{
+	if ( !obj )
+		return NULL;
+
+	HSQOBJECT *ret = new HSQOBJECT;
+	*ret = *(HSQOBJECT*)obj;
+	sq_addref( vm_, ret );
+	return (HSCRIPT)ret;
+}
+
 //-------------------------------------------------------------
 //-------------------------------------------------------------
 
@@ -3563,7 +3602,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 					{
 						Assert( strlen(pData->instanceId.Get()) < NATIVE_NAME_READBUF_SIZE );
 						pBuffer->PutString( pData->instanceId );
-						pBuffer->PutChar( pData->allowDestruct ? 1 : 0 );
+						pBuffer->PutChar( pData->refCounted ? 1 : 0 );
 					}
 					else
 					{
@@ -4174,7 +4213,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 				if ( pszInstanceName[0] )
 				{
-					bool allowDestruct = ( pBuffer->GetChar() != 0 );
+					bool refCounted = ( pBuffer->GetChar() != 0 );
 
 					HSQOBJECT *hInstance = new HSQOBJECT;
 					hInstance->_type = OT_INSTANCE;
@@ -4186,8 +4225,8 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 					if ( pInstance )
 					{
 						sq_addref( vm_, hInstance );
-						new( pThis->_userpointer ) ClassInstanceData( pInstance, pDesc, pszInstanceName, allowDestruct );
-						pThis->_hook = allowDestruct ? &destructor_stub : &destructor_stub_instance;
+						new( pThis->_userpointer ) ClassInstanceData( pInstance, pDesc, pszInstanceName, refCounted );
+						pThis->_hook = refCounted ? &destructor_stub : &destructor_stub_instance;
 					}
 					else
 					{
