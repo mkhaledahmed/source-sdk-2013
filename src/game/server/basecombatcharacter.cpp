@@ -300,14 +300,35 @@ BEGIN_SEND_TABLE_NOBASE( CBaseCombatCharacter, DT_BCCLocalPlayerExclusive )
 	SendPropTime( SENDINFO( m_flNextAttack ) ),
 END_SEND_TABLE();
 
+#ifdef GLOWS_ENABLE
+void *SendProxy_SendBaseCombatCharacterGlowDataTable( const SendProp *pProp, const void *pStruct, const void *pVarData, CSendProxyRecipients *pRecipients, int objectID )
+{
+	// Only send if our glow is active
+	CBaseCombatCharacter *pBCC = ( CBaseCombatCharacter * )pStruct;
+	if ( pBCC != NULL)
+	{
+		if ( pBCC->IsGlowEffectActive() )
+		{
+			return (void *)pVarData;
+		}
+	}
+	return NULL;
+}
+REGISTER_SEND_PROXY_NON_MODIFIED_POINTER( SendProxy_SendBaseCombatCharacterGlowDataTable );
+
+BEGIN_SEND_TABLE_NOBASE( CBaseCombatCharacter, DT_BCCGlowData )
+	SendPropVector( SENDINFO( m_GlowColor ), 8, 0, 0, 1 ),
+	SendPropFloat( SENDINFO( m_GlowAlpha ) ),
+END_SEND_TABLE();
+#endif
+
 //-----------------------------------------------------------------------------
 // This table encodes the CBaseCombatCharacter
 //-----------------------------------------------------------------------------
 IMPLEMENT_SERVERCLASS_ST(CBaseCombatCharacter, DT_BaseCombatCharacter)
 #ifdef GLOWS_ENABLE
 	SendPropBool( SENDINFO( m_bGlowEnabled ) ),
-	SendPropVector( SENDINFO( m_GlowColor ), 8, 0, 0, 1 ),
-	SendPropFloat( SENDINFO( m_GlowAlpha ) ),
+	SendPropDataTable( "bcc_glowdata", 0, &REFERENCE_SEND_TABLE( DT_BCCGlowData ), SendProxy_SendBaseCombatCharacterGlowDataTable ),
 #endif // GLOWS_ENABLE
 	// Data that only gets sent to the local player.
 	SendPropDataTable( "bcc_localdata", 0, &REFERENCE_SEND_TABLE(DT_BCCLocalPlayerExclusive), SendProxy_SendBaseCombatCharacterLocalDataTable ),
@@ -893,7 +914,7 @@ CBaseCombatCharacter::CBaseCombatCharacter( void )
 
 #ifdef GLOWS_ENABLE
 	m_bGlowEnabled.Set( false );
-	m_GlowColor.GetForModify().Init( 0.76f, 0.76f, 0.76f );
+	m_GlowColor.GetForModify().Init( 0.0f, 0.0f, 0.0f );
 	m_GlowAlpha.Set(1.0f);
 #endif // GLOWS_ENABLE
 }

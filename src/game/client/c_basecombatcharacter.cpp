@@ -35,7 +35,7 @@ C_BaseCombatCharacter::C_BaseCombatCharacter()
 	m_bGlowEnabled = false;
 	m_bOldGlowEnabled = false;
 	m_bClientSideGlowEnabled = false;
-	m_GlowColor.Init( 0.76f, 0.76f, 0.76f );
+	m_GlowColor.Init( 0.0f, 0.0f, 0.0f );
 	m_OldGlowColor = m_GlowColor;
 	m_GlowAlpha = 1.0f;
 	m_OldGlowAlpha = 1.0f;
@@ -113,13 +113,22 @@ void C_BaseCombatCharacter::DoMuzzleFlash()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void C_BaseCombatCharacter::GetGlowEffectColor( float *r, float *g, float *b, float *a )
+void C_BaseCombatCharacter::GetGlowEffectColor( float *r, float *g, float *b )
+{
+	*r = 0.76f;
+	*g = 0.76f;
+	*b = 0.76f;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseCombatCharacter::GetCustomGlowEffectColor( float *r, float *g, float *b, float *a )
 {
 	*r = m_GlowColor.x;
 	*g = m_GlowColor.y;
 	*b = m_GlowColor.z;
-	if (a)
-		*a = m_GlowAlpha;
+	*a = m_GlowAlpha;
 }
 
 //-----------------------------------------------------------------------------
@@ -153,7 +162,16 @@ void C_BaseCombatCharacter::UpdateGlowEffect( void )
 	if ( m_bGlowEnabled || m_bClientSideGlowEnabled )
 	{
 		float r, g, b, a;
-		GetGlowEffectColor( &r, &g, &b, &a );
+
+		if ( IsServerSideGlowEnabled() && IsCustomGlowColor() )
+		{
+			GetCustomGlowEffectColor( &r, &g, &b, &a );
+		}
+		else
+		{
+			GetGlowEffectColor( &r, &g, &b );
+			a = 1.0f;
+		}
 
 		m_pGlowEffect = new CGlowObject( this, Vector( r, g, b ), a, true );
 	}
@@ -179,6 +197,12 @@ BEGIN_RECV_TABLE_NOBASE( C_BaseCombatCharacter, DT_BCCLocalPlayerExclusive )
 	RecvPropTime( RECVINFO( m_flNextAttack ) ),
 END_RECV_TABLE();
 
+#ifdef GLOWS_ENABLE
+BEGIN_RECV_TABLE_NOBASE( C_BaseCombatCharacter, DT_BCCGlowData )
+	RecvPropVector( RECVINFO( m_GlowColor ) ),
+	RecvPropFloat( RECVINFO( m_GlowAlpha ) ),
+END_RECV_TABLE();
+#endif
 
 BEGIN_RECV_TABLE(C_BaseCombatCharacter, DT_BaseCombatCharacter)
 	RecvPropDataTable( "bcc_localdata", 0, 0, &REFERENCE_RECV_TABLE(DT_BCCLocalPlayerExclusive) ),
@@ -186,8 +210,7 @@ BEGIN_RECV_TABLE(C_BaseCombatCharacter, DT_BaseCombatCharacter)
 	RecvPropArray3( RECVINFO_ARRAY(m_hMyWeapons), RecvPropEHandle( RECVINFO( m_hMyWeapons[0] ) ) ),
 #ifdef GLOWS_ENABLE
 	RecvPropBool( RECVINFO( m_bGlowEnabled ) ),
-	RecvPropVector( RECVINFO( m_GlowColor ) ),
-	RecvPropFloat( RECVINFO( m_GlowAlpha ) ),
+	RecvPropDataTable( "bcc_glowdata", 0, 0, &REFERENCE_RECV_TABLE( DT_BCCGlowData ) ),
 #endif // GLOWS_ENABLE
 
 #ifdef INVASION_CLIENT_DLL

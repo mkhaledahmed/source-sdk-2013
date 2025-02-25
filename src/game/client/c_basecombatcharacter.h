@@ -99,12 +99,15 @@ public:
 
 #ifdef GLOWS_ENABLE
 	CGlowObject			*GetGlowObject( void ){ return m_pGlowEffect; }
-	virtual void		GetGlowEffectColor( float *r, float *g, float *b, float *a );
-	virtual void		GetGlowEffectColor( float *r, float *g, float *b ) { GetGlowEffectColor( r, g, b, NULL ); }
+	virtual void		GetGlowEffectColor( float *r, float *g, float *b );
+	void				GetCustomGlowEffectColor( float *r, float *g, float *b, float *a );
 //	void				EnableGlowEffect( float r, float g, float b );
 
 	void				SetClientSideGlowEnabled( bool bEnabled ){ m_bClientSideGlowEnabled = bEnabled; UpdateGlowEffect(); }
 	bool				IsClientSideGlowEnabled( void ){ return m_bClientSideGlowEnabled; }
+
+	bool				IsServerSideGlowEnabled( void ){ return m_bGlowEnabled; }
+	bool				IsCustomGlowColor() { return !m_GlowColor.IsZero(); }
 #endif // GLOWS_ENABLE
 
 #ifdef MAPBASE_VSCRIPT

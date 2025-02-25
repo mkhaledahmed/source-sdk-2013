@@ -3741,7 +3741,9 @@ IMPLEMENT_CLIENTCLASS_DT( C_TFPlayer, DT_TFPlayer, CTFPlayer )
 	RecvPropBool( RECVINFO( m_bForcedSkin ) ),
 	RecvPropInt( RECVINFO( m_nForcedSkin ) ),
 
+#ifndef MAPBASE // Already received by C_BaseCombatCharacter
 	RecvPropBool( RECVINFO( m_bGlowEnabled ) ),
+#endif
 
 	RecvPropDataTable("TFSendHealersDataTable", 0, 0, &REFERENCE_RECV_TABLE( DT_TFSendHealersDataTable ) ),
 	RecvPropFloat( RECVINFO( m_flKartNextAvailableBoost ) ),
