@@ -225,11 +225,13 @@ public:
 
 public:
 
+#ifndef NEW_RESPONSE_SYSTEM // New response system contains innate support for class + concept buckets
 	struct ResponseRules_t
 	{
 		CUtlVector<IResponseSystem*> m_ResponseSystems;
 	};
 	CUtlVector<ResponseRules_t>	m_ResponseRules;
+#endif
 
 	virtual void InitCustomResponseRulesDicts()	{}
 	virtual void ShutdownCustomResponseRulesDicts() {}

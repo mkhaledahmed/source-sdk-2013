@@ -7549,7 +7549,9 @@ CTFGameRules::~CTFGameRules()
 	// Note, don't delete each team since they are in the gEntList and will 
 	// automatically be deleted from there, instead.
 	TFTeamMgr()->Shutdown();
+#ifndef NEW_RESPONSE_SYSTEM // New response system contains innate support for class + concept buckets
 	ShutdownCustomResponseRulesDicts();
+#endif
 
 	// clean up cached teleport locations
 	m_mapTeleportLocations.PurgeAndDeleteElements();
@@ -18530,6 +18532,7 @@ bool CTFGameRules::ShouldShowTeamGoal( void )
 //-----------------------------------------------------------------------------
 void CTFGameRules::ShutdownCustomResponseRulesDicts()
 {
+#ifndef NEW_RESPONSE_SYSTEM // New response system contains innate support for class + concept buckets
 	DestroyCustomResponseSystems();
 
 	if ( m_ResponseRules.Count() != 0 )
@@ -18541,6 +18544,7 @@ void CTFGameRules::ShutdownCustomResponseRulesDicts()
 		}
 		m_ResponseRules.Purge();
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -18548,6 +18552,14 @@ void CTFGameRules::ShutdownCustomResponseRulesDicts()
 //-----------------------------------------------------------------------------
 void CTFGameRules::InitCustomResponseRulesDicts()
 {
+#ifdef NEW_RESPONSE_SYSTEM
+
+	// The default bucket sorts by classname in Mapbase HL2, and originally the "Who" criterion in L4D2
+	// TF2 uses the "playerclass" criterion for this
+	ConVarRef rr_bucket_name_who( "rr_bucket_name_who" );
+	rr_bucket_name_who.SetValue( "playerclass" );
+
+#else // New response system contains innate support for class + concept buckets
 	MEM_ALLOC_CREDIT();
 
 	// Clear if necessary.
@@ -18575,6 +18587,7 @@ void CTFGameRules::InitCustomResponseRulesDicts()
 			m_ResponseRules[iClass].m_ResponseSystems[iConcept] = BuildCustomResponseSystemGivenCriteria( "scripts/talker/response_rules.txt", szName, criteriaSet, flCriteriaScore );
 		}		
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------

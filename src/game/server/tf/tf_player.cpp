@@ -19848,6 +19848,9 @@ bool CTFPlayer::CanBeAutobalanced()
 //-----------------------------------------------------------------------------
 IResponseSystem *CTFPlayer::GetResponseSystem()
 {
+#ifdef NEW_RESPONSE_SYSTEM // New response system contains innate support for class + concept buckets
+	return BaseClass::GetResponseSystem();
+#else
 	int iClass = GetPlayerClass()->GetClassIndex();
 
 	if ( m_bSpeakingConceptAsDisguisedSpy && m_Shared.InCond( TF_COND_DISGUISED ) )
@@ -19868,6 +19871,7 @@ IResponseSystem *CTFPlayer::GetResponseSystem()
 	{
 		return TFGameRules()->m_ResponseRules[iClass].m_ResponseSystems[m_iCurrentConcept];
 	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
