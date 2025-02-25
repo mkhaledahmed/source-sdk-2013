@@ -762,7 +762,7 @@ bool CBaseViewModel::GetAttachmentVelocity( int number, Vector &originVel, Quate
 
 #endif
 
-#ifdef MAPBASE
+#if defined(MAPBASE) && (defined(HL2_DLL) || defined(HL2_CLIENT_DLL))
 #if defined( CLIENT_DLL )
 #define CHandViewModel C_HandViewModel
 #endif

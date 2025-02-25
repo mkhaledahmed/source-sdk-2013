@@ -650,7 +650,7 @@ void CBasePlayer::DestroyViewModels( void )
 	}
 }
 
-#ifdef MAPBASE
+#if defined(MAPBASE) && defined(HL2_DLL)
 extern char g_szDefaultHandsModel[MAX_PATH];
 extern int g_iDefaultHandsSkin;
 extern int g_iDefaultHandsBody;
@@ -5460,7 +5460,7 @@ void CBasePlayer::Spawn( void )
 	enginesound->SetPlayerDSP( user, 0, false );
 
 	CreateViewModel();
-#ifdef MAPBASE
+#if defined(MAPBASE) && defined(HL2_DLL)
 	CreateHandModel();
 #endif
 
@@ -5600,7 +5600,7 @@ void CBasePlayer::Precache( void )
 	m_iTrain = TRAIN_NEW;
 #endif
 
-#ifdef MAPBASE
+#if defined(MAPBASE) && defined(HL2_DLL)
 	PrecacheModel( g_szDefaultHandsModel );
 #endif
 

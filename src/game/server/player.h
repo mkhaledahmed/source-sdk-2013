@@ -271,7 +271,7 @@ public:
 	void					HideViewModels( void );
 	void					DestroyViewModels( void );
 
-#ifdef MAPBASE
+#if defined(MAPBASE) && defined(HL2_DLL)
 	virtual void			CreateHandModel( int viewmodelindex = 1, int iOtherVm = 0 );
 #endif
 
