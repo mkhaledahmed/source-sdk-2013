@@ -53,6 +53,8 @@ $Project
 
 		$File	"sdk_bloom.cpp"
 		$File	"sdk_screenspace_general.cpp"
+
+		$File	"mapbase_sdk_stubs.cpp"
 	}
 
 	$Folder	"Header Files"
