@@ -4,6 +4,8 @@
 //	Project Script
 //-----------------------------------------------------------------------------
 
+$Include "$SRCDIR\game\client\client_mapbase_hl2.vpc"	[$HL2||$EPISODIC||$HL2MP]
+
 $Configuration
 {
 	$Compiler
@@ -53,7 +55,6 @@ $Project
 			$File	"$SRCDIR\game\shared\mapbase\vscript_funcs_shared.h" [$MAPBASE_VSCRIPT]
 			$File	"$SRCDIR\game\shared\mapbase\vscript_singletons.cpp" [$MAPBASE_VSCRIPT]
 			$File	"$SRCDIR\game\shared\mapbase\vscript_singletons.h" [$MAPBASE_VSCRIPT]
-			$File	"$SRCDIR\game\shared\mapbase\vscript_funcs_hl2.cpp" [$MAPBASE_VSCRIPT&&($HL2||$EPISODIC)]
 			$File	"$SRCDIR\game\shared\mapbase\vscript_consts_shared.cpp" [$MAPBASE_VSCRIPT]
 			$File	"$SRCDIR\game\shared\mapbase\vscript_consts_weapons.cpp" [$MAPBASE_VSCRIPT]
 			$File	"$SRCDIR\game\shared\mapbase\weapon_custom_scripted.cpp" [$MAPBASE_VSCRIPT]
@@ -69,24 +70,7 @@ $Project
 			$File	"mapbase\c_func_fake_worldportal.h"
 			$File	"mapbase\c_point_glow.cpp"
 			$File	"mapbase\c_vgui_text_display.cpp"
-			$File	"mapbase\c_weapon_custom_hl2.cpp" [$HL2||$EPISODIC]
 			$File	"mapbase\mapbase_autocubemap.cpp"
-		}
-		
-		$Folder "HL2 DLL" [$HL2||$EPISODIC]
-		{
-			// Original stunstick files are conditional'd out in the HL2 VPCs
-			$File	"$SRCDIR\game\shared\hl2mp\weapon_stunstick.cpp"
-			$File	"$SRCDIR\game\shared\hl2mp\weapon_stunstick.h"
-		}
-		
-		$Folder	"HL2MP" [$HL2||$EPISODIC]
-		{
-			$Folder	"Weapons"
-			{
-				$File	"$SRCDIR\game\shared\hl2mp\weapon_slam.cpp"
-				$File	"$SRCDIR\game\shared\hl2mp\weapon_slam.h"
-			}
 		}
 	}
 

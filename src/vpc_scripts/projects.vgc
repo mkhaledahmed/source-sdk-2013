@@ -31,6 +31,7 @@ $Project "game_shader_generic_example"
 	"materialsystem\stdshaders\game_shader_generic_example_hl2mp.vpc" [$HL2MP]
 	"materialsystem\stdshaders\game_shader_generic_example_tf.vpc" [$TF]
 	"materialsystem\stdshaders\game_shader_generic_example_hl2.vpc" [$HL2]
+	"materialsystem\stdshaders\game_shader_generic_example_episodic.vpc" [$EPISODIC]
 }
 
 // Use this project if you want to override all std shaders with your own.
@@ -40,6 +41,7 @@ $Project "game_shader_generic_std"
 	"materialsystem\stdshaders\game_shader_generic_std_hl2mp.vpc" [$HL2MP]
 	"materialsystem\stdshaders\game_shader_generic_std_tf.vpc" [$TF]
 	"materialsystem\stdshaders\game_shader_generic_std_hl2.vpc" [$HL2]
+	"materialsystem\stdshaders\game_shader_generic_std_episodic.vpc" [$EPISODIC]
 }
 
 $Project "glview"
@@ -64,6 +66,8 @@ $Project "launcher_main"
 {
 	"launcher_main\launcher_main_mod_hl2mp.vpc" [$HL2MP]
 	"launcher_main\launcher_main_mod_tf.vpc" [$TF]
+	"launcher_main\launcher_main_mod_hl2.vpc" [$HL2]
+	"launcher_main\launcher_main_mod_episodic.vpc" [$EPISODIC]
 }
 
 $Project "responserules"

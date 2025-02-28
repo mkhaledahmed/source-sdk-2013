@@ -13,7 +13,7 @@
 #pragma once
 #endif
 
-#if defined(MAPBASE_VSCRIPT) && (defined(TF_DLL) || defined(TF_CLIENT_DLL))
+#if defined(MAPBASE_VSCRIPT) && defined(MAPBASE_MP)
 // Mapbase and TF2 VScript have functions with the same names which do different things and/or take different parameters.
 // If enabled, the code will prioritize the syntax from TF2 VScript.
 // If disabled, it will prioritize the syntax from Mapbase VScript.

@@ -52,6 +52,7 @@ float PlayerPickupGetHeldObjectMass( CBaseEntity *pPickupControllerEntity, IPhys
 float PhysCannonGetHeldObjectMass( CBaseCombatWeapon *pActiveWeapon, IPhysicsObject *pHeldObject );
 
 CBaseEntity *PhysCannonGetHeldEntity( CBaseCombatWeapon *pActiveWeapon );
+CBaseEntity *GetPlayerHeldEntity( CBasePlayer *pPlayer );
 
 // derive from this so we can add save/load data to it
 struct game_shadowcontrol_params_t : public hlshadowcontrol_params_t

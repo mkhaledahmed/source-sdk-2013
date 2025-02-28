@@ -412,6 +412,10 @@ public:
 	DECLARE_NETWORKCLASS(); 
 	DECLARE_PREDICTABLE();
 
+#ifndef CLIENT_DLL
+	DECLARE_ACTTABLE();
+#endif
+
 private:
 	
 	void	SetSkin( int skinNum );
@@ -432,10 +436,6 @@ private:
 	void	CreateChargerEffects( void );
 	void	SetChargerState( ChargerState_t state );
 	void	DoLoadEffect( void );
-
-#ifndef CLIENT_DLL
-	DECLARE_ACTTABLE();
-#endif
 
 private:
 	
@@ -492,6 +492,18 @@ acttable_t	CWeaponCrossbow::m_acttable[] =
 };
 
 IMPLEMENT_ACTTABLE(CWeaponCrossbow);
+
+#ifdef MAPBASE
+acttable_t* GetCrossbowActtable()
+{
+	return CWeaponCrossbow::m_acttable;
+}
+
+int GetCrossbowActtableCount()
+{
+	return ARRAYSIZE(CWeaponCrossbow::m_acttable);
+}
+#endif
 
 #endif
 

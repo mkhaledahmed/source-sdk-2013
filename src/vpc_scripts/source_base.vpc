@@ -33,6 +33,7 @@ $Configuration "Debug"
 
 		// Mapbase base definitions
 		$PreprocessorDefinitions		"$BASE;MAPBASE"		[$MAPBASE]
+		$PreprocessorDefinitions		"$BASE;MAPBASE_MP"	[$MAPBASE&&($HL2MP||$TF)]
 	}
 }
 
@@ -47,5 +48,6 @@ $Configuration "Release"
 
 		// Mapbase base definitions
 		$PreprocessorDefinitions		"$BASE;MAPBASE"		[$MAPBASE]
+		$PreprocessorDefinitions		"$BASE;MAPBASE_MP"	[$MAPBASE&&($HL2MP||$TF)]
 	}
 }

@@ -10,6 +10,7 @@
 #include "hl2_shareddefs.h"
 
 #ifdef HL2MP
+#include "hl2mp_gamerules.h"
 #ifdef CLIENT_DLL
 #include "hl2mp/c_hl2mp_player.h"
 #else

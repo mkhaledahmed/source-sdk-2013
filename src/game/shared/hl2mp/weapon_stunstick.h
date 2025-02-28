@@ -11,10 +11,14 @@
 #pragma once
 #endif
 
+#ifdef HL2MP
+#include "weapon_hl2mpbasebasebludgeon.h"
+#else
 #ifdef CLIENT_DLL
 #include "c_basehlcombatweapon.h"
 #else
 #include "basebludgeonweapon.h"
+#endif
 #endif
 
 #define	STUNSTICK_RANGE				75.0f
@@ -26,7 +30,9 @@
 
 #ifdef CLIENT_DLL
 #define CWeaponStunStick C_WeaponStunStick
+#ifndef HL2MP
 #define CBaseHLBludgeonWeapon C_BaseHLBludgeonWeapon
+#endif
 #endif
 
 #ifndef HL2MP
