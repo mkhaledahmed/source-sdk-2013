@@ -388,7 +388,9 @@ void VideoPanel::Paint( void )
 	// Sit in the "center"
 	int xpos, ypos;
 	GetPanelPos( xpos, ypos );
+#if defined(MAPBASE) && !defined(TF_CLIENT_DLL) // TODO: This was brought over from the Alien Swarm SDK years ago, but it breaks videos in TF2. Figure out actual purpose of this change
 	LocalToScreen( xpos, ypos );
+#endif
 
 	// Black out the background (we could omit drawing under the video surface, but this is straight-forward)
 	if ( m_bBlackBackground )
@@ -400,7 +402,7 @@ void VideoPanel::Paint( void )
 	// Draw the polys to draw this out
 	CMatRenderContextPtr pRenderContext( materials );
 
-#if defined(MAPBASE) && !defined(TF_CLIENT_DLL) // TODO: Figure out actual purpose of this
+#if defined(MAPBASE) && !defined(TF_CLIENT_DLL) // TODO: This was brought over from the Alien Swarm SDK years ago, but it breaks videos in TF2. Figure out actual purpose of this change
 	pRenderContext->ClearColor4ub( 255, 255, 255, alpha * 255.0f );
 #endif
 	
