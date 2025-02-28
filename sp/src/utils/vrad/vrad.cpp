@@ -2500,6 +2500,26 @@ int ParseCommandLine( int argc, char **argv, bool *onlydetail )
 				return 1;
 			}
 		}
+#ifdef MAPBASE
+		else if (!Q_stricmp(argv[i], "-extrapasses"))
+		{
+			if (++i < argc)
+			{
+				int extrapassesParam = atoi(argv[i]);
+				if (extrapassesParam < 0)
+				{
+					Warning("Error: expected non-negative value after '-extrapasses'\n");
+					return 1;
+				}
+				extrapasses = extrapassesParam;
+			}
+			else
+			{
+				Warning("Error: expected a value after '-extrapasses'\n");
+				return 1;
+			}
+		}
+#endif
 		else if (!Q_stricmp(argv[i],"-centersamples"))
 		{
 			do_centersamples = true;
@@ -2791,7 +2811,10 @@ void PrintUsage( int argc, char **argv )
 #endif
 		"  -fastambient    : Per-leaf ambient sampling is lower quality to save compute time.\n"
 		"  -final          : High quality processing. equivalent to -extrasky 16.\n"
-		"  -extrasky n     : trace N times as many rays for indirect light and sky ambient.\n"
+		"  -extrasky #     : trace # times as many rays for indirect light and sky ambient.\n"
+#ifdef MAPBASE
+		"  -extrapasses #  : Lets you scale how many extra passes you want your map to go through (default 4), differences above this value are minimal.\n"
+#endif
 		"  -low            : Run as an idle-priority process.\n"
 		"  -mpi            : Use VMPI to distribute computations.\n"
 		"  -rederror       : Show errors in red.\n"
@@ -2825,7 +2848,7 @@ void PrintUsage( int argc, char **argv )
 		"  -loghash        : Log the sample hash table to samplehash.txt.\n"
 		"  -onlydetail     : Only light detail props and per-leaf lighting.\n"
 		"  -maxdispsamplesize #: Set max displacement sample size (default: 512).\n"
-		"  -softsun <n>    : Treat the sun as an area light source of size <n> degrees."
+		"  -softsun #    : Treat the sun as an area light source of size # degrees."
 		"                    Produces soft shadows.\n"
 		"                    Recommended values are between 0 and 5. Default is 0.\n"
 		"  -FullMinidumps  : Write large minidumps on crash.\n"
