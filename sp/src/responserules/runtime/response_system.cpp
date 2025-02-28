@@ -1655,6 +1655,8 @@ inline ResponseType_t ComputeResponseType( const char *s )
 			return RESPONSE_VSCRIPT_FILE;
 		else
 			return RESPONSE_VSCRIPT;
+	case 'c':
+		return RESPONSE_CHOREOSENTENCE;
 #endif
 	}
 
