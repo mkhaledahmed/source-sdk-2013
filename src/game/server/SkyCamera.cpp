@@ -17,6 +17,8 @@ CEntityClassList<CSkyCamera> g_SkyList;
 template <> CSkyCamera *CEntityClassList<CSkyCamera>::m_pClassList = NULL;
 #ifdef MAPBASE
 CHandle<CSkyCamera> g_hActiveSkybox = NULL;
+
+extern ConVar r_radialfog_default;
 #endif
 
 //-----------------------------------------------------------------------------
@@ -141,9 +143,11 @@ CSkyCamera::CSkyCamera()
 {
 	g_SkyList.Insert( this );
 	m_skyboxData.fog.maxdensity = 1.0f;
-	m_skyboxData.fog.radial = false;
 #ifdef MAPBASE
 	m_skyboxData.skycolor.Init(0, 0, 0, 0);
+	m_skyboxData.fog.radial = r_radialfog_default.GetBool();
+#else
+	m_skyboxData.fog.radial = false;
 #endif
 }
 

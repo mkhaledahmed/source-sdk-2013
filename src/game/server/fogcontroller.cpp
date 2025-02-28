@@ -18,6 +18,10 @@
 
 CFogSystem s_FogSystem( "FogSystem" );
 
+#ifdef MAPBASE
+ConVar r_radialfog_default( "r_radialfog_default", "1", FCVAR_NONE, "Toggles whether radial fog is the default for env_fog_controller." );
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -101,6 +105,9 @@ CFogController::CFogController()
 	// Make sure that old maps without fog fields don't get wacked out fog values.
 	m_fog.enable = false;
 	m_fog.maxdensity = 1.0f;
+#ifdef MAPBASE
+	m_fog.radial = r_radialfog_default.GetBool();
+#endif
 }
 
 
