@@ -13,10 +13,10 @@ on:
     branches:
       - develop
     paths:
-      - '.github/workflows/mapbase_build-sp-rel-shaders.yml'
-      - 'sp/src/vpc_scripts/**'
-      - 'sp/src/materialsystem/**'
-      - 'sp/src/mathlib/**'
+      - '.github/workflows/mapbase_build-shaders.yml'
+      - 'src/vpc_scripts/**'
+      - 'src/materialsystem/**'
+      - 'src/mathlib/**'
 
 jobs:
   shaders:

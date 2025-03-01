@@ -14,14 +14,14 @@ on:
       - develop
     paths:
       - '.github/workflows/mapbase_build-base.yml'
-      - '.github/workflows/mapbase_build-sp-rel-games.yml'
-      - 'sp/src/vpc_scripts/**'
-      - 'sp/src/game/**'
-      - 'sp/src/mathlib/**'
-      - 'sp/src/responserules/runtime/**'
-      - 'sp/src/tier1/**'
-      - 'sp/src/vgui2/vgui_controls/**'
-      - 'sp/src/vscript/**'
+      - '.github/workflows/mapbase_build-games.yml'
+      - 'src/vpc_scripts/**'
+      - 'src/game/**'
+      - 'src/mathlib/**'
+      - 'src/responserules/runtime/**'
+      - 'src/tier1/**'
+      - 'src/vgui2/vgui_controls/**'
+      - 'src/vscript/**'
 
 jobs:
   games:
@@ -31,7 +31,6 @@ jobs:
     uses: ./.github/workflows/mapbase_build-base.yml
     with:
       configuration: ${{ matrix.configuration }}
-      branch: 'sp'
       game: 'episodic' # Change this if your mod is not using HL2/Episodic game projects
       project-group: 'game'
       solution-name: 'games'
