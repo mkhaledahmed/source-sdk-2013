@@ -2082,13 +2082,7 @@ bool SquirrelVM::ConnectDebugger( int port )
 	if ( !debugger_ )
 	{
 		debugger_ = sqdbg_attach_debugger( vm_ );
-
-		if ( sqdbg_listen_socket( debugger_, port ) != 0 )
-		{
-			sqdbg_destroy_debugger( vm_ );
-			debugger_ = nullptr;
-			return false;
-		}
+		sqdbg_listen_socket( debugger_, port );
 	}
 	else
 	{
