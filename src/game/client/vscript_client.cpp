@@ -44,6 +44,10 @@
 extern IScriptManager *scriptmanager;
 extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 
+#ifdef MAPBASE_VSCRIPT
+extern int vscript_debugger_port;
+#endif
+
 // #define VMPROFILE 1
 
 #ifdef VMPROFILE
@@ -250,8 +254,7 @@ class CMaterialProxyScriptInstanceHelper : public IScriptInstanceHelper
 
 CMaterialProxyScriptInstanceHelper g_MaterialProxyScriptInstanceHelper;
 
-BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptMaterialProxy, "CScriptMaterialProxy", "Material proxy for VScript" )
-	DEFINE_SCRIPT_INSTANCE_HELPER( &g_MaterialProxyScriptInstanceHelper )
+BEGIN_SCRIPTDESC_ROOT_NAMED_WITH_HELPER( CScriptMaterialProxy, "CScriptMaterialProxy", "Material proxy for VScript", &g_MaterialProxyScriptInstanceHelper )
 	DEFINE_SCRIPTFUNC( GetVarString, "Gets a material var's string value" )
 	DEFINE_SCRIPTFUNC( GetVarInt, "Gets a material var's int value" )
 	DEFINE_SCRIPTFUNC( GetVarFloat, "Gets a material var's float value" )
@@ -761,6 +764,14 @@ bool VScriptClientInit()
 				//g_pScriptVM->RegisterInstance( &g_ScriptEntityIterator, "Entities" );
 #endif
 
+#ifdef MAPBASE_VSCRIPT
+				if ( vscript_debugger_port )
+				{
+					g_pScriptVM->ConnectDebugger( vscript_debugger_port );
+					vscript_debugger_port = 0;
+				}
+#endif
+
 				if ( scriptLanguage == SL_SQUIRREL )
 				{
 					g_pScriptVM->Run( g_Script_vscript_client );
@@ -862,11 +873,19 @@ public:
 		VScriptClientTerm();
 	}
 
-	virtual void FrameUpdatePostEntityThink() 
+#ifdef MAPBASE_VSCRIPT
+	virtual void Update( float frametime )
+	{
+		if ( g_pScriptVM )
+			g_pScriptVM->Frame( frametime );
+	}
+#else
+	virtual void FrameUpdatePostEntityThink()
 	{ 
 		if ( g_pScriptVM )
 			g_pScriptVM->Frame( gpGlobals->frametime );
 	}
+#endif
 
 	bool m_bAllowEntityCreationInScripts;
 };

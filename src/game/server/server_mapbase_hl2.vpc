@@ -10,6 +10,10 @@ $Project
 	{
 		$Folder	"Mapbase"
 		{
+			$File	"$SRCDIR\game\shared\mapbase\mapbase_playeranimstate.cpp"
+			$File	"$SRCDIR\game\shared\mapbase\mapbase_playeranimstate.h"
+			$File	"$SRCDIR\game\shared\mapbase\protagonist_system.cpp"
+			$File	"$SRCDIR\game\shared\mapbase\protagonist_system.h"
 			$File	"$SRCDIR\game\shared\mapbase\vscript_funcs_hl2.cpp" [$MAPBASE_VSCRIPT]
 
 			$File	"mapbase\ai_grenade.cpp"

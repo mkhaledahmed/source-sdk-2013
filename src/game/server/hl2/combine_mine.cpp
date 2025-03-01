@@ -1020,7 +1020,7 @@ float CBounceBomb::FindNearestNPC()
 	}
 
 #ifdef MAPBASE_MP
-	for (i = 1; i <= gpGlobals->maxClients; i++)
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
 	{
 		CBaseEntity *pPlayer = UTIL_PlayerByIndex( i );
 		if ( pPlayer && !(pPlayer->GetFlags() & FL_NOTARGET) )

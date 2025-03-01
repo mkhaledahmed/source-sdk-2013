@@ -15,8 +15,8 @@
 #include "c_baseplayer.h"
 #include "c_hl2_playerlocaldata.h"
 
-#if !defined( HL2MP ) && defined ( MAPBASE )
-#include "mapbase/singleplayer_animstate.h"
+#if defined ( MAPBASE )
+#include "mapbase/mapbase_playeranimstate.h"
 #endif
 
 class C_BaseHLPlayer : public C_BasePlayer
@@ -29,6 +29,7 @@ public:
 						C_BaseHLPlayer();
 
 	virtual void		OnDataChanged( DataUpdateType_t updateType );
+	virtual void		AddEntity( void );
 
 	void				Weapon_DropPrimary( void );
 		
@@ -65,8 +66,14 @@ public:
 	virtual void	HandleSpeedChanges( CMoveData *mv ){}
 	virtual void	ReduceTimers( CMoveData *mv ){}
 
+#ifdef MAPBASE
+	int				GetProtagonistIndex() const { return m_nProtagonistIndex; }
+#endif
+
 #ifdef SP_ANIM_STATE
+	virtual const Vector&	GetRenderOrigin();
 	virtual const QAngle&	GetRenderAngles( void );
+	virtual CStudioHdr		*OnNewModel();
 #endif
 
 public:
@@ -89,11 +96,18 @@ private:
 	bool				m_bPlayUseDenySound;		// Signaled by PlayerUse, but can be unset by HL2 ladder code...
 	float				m_flSpeedMod;
 	float				m_flExitSpeedMod;
+
+#ifdef MAPBASE
+	int					m_nProtagonistIndex;
+#endif
 	
-#ifdef SP_ANIM_STATE
+#ifdef MAPBASE_MP
+	CMapbasePlayerAnimState *m_pPlayerAnimState;
+#elif MAPBASE
 	// At the moment, we network the render angles since almost none of the player anim stuff is done on the client in SP.
 	// If any of this is ever adapted for MP, this method should be replaced with replicating/moving the anim state to the client.
 	float				m_flAnimRenderYaw;
+	float				m_flAnimRenderZ;
 	QAngle				m_angAnimRender;
 #endif
 

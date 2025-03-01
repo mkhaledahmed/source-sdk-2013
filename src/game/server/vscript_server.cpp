@@ -60,6 +60,10 @@ extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 
 extern CServerGameDLL g_ServerGameDLL;
 
+#ifdef MAPBASE_VSCRIPT
+extern int vscript_debugger_port;
+#endif
+
 // #define VMPROFILE 1
 
 #ifdef VMPROFILE
@@ -3763,6 +3767,14 @@ REGISTER_SCRIPT_CONST_TABLE( Server )
 #endif
 
 				g_pScriptVM->SetValue( "Constants", vConstantsTable );
+
+#ifdef MAPBASE_VSCRIPT
+				if ( vscript_debugger_port )
+				{
+					g_pScriptVM->ConnectDebugger( vscript_debugger_port );
+					vscript_debugger_port = 0;
+				}
+#endif
 
 				if ( scriptLanguage == SL_SQUIRREL )
 				{

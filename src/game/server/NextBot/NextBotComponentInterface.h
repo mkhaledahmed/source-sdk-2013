@@ -107,7 +107,11 @@ inline HSCRIPT ToHScript( INextBotComponent *pNextBotComponent )
 	return ( pNextBotComponent ) ? pNextBotComponent->GetScriptInstance() : NULL;
 }
 
+#ifdef MAPBASE_VSCRIPT
+template <> ScriptClassDesc_t *GetScriptDesc<INextBotComponent>( INextBotComponent *, bool );
+#else
 template <> ScriptClassDesc_t *GetScriptDesc<INextBotComponent>( INextBotComponent * );
+#endif
 inline INextBotComponent *ToNextBotComponent( HSCRIPT hScript )
 {
 	return ( IsValid( hScript ) ) ? (INextBotComponent *)g_pScriptVM->GetInstanceValue( hScript, GetScriptDescForClass( INextBotComponent ) ) : NULL;

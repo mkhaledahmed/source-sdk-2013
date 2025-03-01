@@ -212,7 +212,11 @@ inline HSCRIPT ToHScript( CTFNavArea *pArea )
 	return ( pArea ) ? pArea->GetScriptInstance() : NULL;
 }
 
+#ifdef MAPBASE_VSCRIPT
+template <> ScriptClassDesc_t *GetScriptDesc<CTFNavArea>( CTFNavArea *, bool );
+#else
 template <> ScriptClassDesc_t *GetScriptDesc<CTFNavArea>( CTFNavArea * );
+#endif
 inline CTFNavArea *ToNavArea( HSCRIPT hScript )
 {
 	return ( IsValid( hScript ) ) ? (CTFNavArea *)g_pScriptVM->GetInstanceValue( hScript, GetScriptDescForClass(CTFNavArea) ) : NULL;

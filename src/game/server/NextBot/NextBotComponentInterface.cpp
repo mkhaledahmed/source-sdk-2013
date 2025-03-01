@@ -42,17 +42,18 @@ HSCRIPT INextBotComponent::GetScriptInstance()
 }
 
 //--------------------------------------------------------------------------------------------------------------
+#ifdef MAPBASE_VSCRIPT // TODO: Better way of supporting this?
 #ifdef TF_DLL
-#ifndef MAPBASE_VSCRIPT // TODO: Need better way of supporting this
+BEGIN_ENT_SCRIPTDESC_ROOT_WITH_HELPER( INextBotComponent, "Next bot component", &g_NextBotComponentScriptInstanceHelper )
+#else
+BEGIN_ENT_SCRIPTDESC_ROOT( INextBotComponent, "Next bot component" )
+#endif
+#else
+#ifdef TF_DLL
 DEFINE_SCRIPT_INSTANCE_HELPER( INextBotComponent, &g_NextBotComponentScriptInstanceHelper )
 #endif
-#endif 
 BEGIN_ENT_SCRIPTDESC_ROOT( INextBotComponent, "Next bot component" )
-#ifdef TF_DLL
-#ifdef MAPBASE_VSCRIPT
-	DEFINE_SCRIPT_INSTANCE_HELPER( &g_NextBotComponentScriptInstanceHelper )
-#endif
-#endif
+#endif 
 	DEFINE_SCRIPTFUNC( Reset, "Resets the internal update state" )
 	DEFINE_SCRIPTFUNC( ComputeUpdateInterval, "Recomputes the component update interval" )
 	DEFINE_SCRIPTFUNC( GetUpdateInterval, "Returns the component update interval" )

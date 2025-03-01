@@ -28,6 +28,7 @@
 // Forward declarations
 //-----------------------------------------------------------------------------
 FORWARD_DECLARE_HANDLE( HSCRIPT );
+struct HSCRIPT_RC;
 
 
 //-----------------------------------------------------------------------------
@@ -46,6 +47,9 @@ enum ExtendedFieldType_t
 	FIELD_UINT,				// Unsigned integer - it's not declared in fieldtype_t
 	FIELD_UTLSTRINGTOKEN,
 	FIELD_QANGLE,
+#ifdef MAPBASE_VSCRIPT
+	FIELD_HSCRIPT_RC,
+#endif
 };
 
 DECLARE_FIELD_SIZE( FIELD_UINT64,		sizeof(uint64) )
@@ -270,6 +274,9 @@ DECLARE_DEDUCE_FIELDTYPE( FIELD_EHANDLE,	CBaseHandle );
 DECLARE_DEDUCE_FIELDTYPE( FIELD_QUATERNION,	Quaternion );
 DECLARE_DEDUCE_FIELDTYPE( FIELD_QUATERNION,	const Quaternion & );
 //DECLARE_DEDUCE_FIELDTYPE( FIELD_UTLSTRINGTOKEN,	CUtlStringToken );
+#ifdef MAPBASE_VSCRIPT
+DECLARE_DEDUCE_FIELDTYPE( FIELD_HSCRIPT_RC,	HSCRIPT_RC );
+#endif
 
 #define VariantDeduceType( T ) ((fieldtype_t)VariantDeducer_t<T>::FIELD_TYPE)
 
