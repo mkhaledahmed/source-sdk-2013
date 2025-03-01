@@ -122,6 +122,7 @@ ConVar player_autoswitch_enabled( "player_autoswitch_enabled", "1", FCVAR_NONE, 
 
 #ifdef SP_ANIM_STATE
 ConVar hl2_use_sp_animstate( "hl2_use_sp_animstate", "1", FCVAR_NONE, "Allows SP HL2 players to use HL2:DM animations for custom player models. (changes may not apply until model is reloaded)" );
+ConVar player_process_scene_events( "player_process_scene_events", "1", FCVAR_NONE, "Allows players to process scene events." );
 #endif
 
 #endif
@@ -268,6 +269,7 @@ public:
 	void InputSetHandModelBodyGroup( inputdata_t &inputdata );
 
 	void InputSetPlayerModel( inputdata_t &inputdata );
+	void InputSetPlayerDrawLegs( inputdata_t &inputdata );
 	void InputSetPlayerDrawExternally( inputdata_t &inputdata );
 #endif
 
@@ -691,6 +693,7 @@ IMPLEMENT_SERVERCLASS_ST(CHL2_Player, DT_HL2_Player)
 #endif
 #ifdef SP_ANIM_STATE
 	SendPropFloat( SENDINFO(m_flAnimRenderYaw), 0, SPROP_NOSCALE ),
+	SendPropFloat( SENDINFO(m_flAnimRenderZ), 0, SPROP_NOSCALE ),
 #endif
 END_SEND_TABLE()
 
@@ -1183,6 +1186,18 @@ void CHL2_Player::PostThink( void )
 		m_pPlayerAnimState->Update( angEyeAngles.y, angEyeAngles.x );
 
 		m_flAnimRenderYaw.Set( m_pPlayerAnimState->GetRenderAngles().y );
+
+		if (m_pPlayerAnimState->IsJumping() && !m_pPlayerAnimState->IsDuckJumping())
+		{
+			m_flAnimRenderZ.Set( -(GetViewOffset().z) );
+		}
+		else
+			m_flAnimRenderZ.Set( 0.0f );
+
+		if (player_process_scene_events.GetBool())
+		{
+			ProcessSceneEvents();
+		}
 	}
 #endif
 }
@@ -1505,6 +1520,7 @@ CStudioHdr *CHL2_Player::OnNewModel()
 }
 
 extern char g_szDefaultPlayerModel[MAX_PATH];
+extern bool g_bDefaultPlayerLegs;
 extern bool g_bDefaultPlayerDrawExternally;
 
 extern char g_szDefaultProtagonist[MAX_PROTAGONIST_NAME];
@@ -1539,6 +1555,7 @@ void CHL2_Player::Spawn(void)
 		RemoveEffects( EF_NODRAW );
 	}
 
+	SetDrawPlayerLegs( g_bDefaultPlayerLegs );
 	SetDrawPlayerModelExternally( g_bDefaultPlayerDrawExternally );
 
 	if (m_iszProtagonistName == NULL_STRING && *g_szDefaultProtagonist)
@@ -3376,6 +3393,11 @@ void CHL2_Player::Weapon_Equip( CBaseCombatWeapon *pWeapon )
 	if( GetActiveWeapon() == NULL )
 	{
 		m_HL2Local.m_bWeaponLowered = false;
+
+#ifdef SP_ANIM_STATE
+		if (m_pPlayerAnimState)
+			m_pPlayerAnimState->StopWeaponRelax();
+#endif
 	}
 
 	BaseClass::Weapon_Equip( pWeapon );
@@ -3781,6 +3803,11 @@ bool CHL2_Player::Weapon_Lower( void )
 
 	m_HL2Local.m_bWeaponLowered = true;
 
+#ifdef SP_ANIM_STATE
+	if (m_pPlayerAnimState)
+		m_pPlayerAnimState->StartWeaponRelax();
+#endif
+
 	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon *>(GetActiveWeapon());
 
 	if ( pWeapon == NULL )
@@ -3802,6 +3829,11 @@ bool CHL2_Player::Weapon_Ready( void )
 		return true;
 
 	m_HL2Local.m_bWeaponLowered = false;
+
+#ifdef SP_ANIM_STATE
+	if (m_pPlayerAnimState)
+		m_pPlayerAnimState->StopWeaponRelax();
+#endif
 
 	CBaseCombatWeapon *pWeapon = dynamic_cast<CBaseCombatWeapon *>(GetActiveWeapon());
 
@@ -4016,6 +4048,21 @@ void CHL2_Player::OnRestore()
 {
 	BaseClass::OnRestore();
 	m_pPlayerAISquad = g_AI_SquadManager.FindCreateSquad(AllocPooledString(PLAYER_SQUADNAME));
+
+#ifdef SP_ANIM_STATE
+	if ( m_pPlayerAnimState == NULL )
+	{
+		if ( GetModelPtr() && GetModelPtr()->HaveSequenceForActivity(ACT_HL2MP_IDLE) && hl2_use_sp_animstate.GetBool() )
+		{
+			// Here we create and init the player animation state.
+			m_pPlayerAnimState = CreatePlayerAnimationState(this);
+		}
+		else
+		{
+			m_flAnimRenderYaw = FLT_MAX;
+		}
+	}
+#endif
 }
 
 //---------------------------------------------------------
@@ -4763,6 +4810,7 @@ BEGIN_DATADESC( CLogicPlayerProxy )
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetHandModelSkin", InputSetHandModelSkin ),
 	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetHandModelBodyGroup", InputSetHandModelBodyGroup ),
 	DEFINE_INPUTFUNC( FIELD_STRING,	"SetPlayerModel", InputSetPlayerModel ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetPlayerDrawLegs", InputSetPlayerDrawLegs ),
 	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetPlayerDrawExternally", InputSetPlayerDrawExternally ),
 	DEFINE_INPUT( m_MaxArmor, FIELD_INTEGER, "SetMaxInputArmor" ),
 	DEFINE_INPUT( m_SuitZoomFOV, FIELD_INTEGER, "SetSuitZoomFOV" ),
@@ -5239,6 +5287,15 @@ void CLogicPlayerProxy::InputSetPlayerModel( inputdata_t &inputdata )
 	SetModelName( m_hPlayer->GetModelName() );
 
 	m_hPlayer->SetModel( STRING(iszModel) );
+}
+
+void CLogicPlayerProxy::InputSetPlayerDrawLegs( inputdata_t &inputdata )
+{
+	if (!m_hPlayer)
+		return;
+
+	CBasePlayer *pPlayer = static_cast<CBasePlayer*>(m_hPlayer.Get());
+	pPlayer->SetDrawPlayerLegs( inputdata.value.Bool() );
 }
 
 void CLogicPlayerProxy::InputSetPlayerDrawExternally( inputdata_t &inputdata )

@@ -29,6 +29,7 @@
 #include "AI_ResponseSystem.h"
 #include "mapbase/SystemConvarMod.h"
 #include "gameinterface.h"
+#include "mapbase/choreosentence.h"
 #endif
 #if defined(HL2_DLL) || defined(HL2_CLIENT_DLL)
 #include "protagonist_system.h"
@@ -88,6 +89,7 @@ char g_iszGameName[128];
 #ifdef GAME_DLL
 // Default player configuration
 char g_szDefaultPlayerModel[MAX_PATH];
+bool g_bDefaultPlayerLegs;
 bool g_bDefaultPlayerDrawExternally;
 
 char g_szDefaultHandsModel[MAX_PATH];
@@ -115,7 +117,7 @@ enum
 	MANIFEST_HUDLAYOUT,
 #else
 	MANIFEST_TALKER,
-	//MANIFEST_SENTENCES,
+	MANIFEST_CHOREOSENTENCES,
 	MANIFEST_ACTBUSY,
 #endif
 #ifdef MAPBASE_VSCRIPT
@@ -158,7 +160,7 @@ static const ManifestType_t gm_szManifestFileStrings[MANIFEST_NUM_TYPES] = {
 	{ "hudlayout",		"mapbase_load_hudlayout",		"Should we load map-specific HUD layout overrides? e.g. \"maps/<mapname>_hudlayout.res\"" },
 #else
 	{ "talker",			"mapbase_load_talker",			"Should we load map-specific talker files? e.g. \"maps/<mapname>_talker.txt\"" },
-	//{ "sentences",	"mapbase_load_sentences",		"Should we load map-specific sentences? e.g. \"maps/<mapname>_sentences.txt\"" },
+	{ "choreosentences",	"mapbase_load_choreosentences",		"Should we load map-specific choreo sentences? e.g. \"maps/<mapname>_choreosentences.txt\"" },
 	{ "actbusy",		"mapbase_load_actbusy",			"Should we load map-specific actbusy files? e.g. \"maps/<mapname>_actbusy.txt\"" },
 #endif
 #ifdef MAPBASE_VSCRIPT
@@ -249,6 +251,7 @@ public:
 
 #ifdef GAME_DLL
 			Q_strncpy( g_szDefaultPlayerModel, gameinfo->GetString( "player_default_model", "models/player.mdl" ), sizeof( g_szDefaultPlayerModel ) );
+			g_bDefaultPlayerLegs = gameinfo->GetBool( "player_default_legs", false );
 			g_bDefaultPlayerDrawExternally = gameinfo->GetBool( "player_default_draw_externally", false );
 
 			Q_strncpy( g_szDefaultHandsModel, gameinfo->GetString( "player_default_hands", "models/weapons/v_hands.mdl" ), sizeof( g_szDefaultHandsModel ) );
@@ -483,7 +486,7 @@ public:
 					LoadResponseSystemFile(value); //PrecacheCustomResponseSystem( value );
 				} break;
 			//case MANIFEST_SOUNDSCAPES: { g_SoundscapeSystem.AddSoundscapeFile(value); } break;
-			//case MANIFEST_SENTENCES: { engine->PrecacheSentenceFile(value); } break;
+			case MANIFEST_CHOREOSENTENCES: { LoadChoreoSentenceFile(value); } break;
 			case MANIFEST_ACTBUSY: { ParseCustomActbusyFile(value); } break;
 #endif
 #ifdef MAPBASE_VSCRIPT
@@ -631,6 +634,7 @@ public:
 #else
 	void LoadCustomTalkerFile( const char *szScript )			{ LoadFromValue( szScript, MANIFEST_TALKER, false ); }
 	void LoadCustomActbusyFile( const char *szScript )			{ LoadFromValue( szScript, MANIFEST_ACTBUSY, false ); }
+	void LoadCustomChoreoSentenceFile( const char *szScript )	{ LoadFromValue( szScript, MANIFEST_CHOREOSENTENCES, false ); }
 #endif
 
 	const char *GetModName() { return g_iszGameName; }
@@ -679,6 +683,7 @@ BEGIN_SCRIPTDESC_ROOT( CMapbaseSystem, SCRIPT_SINGLETON "All-purpose Mapbase sys
 #else
 	DEFINE_SCRIPTFUNC( LoadCustomTalkerFile, "Loads a custom talker file." )
 	DEFINE_SCRIPTFUNC( LoadCustomActbusyFile, "Loads a custom actbusy file." )
+	DEFINE_SCRIPTFUNC( LoadCustomChoreoSentenceFile, "Loads a custom choreo sentence file." )
 #endif
 
 	DEFINE_SCRIPTFUNC( GetModName, "Gets the name of the mod. This is the name which shows up on Steam, RPC, etc." )
