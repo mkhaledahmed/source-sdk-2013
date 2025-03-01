@@ -1,6 +1,6 @@
 //=========================================================================================================================
 
-               Mapbase v7.3 - Source 2013
+               Mapbase v8.0 - Source 2013
 	https://github.com/mapbase-source/source-sdk-2013
 		https://www.moddb.com/mods/mapbase
 	
@@ -119,6 +119,7 @@ Direct contributions:
 - https://github.com/mapbase-source/source-sdk-2013/pull/248 (soundlevel_t conversation warning fix by Mechami)
 - https://github.com/mapbase-source/source-sdk-2013/pull/266 ("OnPhysGunPull" output in CPhysicsProp by rlenhub)
 - https://github.com/mapbase-source/source-sdk-2013/pull/292 (env_headcrabcanister random spawn type by arbabf)
+- https://github.com/mapbase-source/source-sdk-2013/pull/293 (Restore text selection code by SanyaSho)
 - https://github.com/mapbase-source/source-sdk-2013/pull/294 (SDK_LightmappedGeneric editor blend swap fix by azzyr)
 - https://github.com/mapbase-source/source-sdk-2013/pull/308 (BlurFilterY fix by Wikot235)
 - https://github.com/mapbase-source/source-sdk-2013/pull/312 (Zombie improvements by Wikot235)
@@ -126,6 +127,12 @@ Direct contributions:
 - https://github.com/mapbase-source/source-sdk-2013/pull/324 (server-only info/func_null by SirYodaJedi)
 - https://github.com/mapbase-source/source-sdk-2013/pull/333 (Cvar to transition levels while in MOVETYPE_NOCLIP by Wikot235)
 - https://github.com/mapbase-source/source-sdk-2013/pull/342 (NaN particle cull radius fix by celisej567)
+- https://github.com/mapbase-source/source-sdk-2013/pull/360 (.gitignore update by Unusuario2)
+- https://github.com/mapbase-source/source-sdk-2013/pull/381 (color_correction_volume crash fix by Nbc66)
+- https://github.com/mapbase-source/source-sdk-2013/pull/385 (VRAD -ultrafast command by Unusuario2)
+- https://github.com/mapbase-source/source-sdk-2013/pull/391 (VRAD -extrapasses command by Unusuario2)
+- https://github.com/mapbase-source/source-sdk-2013/pull/393 (Additional VBSP options doc by Unusuario2)
+- https://github.com/mapbase-source/source-sdk-2013/pull/397 (Viewmodel camera bone by Nbc66)
 - https://github.com/mapbase-source/mapbase-game-src/pull/1 (Advanced video options duplicate field name fix by arbabf; This is asset-based and not reflected in the code)
 - https://github.com/mapbase-source/mapbase-game-src/pull/2 (gameinfo.txt typo fix by CarePackage17; This is asset-based and not reflected in the code)
 - https://github.com/mapbase-source/mapbase-game-src/pull/3 (HudMessage cutoff fix by arbabf; This is asset-based and not reflected in the code)
@@ -154,10 +161,12 @@ Direct contributions:
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/192 (VScript hook manager and fixes)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/206 (Fix CScriptNetMsgHelper::WriteEntity())
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/213 (VScript HUD visibility control, optimizations for 3D skybox angles/fake worldportals)
+=-- https://github.com/mapbase-source/source-sdk-2013/pull/221 (VScript serialization rewrite)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/229 (VScript VGUI HUD viewport parenting, game_text and vgui_text_display VScript font fallback)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/260 (CScriptNetPropManager rewrite)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/261 (Misc VScript additions)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/279 (weapon_custom_scripted fixes)
+=-- https://github.com/mapbase-source/source-sdk-2013/pull/331 (VScript leak fixes)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/332 (Fix OOB access)
 
 == Contributions from z33ky:
@@ -172,6 +181,8 @@ Direct contributions:
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/159 (Additional GCC/Linux compilation fixes)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/162 (VS2019 exception specification fix)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/170 (HL2 non-Episodic build fix)
+=-- https://github.com/mapbase-source/source-sdk-2013/pull/320 (Fix ScriptHook_t initialization order)
+=-- https://github.com/mapbase-source/source-sdk-2013/pull/321 (Prevent return of dangling Vector/QAngle to VScript)
 =-- https://github.com/mapbase-source/source-sdk-2013/pull/322 (Small Mapbase fixes)
 
 == Contributions from Petercov:
