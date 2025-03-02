@@ -3685,7 +3685,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 				WriteObject( ci->_closure, pBuffer, writeState );
 
-				int offset = (int)ci->_ip - (int)ci->_closure._unVal.pClosure->_function->_instructions;
+				int offset = (intp)ci->_ip - (intp)ci->_closure._unVal.pClosure->_function->_instructions;
 				pBuffer->PutInt( offset );
 				pBuffer->PutInt( ci->_etraps );
 				pBuffer->PutInt( ci->_prevstkbase );
@@ -3741,7 +3741,7 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 		Assert( ci._ip && ci._ip >= ci._closure._unVal.pClosure->_function->_instructions );
 		Assert( pThis->_etraps.size() >= (SQUnsignedInteger)ci._etraps );
 
-		int offset = (int)ci._ip - (int)ci._closure._unVal.pClosure->_function->_instructions;
+		int offset = (intp)ci._ip - (intp)ci._closure._unVal.pClosure->_function->_instructions;
 		pBuffer->PutInt( offset );
 		pBuffer->PutInt( ci._etraps );
 		pBuffer->PutInt( ci._prevstkbase );
@@ -4332,7 +4332,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 				int offset = pBuffer->GetInt();
 				int funcsize = sizeof(SQInstruction) * closure._unVal.pClosure->_function->_ninstructions;
-				int start = (int)(closure._unVal.pClosure->_function->_instructions);
+				int start = (intp)(closure._unVal.pClosure->_function->_instructions);
 				int pos = start + offset;
 				ci->_ip = (SQInstruction*)pos;
 
@@ -4413,7 +4413,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 		int offset = pBuffer->GetInt();
 		int funcsize = sizeof(SQInstruction) * closure._unVal.pClosure->_function->_ninstructions;
-		int start = (int)(closure._unVal.pClosure->_function->_instructions);
+		int start = (intp)(closure._unVal.pClosure->_function->_instructions);
 		int pos = start + offset;
 		ci._ip = (SQInstruction*)pos;
 

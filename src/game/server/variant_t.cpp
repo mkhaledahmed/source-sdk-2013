@@ -70,7 +70,7 @@ void variant_t::SetScriptVariant( ScriptVariant_t &var )
 {
 	switch (FieldType())
 	{
-		case FIELD_VOID:		var = NULL; break;
+		case FIELD_VOID:		var.Free(); break;
 		case FIELD_INTEGER:		var = iVal; break;
 		case FIELD_FLOAT:		var = flVal; break;
 		case FIELD_STRING:		var = STRING(iszVal); break;
