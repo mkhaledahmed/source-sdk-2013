@@ -8982,11 +8982,10 @@ void CLogicPlayerInfo::GetPlayerInfo( CBasePlayer *pPlayer )
 }
 #endif
 
-
-void SendProxy_CropFlagsToPlayerFlagBitsLength( const SendProp *pProp, const void *pStruct, const void *pVarData, DVariant *pOut, int iElement, int objectID)
+void SendProxy_CropFlagsToPlayerFlagBitsLength( const SendProp* pProp, const void* pStruct, const void* pVarData, DVariant* pOut, int iElement, int objectID )
 {
-	int mask = (1<<PLAYER_FLAG_BITS) - 1;
-	int data = *(int *)pVarData;
+	int mask = ( 1 << PLAYER_FLAG_BITS ) - 1;
+	int data = *( int* )pVarData;
 
 	pOut->m_Int = ( data & mask );
 }
