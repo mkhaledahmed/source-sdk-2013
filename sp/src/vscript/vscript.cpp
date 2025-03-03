@@ -17,7 +17,6 @@
 IScriptVM* makeSquirrelVM();
 
 int vscript_token = 0;
-int vscript_debugger_port = 0;
 
 class CScriptManager : public CTier1AppSystem<IScriptManager>
 {

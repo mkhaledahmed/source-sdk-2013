@@ -141,7 +141,7 @@ public:
 	virtual bool Init() override;
 	virtual void Shutdown() override;
 
-	virtual bool ConnectDebugger( int port = 0 ) override;
+	virtual bool ConnectDebugger( int port = 0, float timeout = 0.0f ) override;
 	virtual void DisconnectDebugger() override;
 
 	virtual ScriptLanguage_t GetLanguage() override;
@@ -2077,12 +2077,27 @@ void SquirrelVM::Shutdown()
 
 bool VScriptRunScript( const char *pszScriptName, HSCRIPT hScope, bool bWarnMissing );
 
-bool SquirrelVM::ConnectDebugger( int port )
+bool SquirrelVM::ConnectDebugger( int port, float timeout )
 {
 	if ( !debugger_ )
 	{
 		debugger_ = sqdbg_attach_debugger( vm_ );
-		sqdbg_listen_socket( debugger_, port );
+
+		if ( sqdbg_listen_socket( debugger_, port ) == 0 && timeout )
+		{
+			float startTime = Plat_FloatTime();
+
+			while ( !sqdbg_is_client_connected( debugger_ ) )
+			{
+				float time = Plat_FloatTime();
+				if ( time - startTime > timeout )
+					break;
+
+				ThreadSleep( 50 );
+
+				sqdbg_frame( debugger_ );
+			}
+		}
 	}
 	else
 	{
