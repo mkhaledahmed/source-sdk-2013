@@ -2431,11 +2431,13 @@ int ParseCommandLine( int argc, char **argv, bool *onlydetail )
 			if ( ++i < argc )
 			{
 				numthreads = atoi (argv[i]);
+#ifndef MAPBASE //Mapbase allows threads to be negative, go to ThreadSetDefault(void) in threads.cpp for a explanation.
 				if ( numthreads <= 0 )
 				{
 					Warning("Error: expected positive value after '-threads'\n" );
 					return 1;
 				}
+#endif
 			}
 			else
 			{
@@ -2827,8 +2829,9 @@ void PrintUsage( int argc, char **argv )
 		"  -dump           : Write debugging .txt files.\n"
 		"  -dumpnormals    : Write normals to debug files.\n"
 		"  -dumptrace      : Write ray-tracing environment to debug files.\n"
-		"  -threads        : Control the number of threads vbsp uses (defaults to the #\n"
+		"  -threads #      : Control the number of threads vrad uses (defaults to the #\n"
 		"                    or processors on your machine).\n"
+		"					 Threads can be negative; if so, they will be subtracted from the total thread count.\n"
 		"  -lights <file>  : Load a lights file in addition to lights.rad and the\n"
 		"                    level lights file.\n"
 		"  -noextra        : Disable supersampling.\n"
