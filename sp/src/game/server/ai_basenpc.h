@@ -1180,6 +1180,11 @@ public:
 
 	void				SetDeathPose( const int &iDeathPose ) { m_iDeathPose = iDeathPose; }
 	void				SetDeathPoseFrame( const int &iDeathPoseFrame ) { m_iDeathFrame = iDeathPoseFrame; }
+
+#ifdef MAPBASE
+	int					GetDeathPose() { return m_iDeathPose; }
+	int					GetDeathPoseFrame() { return m_iDeathFrame; }
+#endif
 	
 	void				SelectDeathPose( const CTakeDamageInfo &info );
 	virtual bool		ShouldPickADeathPose( void ) { return true; }
