@@ -882,7 +882,7 @@ public:
 	virtual void Shutdown() = 0;
 
 #ifdef MAPBASE_VSCRIPT
-	virtual bool ConnectDebugger( int port = 0 ) = 0;
+	virtual bool ConnectDebugger( int port = 0, float timeout = 0.0f ) = 0;
 #else
 	virtual bool ConnectDebugger() = 0;
 #endif

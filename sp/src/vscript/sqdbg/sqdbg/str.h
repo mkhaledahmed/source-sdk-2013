@@ -76,12 +76,19 @@ template < typename I >
 bool atoo( string_t str, I *out );
 
 
-#ifdef SQUNICODE
-void CopyString( const string_t &src, sqstring_t *dst );
-void CopyString( const sqstring_t &src, string_t *dst );
-#endif
-template < typename T > void CopyString( const T &src, T *dst );
-template < typename T > void FreeString( T *dst );
+#define _isdigit( c ) \
+	IN_RANGE_CHAR( c, '0', '9' )
+
+#define _isxdigit( c ) \
+	( IN_RANGE_CHAR( c, '0', '9' ) || \
+	  IN_RANGE_CHAR( c, 'A', 'F' ) || \
+	  IN_RANGE_CHAR( c, 'a', 'f' ) )
+
+#define _isalpha( c ) \
+	( IN_RANGE_CHAR( c, 'A', 'Z' ) || IN_RANGE_CHAR( c, 'a', 'z' ) )
+
+#define _isalnum( c ) \
+	( _isalpha(c) || _isdigit(c) )
 
 #define IN_RANGE(c, min, max) \
 	((uint32_t)((uint32_t)(c) - (uint32_t)(min)) <= (uint32_t)((max)-(min)))
@@ -249,51 +256,21 @@ struct string_t
 	}
 #endif
 
-	template < int size >
-	string_t( const char (&src)[size] ) :
+	template < int SIZE >
+	string_t( const char (&src)[SIZE] ) :
 		ptr((char*)src),
-		len(size-1)
+		len(SIZE-1)
 	{
 		// input wasn't a string literal,
 		// call ( src, size ) constructor instead
 		Assert( strlen(src) == len );
 	}
 
-	void Strip()
+	template < int SIZE >
+	bool StartsWith( const char (&other)[SIZE] ) const
 	{
-		char *end = ptr + len;
-
-		for ( char *c = ptr; c < end; c++ )
-		{
-			if ( *c == ' ' || *c == '\t' || *c == '\n' )
-			{
-				ptr++;
-				len--;
-			}
-			else
-			{
-				break;
-			}
-		}
-
-		for ( char *c = end - 1; c >= ptr; c-- )
-		{
-			if ( *c == ' ' || *c == '\t' || *c == '\n' )
-			{
-				len--;
-			}
-			else
-			{
-				break;
-			}
-		}
-	}
-
-	template < int size >
-	bool StartsWith( const char (&other)[size] ) const
-	{
-		if ( size-1 <= len && *ptr == *other )
-			return !memcmp( ptr, other, size-1 );
+		if ( SIZE-1 <= len && *ptr == *other )
+			return !memcmp( ptr, other, SIZE-1 );
 
 		return false;
 	}
@@ -306,11 +283,11 @@ struct string_t
 		return false;
 	}
 
-	template < int size >
-	bool IsEqualTo( const char (&other)[size] ) const
+	template < int SIZE >
+	bool IsEqualTo( const char (&other)[SIZE] ) const
 	{
-		if ( size-1 == len && *ptr == *other )
-			return !memcmp( ptr, other, size-1 );
+		if ( SIZE-1 == len && *ptr == *other )
+			return !memcmp( ptr, other, SIZE-1 );
 
 		return false;
 	}
@@ -333,6 +310,14 @@ struct string_t
 
 #ifdef SQUNICODE
 	bool IsEqualTo( const sqstring_t &other ) const;
+#else
+	bool IsEqualTo( const SQString *other ) const
+	{
+		if ( (SQUnsignedInteger)len == (SQUnsignedInteger)other->_len && *ptr == *other->_val )
+			return !memcmp( ptr, other->_val, sq_rsl(len) );
+
+		return false;
+	}
 #endif
 
 	bool IsEmpty() const
@@ -345,11 +330,11 @@ struct string_t
 		return ( memchr( ptr, ch, len ) != NULL );
 	}
 
-	template < int size >
-	void Assign( const char (&src)[size] )
+	template < int SIZE >
+	void Assign( const char (&src)[SIZE] )
 	{
 		ptr = (char*)src;
-		len = size - 1;
+		len = SIZE - 1;
 		Assert( strlen(src) == len );
 	}
 
@@ -373,6 +358,14 @@ private:
 	string_t &operator=( const char *src );
 };
 
+struct conststring_t : string_t
+{
+	template < int SIZE >
+	conststring_t( const char (&src)[SIZE] ) : string_t(src) {}
+
+	conststring_t() {}
+};
+
 #ifdef SQUNICODE
 struct sqstring_t
 {
@@ -393,10 +386,10 @@ struct sqstring_t
 	{
 	}
 
-	template < int size >
-	sqstring_t( const SQChar (&src)[size] ) :
+	template < int SIZE >
+	sqstring_t( const SQChar (&src)[SIZE] ) :
 		ptr((SQChar*)src),
-		len(size-1)
+		len(SIZE-1)
 	{
 		Assert( scstrlen(src) == len );
 	}
@@ -434,7 +427,7 @@ struct sqstring_t
 
 	bool IsEqualTo( const SQString *other ) const
 	{
-		if ( len == other->_len && *ptr == *other->_val )
+		if ( (SQUnsignedInteger)len == (SQUnsignedInteger)other->_len && *ptr == *other->_val )
 			return !memcmp( ptr, other->_val, sq_rsl(len) );
 
 		return false;
@@ -445,11 +438,11 @@ struct sqstring_t
 		return !len;
 	}
 
-	template < int size >
-	void Assign( const SQChar (&src)[size] )
+	template < int SIZE >
+	void Assign( const SQChar (&src)[SIZE] )
 	{
 		ptr = (SQChar*)src;
-		len = size - 1;
+		len = SIZE - 1;
 		Assert( scstrlen(src) == len );
 	}
 
@@ -471,12 +464,12 @@ struct stringbufbase_t
 {
 	char *ptr;
 	unsigned int len;
-	const int size;
+	const unsigned int size;
 
-	stringbufbase_t( char *src, unsigned int size ) :
+	stringbufbase_t( char *src, unsigned int nSize ) :
 		ptr(src),
 		len(0),
-		size(size)
+		size(nSize)
 	{
 	}
 
@@ -621,20 +614,6 @@ struct stringbuf_t : stringbufbase_t
 	{
 	}
 };
-
-#define _isdigit( c ) \
-	IN_RANGE_CHAR(c, '0', '9')
-
-#define _isxdigit( c ) \
-	( IN_RANGE_CHAR(c, '0', '9') || \
-	  IN_RANGE_CHAR(c, 'A', 'F') || \
-	  IN_RANGE_CHAR(c, 'a', 'f') )
-
-#define _isalpha( c ) \
-	( IN_RANGE_CHAR(c, 'A', 'Z') || IN_RANGE_CHAR(c, 'a', 'z') )
-
-#define _isalnum( c ) \
-	( _isalpha(c) || _isdigit(c) )
 
 template < int BASE = 10, typename I >
 inline int countdigits( I input )
@@ -789,7 +768,7 @@ inline bool atoi( string_t str, I *out )
 	{
 		unsigned char ch = *str.ptr;
 
-		if ( IN_RANGE_CHAR(ch, '0', '9') )
+		if ( IN_RANGE_CHAR( ch, '0', '9' ) )
 		{
 			val *= 10;
 			val += ch - '0';
@@ -820,17 +799,17 @@ inline bool atox( string_t str, I *out )
 	{
 		unsigned char ch = *str.ptr;
 
-		if ( IN_RANGE_CHAR(ch, '0', '9') )
+		if ( IN_RANGE_CHAR( ch, '0', '9' ) )
 		{
 			val <<= 4;
 			val += ch - '0';
 		}
-		else if ( IN_RANGE_CHAR(ch, 'A', 'F') )
+		else if ( IN_RANGE_CHAR( ch, 'A', 'F' ) )
 		{
 			val <<= 4;
 			val += ch - 'A' + 10;
 		}
-		else if ( IN_RANGE_CHAR(ch, 'a', 'f') )
+		else if ( IN_RANGE_CHAR( ch, 'a', 'f' ) )
 		{
 			val <<= 4;
 			val += ch - 'a' + 10;
@@ -855,7 +834,7 @@ inline bool atoo( string_t str, I *out )
 	{
 		unsigned char ch = *str.ptr;
 
-		if ( IN_RANGE_CHAR(ch, '0', '7') )
+		if ( IN_RANGE_CHAR( ch, '0', '7' ) )
 		{
 			val <<= 3;
 			val += ch - '0';
@@ -898,7 +877,7 @@ inline int IsValidUTF8( unsigned char *src, unsigned int srclen )
 
 		return 0;
 	}
-	else if ( IN_RANGE_CHAR(cp, 0xC2, 0xF4) )
+	else if ( IN_RANGE_CHAR( cp, 0xC2, 0xF4 ) )
 	{
 		if ( UTF8_2_LEAD(cp) )
 		{
@@ -938,7 +917,7 @@ inline int IsValidUTF8( unsigned char *src, unsigned int srclen )
 
 			if ( !UTF8_TRAIL(cp) )
 			{
-				if ( IN_RANGE_CHAR(cp, 0xC2, 0xF4) )
+				if ( IN_RANGE_CHAR( cp, 0xC2, 0xF4 ) )
 					goto check;
 
 				return 0;
@@ -967,34 +946,8 @@ inline int IsValidUnicode( const SQChar *src, unsigned int srclen )
 
 		return 0;
 	}
-	else if ( cp <= 0xFF )
+	else if ( cp < 0xA0 )
 	{
-		if ( IN_RANGE(cp, 0xC2, 0xF4) )
-		{
-			if ( UTF8_2_LEAD(cp) )
-			{
-				if ( UTF8_2( srclen, cp, src ) )
-				{
-					return 2;
-				}
-			}
-			else if ( UTF8_3_LEAD(cp) )
-			{
-				if ( UTF8_3( srclen, cp, src ) )
-				{
-					return 3;
-				}
-			}
-			else if ( UTF8_4_LEAD(cp) )
-			{
-				if ( UTF8_4( srclen, cp, src ) )
-				{
-					return 4;
-				}
-			}
-		}
-		// else [0x7F, 0xC2) & (0xF4, 0xFF]
-
 		return 0;
 	}
 
@@ -1041,18 +994,21 @@ inline unsigned int UTF8ToSQUnicode( SQChar *dst, unsigned int destSize, const c
 				{
 					switch ( ((unsigned char*)src)[1] )
 					{
-						case '\"': cp = '\"'; src++; break;
 						case '\\': src++; break;
+						case '\"': cp = '\"'; src++; break;
+						case '\'': cp = '\''; src++; break;
+						case 'a': cp = '\a'; src++; break;
 						case 'b': cp = '\b'; src++; break;
 						case 'f': cp = '\f'; src++; break;
 						case 'n': cp = '\n'; src++; break;
 						case 'r': cp = '\r'; src++; break;
 						case 't': cp = '\t'; src++; break;
+						case 'v': cp = '\v'; src++; break;
 						case 'x':
 						{
 							if ( src + sizeof(SQChar) * 2 + 1 < end )
 							{
-								Verify( atox( { src + 2, sizeof(SQChar) * 2 }, &cp ) );
+								atox( { src + 2, sizeof(SQChar) * 2 }, &cp );
 								src += sizeof(SQChar) * 2 + 1;
 							}
 
@@ -1062,7 +1018,7 @@ inline unsigned int UTF8ToSQUnicode( SQChar *dst, unsigned int destSize, const c
 						{
 							if ( src + sizeof(uint16_t) * 2 + 1 < end )
 							{
-								Verify( atox( { src + 2, sizeof(uint16_t) * 2 }, &cp ) );
+								atox( { src + 2, sizeof(uint16_t) * 2 }, &cp );
 								src += sizeof(uint16_t) * 2 + 1;
 							}
 
@@ -1074,7 +1030,7 @@ inline unsigned int UTF8ToSQUnicode( SQChar *dst, unsigned int destSize, const c
 
 			goto xffff;
 		}
-		else if ( IN_RANGE(cp, 0xC2, 0xF4) )
+		else if ( IN_RANGE( cp, 0xC2, 0xF4 ) )
 		{
 			if ( UTF8_2_LEAD(cp) )
 			{
@@ -1111,34 +1067,13 @@ inline unsigned int UTF8ToSQUnicode( SQChar *dst, unsigned int destSize, const c
 			goto xffff;
 		}
 
+xffff:
 #if WCHAR_SIZE == 4
-xffff:
 supplementary:
+#endif
 		if ( dst )
 		{
-			if ( destSize >= sizeof(SQChar) )
-			{
-				*dst++ = cp;
-				destSize -= sizeof(SQChar);
-				count += 1;
-			}
-			else
-			{
-				// out of space
-				break;
-			}
-		}
-		else
-		{
-			count += 1;
-		}
-
-		continue;
-#else // WCHAR_SIZE == 2
-xffff:
-		if ( dst )
-		{
-			if ( destSize >= sizeof(SQChar) )
+			if ( sizeof(SQChar) <= destSize )
 			{
 				*dst++ = (SQChar)cp;
 				destSize -= sizeof(SQChar);
@@ -1157,14 +1092,15 @@ xffff:
 
 		continue;
 
+#if WCHAR_SIZE == 2
 supplementary:
 		if ( dst )
 		{
-			if ( destSize > sizeof(SQChar) )
+			if ( sizeof(SQChar) * 2 <= destSize )
 			{
 				UTF16_SURROGATE_FROM_UTF32( dst, cp );
 				dst += 2;
-				destSize -= 2 * sizeof(SQChar);
+				destSize -= sizeof(SQChar) * 2;
 				count += 2;
 			}
 			else
@@ -1241,6 +1177,7 @@ inline unsigned int SQUnicodeToUTF8( char *dst, unsigned int destSize, const SQC
 
 				switch ( cp )
 				{
+					case '\\':
 					case '\"':
 						if ( escape == kUTFEscapeQuoted )
 						{
@@ -1248,16 +1185,15 @@ inline unsigned int SQUnicodeToUTF8( char *dst, unsigned int destSize, const SQC
 							mbc[bytes++] = '\\';
 						}
 						mbc[bytes++] = '\\';
-						mbc[bytes++] = '\"';
+						mbc[bytes++] = (unsigned char)cp;
 						goto write;
-					case '\\':
+					case '\a':
+						if ( escape == kUTFEscapeJSON )
+							goto doescape;
 						if ( escape == kUTFEscapeQuoted )
-						{
 							mbc[bytes++] = '\\';
-							mbc[bytes++] = '\\';
-						}
 						mbc[bytes++] = '\\';
-						mbc[bytes++] = '\\';
+						mbc[bytes++] = 'a';
 						goto write;
 					case '\b':
 						if ( escape == kUTFEscapeQuoted )
@@ -1289,15 +1225,25 @@ inline unsigned int SQUnicodeToUTF8( char *dst, unsigned int destSize, const SQC
 						mbc[bytes++] = '\\';
 						mbc[bytes++] = 't';
 						goto write;
+					case '\v':
+						if ( escape == kUTFEscapeJSON )
+							goto doescape;
+						if ( escape == kUTFEscapeQuoted )
+							mbc[bytes++] = '\\';
+						mbc[bytes++] = '\\';
+						mbc[bytes++] = 'v';
+						goto write;
 
 					default:
-
-					if ( !IN_RANGE_CHAR(cp, 0x20, 0x7E) )
+					if ( !IN_RANGE_CHAR( cp, 0x20, 0x7E ) )
 					{
-						// While UTF8 bytes are valid UTF16, converting them will
-						// make distinct SQ strings indistinguishable to the client
-#ifndef SQDBG_ESCAPE_UTF8_BYTES_IN_UTF16
-						if ( IN_RANGE(cp, 0xC2, 0xF4) )
+						// Convert UTF8 bytes in UTF16 by default with the assumption of
+						// most editors using UTF8 without BOM,
+						// and files being likely read plain (no conversion/ISO 8859-1)
+						// However, this will make certain distinct SQ strings (e.g. "\xC3\xBC", "\xFC")
+						// indistinguishable to the client
+#ifndef SQDBG_DONT_CONVERT_UTF8_BYTES_IN_UTF16
+						if ( IN_RANGE( cp, 0xC2, 0xF4 ) )
 						{
 							if ( UTF8_2_LEAD(cp) )
 							{
@@ -1337,7 +1283,12 @@ inline unsigned int SQUnicodeToUTF8( char *dst, unsigned int destSize, const SQC
 							}
 						}
 #endif
-						// [0x7F, 0xC2) & (0xF4, 0xFF]
+
+						if ( cp >= 0xA0 ) // [0xA0, 0xFF]
+							goto x7ff;
+
+doescape:
+						// [0x00, 0x20) & (0x7E, 0xA0)
 						if ( escape == kUTFEscapeQuoted )
 							mbc[bytes++] = '\\';
 
@@ -1364,6 +1315,7 @@ inline unsigned int SQUnicodeToUTF8( char *dst, unsigned int destSize, const SQC
 		}
 		else if ( cp <= 0x7FF )
 		{
+x7ff:
 			UTF8_2_FROM_UTF32( mbc, cp );
 			bytes = 2;
 		}
@@ -1475,6 +1427,35 @@ write:
 	}
 
 	return count;
+}
+#endif
+
+#if defined(SQUNICODE) && !defined(_WIN32)
+// Do case insensitive comparison for ASCII characters, ignore the rest
+inline int sqdbg_wcsicmp( const SQChar *s1, const SQChar *s2 )
+{
+	for (;;)
+	{
+		SQChar c1 = *s1++;
+		SQChar c2 = *s2++;
+
+		if ( !c1 || !c2 )
+			return c1 - c2;
+
+		if ( c1 == c2 )
+			continue;
+
+		if ( c1 >= 'A' && c1 <= 'Z' )
+			c1 |= 0x20;
+
+		if ( c2 >= 'A' && c2 <= 'Z' )
+			c2 |= 0x20;
+
+		if ( c1 == c2 )
+			continue;
+
+		return c1 - c2;
+	}
 }
 #endif
 
