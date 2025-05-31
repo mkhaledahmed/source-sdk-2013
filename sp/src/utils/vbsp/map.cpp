@@ -15,6 +15,9 @@
 #include "materialsub.h"
 #include "fgdlib/fgdlib.h"
 #include "manifest.h"
+#ifdef PARALLAX_CORRECTED_CUBEMAPS
+#include "mathlib/vmatrix.h"
+#endif
 #ifdef MAPBASE_VSCRIPT
 #include "vscript_vbsp.h"
 #endif
