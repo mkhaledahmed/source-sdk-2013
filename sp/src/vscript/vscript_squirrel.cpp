@@ -3367,7 +3367,8 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 #ifdef _DEBUG
 		bool bAsserted = false;
 
-		if ( pThis->_noutervalues && pThis->_name._type == OT_STRING && pThis->_name._unVal.pString )
+		if ( pThis->_noutervalues && pThis->_name._type == OT_STRING && pThis->_name._unVal.pString &&
+				pThis->_outervalues[0]._type == OT_USERPOINTER )
 		{
 			Assert( pThis->_noutervalues == 1 );
 			Assert( pThis->_outervalues[0]._type == OT_USERPOINTER );
@@ -3771,7 +3772,6 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 	}
 	case OT_USERDATA:
 	case OT_USERPOINTER:
-		Assert(0);
 		break;
 	default:
 		AssertMsgAlways( 0, "SquirrelVM::WriteObject: unknown type" );
@@ -4458,10 +4458,7 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 	}
 	case OT_USERDATA:
 	case OT_USERPOINTER:
-	{
-		Assert(0);
 		break;
-	}
 	default:
 		AssertMsgAlways( 0, "SquirrelVM::ReadObject: serialisation error" );
 	}
