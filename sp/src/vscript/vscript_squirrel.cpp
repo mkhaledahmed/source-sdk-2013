@@ -284,6 +284,14 @@ public:
 		WriteObject( (const SQObjectPtr&)obj, pBuffer, writeState );
 	}
 
+	void WriteObject( SQGenerator *pObj, CUtlBuffer* pBuffer, WriteStateMap& writeState )
+	{
+		SQObject obj;
+		obj._type = OT_GENERATOR;
+		obj._unVal.pUserPointer = pObj;
+		WriteObject( (const SQObjectPtr&)obj, pBuffer, writeState );
+	}
+
 	void ReadObject( SQObjectPtr &obj, CUtlBuffer* pBuffer, ReadStateMap& readState );
 
 	// Do not implicity add/remove ref
@@ -3671,23 +3679,25 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 		if ( pThis->_callsstacksize )
 		{
-			int stackidx = -1;
-
-			for ( int i = pThis->_callsstacksize; i--; )
+			for ( int i = 0; i < pThis->_callsstacksize; i++ )
 			{
 				const SQVM::CallInfo *ci = &pThis->_callsstack[i];
 
-				if ( pThis->ci == ci )
-					stackidx = i;
-
-				Assert( !ci->_generator );
-				Assert( ci->_ip && ci->_ip >= ci->_closure._unVal.pClosure->_function->_instructions );
+				Assert( ci->_ip >= ci->_closure._unVal.pClosure->_function->_instructions &&
+						ci->_ip < ci->_closure._unVal.pClosure->_function->_instructions +
+							ci->_closure._unVal.pClosure->_function->_ninstructions );
 				Assert( pThis->_etraps.size() >= (SQUnsignedInteger)ci->_etraps );
 				Assert( ci->_closure._type == OT_CLOSURE && ci->_closure._unVal.pClosure );
 
 				WriteObject( ci->_closure, pBuffer, writeState );
 
-				int offset = (int)ci->_ip - (int)ci->_closure._unVal.pClosure->_function->_instructions;
+				Assert( ci->_ip - ci->_closure._unVal.pClosure->_function->_instructions <= INT_MAX );
+
+				pBuffer->PutChar( ci->_generator != 0 );
+				if ( ci->_generator )
+					WriteObject( ci->_generator, pBuffer, writeState );
+
+				int offset = ci->_ip - ci->_closure._unVal.pClosure->_function->_instructions;
 				pBuffer->PutInt( offset );
 				pBuffer->PutInt( ci->_etraps );
 				pBuffer->PutInt( ci->_prevstkbase );
@@ -3696,16 +3706,18 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 				pBuffer->PutInt( ci->_ncalls );
 				pBuffer->PutChar( ci->_root );
 
-				for ( int j = ci->_etraps; j--; )
+				for ( int j = 0; j < ci->_etraps; j++ )
 				{
 					const SQExceptionTrap &et = pThis->_etraps[j];
-					pBuffer->PutInt( et._extarget );
-					pBuffer->PutInt( et._stackbase );
 					pBuffer->PutInt( et._stacksize );
-					Assert( et._ip == ci->_ip );
+					pBuffer->PutInt( et._stackbase );
+					Assert( et._ip - ci->_ip <= INT_MAX );
+					pBuffer->PutInt( et._ip - ci->_ip );
+					pBuffer->PutInt( et._extarget );
 				}
 			}
 
+			int stackidx = pThis->ci - pThis->_callsstack;
 			Assert( stackidx >= 0 && stackidx < pThis->_callsstacksize );
 			pBuffer->PutInt( stackidx );
 		}
@@ -3736,29 +3748,37 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 
 		WriteObject( pThis->_closure, pBuffer, writeState );
 
-		const SQVM::CallInfo &ci = pThis->_ci;
+		const SQVM::CallInfo *ci = &pThis->_ci;
 
-		Assert( !ci._generator );
-		Assert( pThis->_closure._unVal.pClosure == ci._closure._unVal.pClosure );
-		Assert( ci._ip && ci._ip >= ci._closure._unVal.pClosure->_function->_instructions );
-		Assert( pThis->_etraps.size() >= (SQUnsignedInteger)ci._etraps );
+		Assert( pThis->_closure._unVal.pClosure == ci->_closure._unVal.pClosure );
+		Assert( ci->_ip >= ci->_closure._unVal.pClosure->_function->_instructions &&
+				ci->_ip < ci->_closure._unVal.pClosure->_function->_instructions +
+					ci->_closure._unVal.pClosure->_function->_ninstructions );
+		Assert( pThis->_etraps.size() >= (SQUnsignedInteger)ci->_etraps );
 
-		int offset = (int)ci._ip - (int)ci._closure._unVal.pClosure->_function->_instructions;
+		Assert( ci->_ip - ci->_closure._unVal.pClosure->_function->_instructions <= INT_MAX );
+
+		pBuffer->PutChar( ci->_generator != 0 );
+		if ( ci->_generator )
+			WriteObject( ci->_generator, pBuffer, writeState );
+
+		int offset = ci->_ip - ci->_closure._unVal.pClosure->_function->_instructions;
 		pBuffer->PutInt( offset );
-		pBuffer->PutInt( ci._etraps );
-		pBuffer->PutInt( ci._prevstkbase );
-		pBuffer->PutInt( ci._prevtop );
-		pBuffer->PutInt( ci._target );
-		pBuffer->PutInt( ci._ncalls );
-		pBuffer->PutChar( ci._root );
+		pBuffer->PutInt( ci->_etraps );
+		pBuffer->PutInt( ci->_prevstkbase );
+		pBuffer->PutInt( ci->_prevtop );
+		pBuffer->PutInt( ci->_target );
+		pBuffer->PutInt( ci->_ncalls );
+		pBuffer->PutChar( ci->_root );
 
-		for ( int j = ci._etraps; j--; )
+		for ( int j = 0; j < ci->_etraps; j++ )
 		{
 			const SQExceptionTrap &et = pThis->_etraps[j];
-			pBuffer->PutInt( et._extarget );
-			pBuffer->PutInt( et._stackbase );
 			pBuffer->PutInt( et._stacksize );
-			Assert( et._ip == ci._ip );
+			pBuffer->PutInt( et._stackbase );
+			Assert( et._ip - ci->_ip <= INT_MAX );
+			pBuffer->PutInt( et._ip - ci->_ip );
+			pBuffer->PutInt( et._extarget );
 		}
 
 		int stacksize = pThis->_stack.size();
@@ -4320,10 +4340,10 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 		if ( pThis->_callsstacksize )
 		{
-			if ( pThis->_callsstacksize >= pThis->_alloccallsstacksize )
+			while ( pThis->_callsstacksize >= pThis->_alloccallsstacksize )
 				pThis->GrowCallStack();
 
-			for ( int i = pThis->_callsstacksize; i--; )
+			for ( int i = 0; i < pThis->_callsstacksize; i++ )
 			{
 				SQVM::CallInfo *ci = &pThis->_callsstack[i];
 
@@ -4331,23 +4351,31 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 				ReadObject( closure, pBuffer, readState );
 				Assert( closure._type == OT_CLOSURE && closure._unVal.pClosure );
 
-				int offset = pBuffer->GetInt();
-				int funcsize = sizeof(SQInstruction) * closure._unVal.pClosure->_function->_ninstructions;
-				int start = (int)(closure._unVal.pClosure->_function->_instructions);
-				int pos = start + offset;
-				ci->_ip = (SQInstruction*)pos;
-
-				Assert( pos < (start + funcsize) );
-
-				// don't read past boundary
-				if ( pos >= (start + funcsize) )
+				if ( pBuffer->GetChar() )
 				{
-					ci->_ip = (SQInstruction*)start;
+					SQObject generator;
+					ReadObject( generator, pBuffer, readState );
+					Assert( generator._type == OT_GENERATOR && generator._unVal.pGenerator );
+					ci->_generator = generator._unVal.pGenerator;
+				}
+				else
+				{
+					ci->_generator = NULL;
 				}
 
+				int offset = pBuffer->GetInt();
+				SQInstruction *start = closure._unVal.pClosure->_function->_instructions;
+				SQInstruction *end = start + closure._unVal.pClosure->_function->_ninstructions;
+				SQInstruction *pos = start + offset;
+
+				Assert( pos >= start && pos < end );
+
+				if ( pos < start || pos >= end )
+					pos = start;
+
+				ci->_ip = pos;
 				ci->_literals = closure._unVal.pClosure->_function->_literals;
 				ci->_closure = closure;
-				ci->_generator = NULL;
 				ci->_etraps = pBuffer->GetInt();
 				ci->_prevstkbase = pBuffer->GetInt();
 				ci->_prevtop = pBuffer->GetInt();
@@ -4357,13 +4385,13 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 				pThis->_etraps.resize( ci->_etraps );
 
-				for ( int j = ci->_etraps; j--; )
+				for ( int j = 0; j < ci->_etraps; j++ )
 				{
 					SQExceptionTrap &et = pThis->_etraps[j];
-					et._extarget = pBuffer->GetInt();
-					et._stackbase = pBuffer->GetInt();
 					et._stacksize = pBuffer->GetInt();
-					et._ip = ci->_ip;
+					et._stackbase = pBuffer->GetInt();
+					et._ip = ci->_ip + pBuffer->GetInt();
+					et._extarget = pBuffer->GetInt();
 				}
 			}
 
@@ -4410,41 +4438,49 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 
 		pThis->_state = (SQGenerator::SQGeneratorState)state;
 
-		SQVM::CallInfo &ci = pThis->_ci;
+		SQVM::CallInfo *ci = &pThis->_ci;
 
-		int offset = pBuffer->GetInt();
-		int funcsize = sizeof(SQInstruction) * closure._unVal.pClosure->_function->_ninstructions;
-		int start = (int)(closure._unVal.pClosure->_function->_instructions);
-		int pos = start + offset;
-		ci._ip = (SQInstruction*)pos;
-
-		Assert( pos < (start + funcsize) );
-
-		// don't read past boundary
-		if ( pos >= (start + funcsize) )
+		if ( pBuffer->GetChar() )
 		{
-			ci._ip = (SQInstruction*)start;
+			SQObject generator;
+			ReadObject( generator, pBuffer, readState );
+			Assert( generator._type == OT_GENERATOR && generator._unVal.pGenerator );
+			ci->_generator = generator._unVal.pGenerator;
+		}
+		else
+		{
+			ci->_generator = NULL;
 		}
 
-		ci._literals = closure._unVal.pClosure->_function->_literals;
-		ci._closure = closure;
-		ci._generator = NULL;
-		ci._etraps = pBuffer->GetInt();
-		ci._prevstkbase = pBuffer->GetInt();
-		ci._prevtop = pBuffer->GetInt();
-		ci._target = pBuffer->GetInt();
-		ci._ncalls = pBuffer->GetInt();
-		ci._root = pBuffer->GetChar();
+		int offset = pBuffer->GetInt();
+		SQInstruction *start = closure._unVal.pClosure->_function->_instructions;
+		SQInstruction *end = start + closure._unVal.pClosure->_function->_ninstructions;
+		SQInstruction *pos = start + offset;
 
-		pThis->_etraps.resize( ci._etraps );
+		Assert( pos >= start && pos < end );
 
-		for ( int j = ci._etraps; j--; )
+		if ( pos < start || pos >= end )
+			pos = start;
+
+		ci->_ip = pos;
+		ci->_literals = closure._unVal.pClosure->_function->_literals;
+		ci->_closure = closure;
+		ci->_etraps = pBuffer->GetInt();
+		ci->_prevstkbase = pBuffer->GetInt();
+		ci->_prevtop = pBuffer->GetInt();
+		ci->_target = pBuffer->GetInt();
+		ci->_ncalls = pBuffer->GetInt();
+		ci->_root = pBuffer->GetChar();
+
+		pThis->_etraps.resize( ci->_etraps );
+
+		for ( int j = 0; j < ci->_etraps; j++ )
 		{
 			SQExceptionTrap &et = pThis->_etraps[j];
-			et._extarget = pBuffer->GetInt();
-			et._stackbase = pBuffer->GetInt();
 			et._stacksize = pBuffer->GetInt();
-			et._ip = ci._ip;
+			et._stackbase = pBuffer->GetInt();
+			et._ip = ci->_ip + pBuffer->GetInt();
+			et._extarget = pBuffer->GetInt();
 		}
 
 		int stacksize = pBuffer->GetInt();
