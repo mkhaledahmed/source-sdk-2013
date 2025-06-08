@@ -3835,26 +3835,10 @@ void SquirrelVM::ReadObject( SQObjectPtr &pObj, CUtlBuffer* pBuffer, ReadStateMa
 	case OT_STRING:
 	{
 		int len = pBuffer->GetInt();
-		char *psz;
-
-		if ( len < 1024 )
-		{
-			psz = (char*)stackalloc( len );
-		}
-		else
-		{
-			psz = (char*)malloc( len );
-		}
-
-		pBuffer->Get( psz, len );
-
+		char *psz = (char*)pBuffer->PeekGet( 0 );
+		pBuffer->SeekGet( CUtlBuffer::SEEK_CURRENT, len );
+		Assert( pBuffer->IsValid() );
 		obj._unVal.pString = SQString::Create( _ss(vm_), psz, len );
-
-		if ( len >= 1024 )
-		{
-			free( psz );
-		}
-
 		break;
 	}
 	case OT_TABLE:
