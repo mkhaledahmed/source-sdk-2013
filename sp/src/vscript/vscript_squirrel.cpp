@@ -1427,18 +1427,30 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	if (pFunc->m_flags & SF_MEMBER_FUNC)
 	{
-		SQUserPointer self;
-		if (SQ_FAILED(sq_getinstanceup(vm, 1, &self, 0)))
+		ClassInstanceData* classInstanceData;
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
 		{
-			return sq_throwerror(vm, "Expected class userpointer");
+			return SQ_ERROR;
 		}
 
-		if (!self)
+		if (!classInstanceData)
 		{
 			return sq_throwerror(vm, "Accessed null instance");
 		}
 
-		instance = ((ClassInstanceData*)self)->instance;
+		// check that the type of self, or any basetype, matches the function description
+		ScriptClassDesc_t *selfType = classInstanceData->desc;
+		while (selfType != pFunc->m_desc.m_pScriptClassDesc)
+		{
+			if (!selfType)
+			{
+				return sq_throwerror(vm, "Mismatched instance type");
+			}
+			selfType = selfType->m_pBaseDesc;
+			Assert(selfType != classInstanceData->desc); // there should be no infinite loop
+		}
+
+		instance = classInstanceData->instance;
 	}
 
 	ScriptVariant_t script_retval;
