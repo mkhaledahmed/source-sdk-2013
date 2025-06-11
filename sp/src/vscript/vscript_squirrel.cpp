@@ -1324,7 +1324,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	SQInteger top = sq_gettop(vm);
 
 	SQUserPointer userptr = nullptr;
-	sq_getuserpointer(vm, top, &userptr);
+	if (SQ_FAILED(sq_getuserpointer(vm, top, &userptr)))
+	{
+		return sq_throwerror(vm, "Expected userpointer");
+	}
 
 	Assert(userptr);
 
@@ -1425,7 +1428,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	if (pFunc->m_flags & SF_MEMBER_FUNC)
 	{
 		SQUserPointer self;
-		sq_getinstanceup(vm, 1, &self, nullptr);
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, &self, 0)))
+		{
+			return sq_throwerror(vm, "Expected class userpointer");
+		}
 
 		if (!self)
 		{
