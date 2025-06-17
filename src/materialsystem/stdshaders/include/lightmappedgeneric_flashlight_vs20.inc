@@ -1,11 +1,27 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// $BASETEXTURETRANSFORM2 && !$WORLDVERTEXTRANSITION
+// $BASETEXTURETRANSFORM2 && $SEAMLESS
+// $BASETEXTURETRANSFORM2 && $PHONG
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+
+#pragma once
 #include "shaderlib/cshader.h"
 class lightmappedgeneric_flashlight_vs20_Static_Index
 {
-private:
-	int m_nNORMALMAP;
+	unsigned int m_nNORMALMAP : 2;
+	unsigned int m_nWORLDVERTEXTRANSITION : 2;
+	unsigned int m_nSEAMLESS : 2;
+	unsigned int m_nDETAIL : 2;
+	unsigned int m_nPHONG : 2;
+	unsigned int m_nBASETEXTURETRANSFORM2 : 2;
 #ifdef _DEBUG
-	bool m_bNORMALMAP;
-#endif
+	bool m_bNORMALMAP : 1;
+	bool m_bWORLDVERTEXTRANSITION : 1;
+	bool m_bSEAMLESS : 1;
+	bool m_bDETAIL : 1;
+	bool m_bPHONG : 1;
+	bool m_bBASETEXTURETRANSFORM2 : 1;
+#endif	// _DEBUG
 public:
 	void SetNORMALMAP( int i )
 	{
@@ -13,117 +29,91 @@ public:
 		m_nNORMALMAP = i;
 #ifdef _DEBUG
 		m_bNORMALMAP = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetNORMALMAP( bool i )
-	{
-		m_nNORMALMAP = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bNORMALMAP = true;
-#endif
-	}
-private:
-	int m_nWORLDVERTEXTRANSITION;
-#ifdef _DEBUG
-	bool m_bWORLDVERTEXTRANSITION;
-#endif
-public:
+
 	void SetWORLDVERTEXTRANSITION( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nWORLDVERTEXTRANSITION = i;
 #ifdef _DEBUG
 		m_bWORLDVERTEXTRANSITION = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetWORLDVERTEXTRANSITION( bool i )
-	{
-		m_nWORLDVERTEXTRANSITION = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bWORLDVERTEXTRANSITION = true;
-#endif
-	}
-private:
-	int m_nSEAMLESS;
-#ifdef _DEBUG
-	bool m_bSEAMLESS;
-#endif
-public:
+
 	void SetSEAMLESS( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nSEAMLESS = i;
 #ifdef _DEBUG
 		m_bSEAMLESS = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetSEAMLESS( bool i )
-	{
-		m_nSEAMLESS = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bSEAMLESS = true;
-#endif
-	}
-private:
-	int m_nDETAIL;
-#ifdef _DEBUG
-	bool m_bDETAIL;
-#endif
-public:
+
 	void SetDETAIL( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nDETAIL = i;
 #ifdef _DEBUG
 		m_bDETAIL = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetDETAIL( bool i )
+
+	void SetPHONG( int i )
 	{
-		m_nDETAIL = i ? 1 : 0;
+		Assert( i >= 0 && i <= 1 );
+		m_nPHONG = i;
 #ifdef _DEBUG
-		m_bDETAIL = true;
-#endif
+		m_bPHONG = true;
+#endif	// _DEBUG
 	}
-public:
-	lightmappedgeneric_flashlight_vs20_Static_Index( )
+
+	void SetBASETEXTURETRANSFORM2( int i )
 	{
+		Assert( i >= 0 && i <= 1 );
+		m_nBASETEXTURETRANSFORM2 = i;
+#ifdef _DEBUG
+		m_bBASETEXTURETRANSFORM2 = true;
+#endif	// _DEBUG
+	}
+
+	lightmappedgeneric_flashlight_vs20_Static_Index(  )
+	{
+		m_nNORMALMAP = 0;
+		m_nWORLDVERTEXTRANSITION = 0;
+		m_nSEAMLESS = 0;
+		m_nDETAIL = 0;
+		m_nPHONG = 0;
+		m_nBASETEXTURETRANSFORM2 = 0;
 #ifdef _DEBUG
 		m_bNORMALMAP = false;
-#endif // _DEBUG
-		m_nNORMALMAP = 0;
-#ifdef _DEBUG
 		m_bWORLDVERTEXTRANSITION = false;
-#endif // _DEBUG
-		m_nWORLDVERTEXTRANSITION = 0;
-#ifdef _DEBUG
 		m_bSEAMLESS = false;
-#endif // _DEBUG
-		m_nSEAMLESS = 0;
-#ifdef _DEBUG
 		m_bDETAIL = false;
-#endif // _DEBUG
-		m_nDETAIL = 0;
+		m_bPHONG = false;
+		m_bBASETEXTURETRANSFORM2 = false;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bNORMALMAP && m_bWORLDVERTEXTRANSITION && m_bSEAMLESS && m_bDETAIL;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
-		return ( 2 * m_nNORMALMAP ) + ( 4 * m_nWORLDVERTEXTRANSITION ) + ( 8 * m_nSEAMLESS ) + ( 16 * m_nDETAIL ) + 0;
+		Assert( m_bNORMALMAP && m_bWORLDVERTEXTRANSITION && m_bSEAMLESS && m_bDETAIL && m_bPHONG && m_bBASETEXTURETRANSFORM2 );
+		AssertMsg( !( m_nBASETEXTURETRANSFORM2 && !m_nWORLDVERTEXTRANSITION ), "Invalid combo combination ( BASETEXTURETRANSFORM2 && !WORLDVERTEXTRANSITION )" );
+		AssertMsg( !( m_nBASETEXTURETRANSFORM2 && m_nSEAMLESS ), "Invalid combo combination ( BASETEXTURETRANSFORM2 && SEAMLESS )" );
+		AssertMsg( !( m_nBASETEXTURETRANSFORM2 && m_nPHONG ), "Invalid combo combination ( BASETEXTURETRANSFORM2 && PHONG )" );
+		return ( 2 * m_nNORMALMAP ) + ( 4 * m_nWORLDVERTEXTRANSITION ) + ( 8 * m_nSEAMLESS ) + ( 16 * m_nDETAIL ) + ( 32 * m_nPHONG ) + ( 64 * m_nBASETEXTURETRANSFORM2 ) + 0;
 	}
 };
-#define shaderStaticTest_lightmappedgeneric_flashlight_vs20 vsh_forgot_to_set_static_NORMALMAP + vsh_forgot_to_set_static_WORLDVERTEXTRANSITION + vsh_forgot_to_set_static_SEAMLESS + vsh_forgot_to_set_static_DETAIL + 0
+
+#define shaderStaticTest_lightmappedgeneric_flashlight_vs20 vsh_forgot_to_set_static_NORMALMAP + vsh_forgot_to_set_static_WORLDVERTEXTRANSITION + vsh_forgot_to_set_static_SEAMLESS + vsh_forgot_to_set_static_DETAIL + vsh_forgot_to_set_static_PHONG + vsh_forgot_to_set_static_BASETEXTURETRANSFORM2
+
+
 class lightmappedgeneric_flashlight_vs20_Dynamic_Index
 {
-private:
-	int m_nDOWATERFOG;
+	unsigned int m_nDOWATERFOG : 2;
 #ifdef _DEBUG
-	bool m_bDOWATERFOG;
-#endif
+	bool m_bDOWATERFOG : 1;
+#endif	// _DEBUG
 public:
 	void SetDOWATERFOG( int i )
 	{
@@ -131,32 +121,23 @@ public:
 		m_nDOWATERFOG = i;
 #ifdef _DEBUG
 		m_bDOWATERFOG = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetDOWATERFOG( bool i )
+
+	lightmappedgeneric_flashlight_vs20_Dynamic_Index(  )
 	{
-		m_nDOWATERFOG = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bDOWATERFOG = true;
-#endif
-	}
-public:
-	lightmappedgeneric_flashlight_vs20_Dynamic_Index()
-	{
+		m_nDOWATERFOG = 0;
 #ifdef _DEBUG
 		m_bDOWATERFOG = false;
-#endif // _DEBUG
-		m_nDOWATERFOG = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllDynamicVarsDefined = m_bDOWATERFOG;
-		Assert( bAllDynamicVarsDefined );
-#endif // _DEBUG
+		Assert( m_bDOWATERFOG );
 		return ( 1 * m_nDOWATERFOG ) + 0;
 	}
 };
-#define shaderDynamicTest_lightmappedgeneric_flashlight_vs20 vsh_forgot_to_set_dynamic_DOWATERFOG + 0
+
+#define shaderDynamicTest_lightmappedgeneric_flashlight_vs20 vsh_forgot_to_set_dynamic_DOWATERFOG
+

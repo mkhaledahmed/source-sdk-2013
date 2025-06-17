@@ -37,6 +37,10 @@ BEGIN_VS_SHADER( Core_DX90,
 		SHADER_PARAM( CORECOLORTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "" );
 		SHADER_PARAM( CORECOLORTEXTUREFRAME, SHADER_PARAM_TYPE_INTEGER, "", "" );
 		SHADER_PARAM( FLOWMAPTEXCOORDOFFSET, SHADER_PARAM_TYPE_FLOAT, "0.0", "" );
+#ifdef MAPBASE
+		SHADER_PARAM( SPHERECENTER, SHADER_PARAM_TYPE_VEC3, "2688.0, 12139.0, 5170.0", "The sphere's worldspace center (was previously hardcoded)" );
+		SHADER_PARAM( SPHERERADIUS, SHADER_PARAM_TYPE_FLOAT, "215.0", "The sphere's worldspace radius (was previously hardcoded)" );
+#endif
 	END_SHADER_PARAMS
 	SHADER_INIT_PARAMS()
 	{
@@ -285,6 +289,11 @@ BEGIN_VS_SHADER( Core_DX90,
 
 				SetPixelShaderConstant( 9, FLOWMAPTEXCOORDOFFSET );
 			}
+
+#ifdef MAPBASE
+			SetPixelShaderConstant( 12, SPHERECENTER );
+			SetPixelShaderConstant( 15, SPHERERADIUS );
+#endif
 		}
 		Draw();
 	}

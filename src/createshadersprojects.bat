@@ -1,1 +1,1 @@
-devtools\bin\vpc.exe /hl2mp /tf +shaders /mksln shaders.sln
+devtools\bin\vpc.exe /hl2mp /tf /define:SOURCESDK +shaders /mksln shaders.sln

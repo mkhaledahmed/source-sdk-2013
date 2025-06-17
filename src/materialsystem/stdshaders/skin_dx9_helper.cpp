@@ -115,6 +115,10 @@ void InitParamsSkin_DX9( CBaseVSShader *pShader, IMaterialVar** params, const ch
 	{
 		params[info.m_nEnvmapFresnel]->SetFloatValue( 0 );
 	}
+
+#ifdef MAPBASE
+	InitIntParam( info.m_nPhongDisableHalfLambert, params, 0 );
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -207,6 +211,19 @@ void InitSkin_DX9( CBaseVSShader *pShader, IMaterialVar** params, VertexLitGener
 		pShader->LoadCubeMap( info.m_nEnvmap, g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0  );
 	}
 
+#ifdef MAPBASE
+	// This is crashing for currently unknown reasons.
+	// As a result, $envmapmask support is not yet functional.
+	/*
+	if ( info.m_nEnvmapMask != -1 && params[info.m_nEnvmapMask]->IsDefined() )
+	{
+		pShader->LoadTexture( info.m_nEnvmapMask );
+
+		CLEAR_FLAGS( MATERIAL_VAR_BASEALPHAENVMAPMASK );
+	}
+	*/
+#endif
+
 	if ( bHasSelfIllumMask )
 	{
 		pShader->LoadTexture( info.m_nSelfIllumMask );
@@ -254,6 +271,10 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 	bool bHasPhongWarp = (info.m_nPhongWarpTexture != -1) && params[info.m_nPhongWarpTexture]->IsTexture();
 	bool bHasNormalMapAlphaEnvmapMask = IS_FLAG_SET( MATERIAL_VAR_NORMALMAPALPHAENVMAPMASK );
 
+#ifdef MAPBASE
+	bool bHasEnvmapMask = (!bHasFlashlight || IsX360()) && info.m_nEnvmapMask != -1 && params[info.m_nEnvmapMask]->IsTexture();
+#endif
+
 #if !defined( _X360 )
 	bool bIsDecal = IS_FLAG_SET( MATERIAL_VAR_DECAL );
 #endif
@@ -269,6 +290,15 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 	bool bBlendTintByBaseAlpha = IsBoolSet( info.m_nBlendTintByBaseAlpha, params ) && !bHasSelfIllum;	// Pixel shader can't do both BLENDTINTBYBASEALPHA and SELFILLUM, so let selfillum win
 
 	float flTintReplacementAmount = GetFloatParam( info.m_nTintReplacesBaseColor, params );
+
+#ifdef MAPBASE
+	// This option was ported from Alien Swarm for Source 2013's "skin shader" implementation.
+	// Original comment from Alien Swarm SDK:
+	//   "This is to allow phong materials to disable half lambert. Half lambert has always been forced on in phong,
+	//   so the only safe way to allow artists to disable half lambert is to create this param that disables the
+	//   default behavior of forcing half lambert on."
+	bool bPhongHalfLambert = IS_PARAM_DEFINED( info.m_nPhongDisableHalfLambert ) ? (params[info.m_nPhongDisableHalfLambert]->GetIntValue() == 0) : true;
+#endif
 
 	float flPhongExponentFactor =  ( info.m_nPhongExponentFactor != -1 ) ? GetFloatParam( info.m_nPhongExponentFactor, params ) : 0.0f;
 	const bool bHasPhongExponentFactor = flPhongExponentFactor != 0.0f;
@@ -421,6 +451,13 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 			pShaderShadow->EnableTexture( SHADER_SAMPLER14, true );
 		}
 
+#ifdef MAPBASE
+		if ( bHasEnvmapMask )
+		{
+			pShaderShadow->EnableTexture( SHADER_SAMPLER15, true );
+		}
+#endif
+
 		if( bHasVertexColor || bHasVertexAlpha )
 		{
 			flags |= VERTEX_COLOR;
@@ -447,7 +484,7 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 
 
 #ifndef _X360
-		if ( !g_pHardwareConfig->HasFastVertexTextures() )
+		if ( !g_pHardwareConfig->SupportsShaderModel_3_0() )
 #endif
 		{
 			bool bUseStaticControlFlow = g_pHardwareConfig->SupportsStaticControlFlow();
@@ -472,13 +509,20 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 			SET_STATIC_PIXEL_SHADER_COMBO( CONVERT_TO_SRGB, 0 );
 			SET_STATIC_PIXEL_SHADER_COMBO( FASTPATH_NOBUMP, pContextData->m_bFastPath );
 			SET_STATIC_PIXEL_SHADER_COMBO( BLENDTINTBYBASEALPHA, bBlendTintByBaseAlpha );
+#ifdef MAPBASE
+			SET_STATIC_PIXEL_SHADER_COMBO( PHONG_HALFLAMBERT, bPhongHalfLambert );
+			SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPMASK, bHasEnvmapMask );
+#endif
 			SET_STATIC_PIXEL_SHADER( skin_ps20b );
 		}
 #ifndef _X360
 		else
 		{
+			const bool bFastVertexTextures = g_pHardwareConfig->HasFastVertexTextures();
+
 			// The vertex shader uses the vertex id stream
-			SET_FLAGS2( MATERIAL_VAR2_USES_VERTEXID );
+			if ( bFastVertexTextures )
+				SET_FLAGS2( MATERIAL_VAR2_USES_VERTEXID );
 
 			DECLARE_STATIC_VERTEX_SHADER( skin_vs30 );
 			SET_STATIC_VERTEX_SHADER_COMBO( DECAL, bIsDecal );
@@ -499,6 +543,10 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 			SET_STATIC_PIXEL_SHADER_COMBO( CONVERT_TO_SRGB, 0 );
 			SET_STATIC_PIXEL_SHADER_COMBO( FASTPATH_NOBUMP, pContextData->m_bFastPath );
 			SET_STATIC_PIXEL_SHADER_COMBO( BLENDTINTBYBASEALPHA, bBlendTintByBaseAlpha );
+#ifdef MAPBASE
+			SET_STATIC_PIXEL_SHADER_COMBO( PHONG_HALFLAMBERT, bPhongHalfLambert );
+			SET_STATIC_PIXEL_SHADER_COMBO( ENVMAPMASK, bHasEnvmapMask );
+#endif
 			SET_STATIC_PIXEL_SHADER( skin_ps30 );
 		}
 #endif
@@ -596,6 +644,13 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 				pShaderAPI->BindStandardTexture( SHADER_SAMPLER12, TEXTURE_NORMALMAP_FLAT );
 			}
 		}
+
+#ifdef MAPBASE
+		if ( bHasEnvmapMask )
+		{
+			pContextData->m_SemiStaticCmdsOut.BindTexture( pShader, SHADER_SAMPLER15, info.m_nEnvmapMask, info.m_nEnvmapMaskFrame );
+		}
+#endif
 
 		if ( hasDetailTexture )
 		{
@@ -711,10 +766,12 @@ void DrawSkin_DX9_Internal( CBaseVSShader *pShader, IMaterialVar** params, IShad
 
 		pShader->SetVertexShaderTextureTransform( VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.m_nBaseTextureTransform );
 
+#ifndef MAPBASE // See below
 		if( bHasBump )
 		{
 			pShader->SetVertexShaderTextureTransform( VERTEX_SHADER_SHADER_SPECIFIC_CONST_2, info.m_nBumpTransform );
 		}
+#endif
 
 		if ( hasDetailTexture )
 		{

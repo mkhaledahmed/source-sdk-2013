@@ -193,7 +193,7 @@ float4 DecompressNormal( sampler NormalSampler, float2 tc, int nDecompressionMod
 HALF3 NormalizeWithCubemap( sampler normalizeSampler, HALF3 input )
 {
 //	return texCUBE( normalizeSampler, input ) * 2.0f - 1.0f;
-	return texCUBE( normalizeSampler, input );
+	return texCUBE( normalizeSampler, input ).xyz;
 }
 
 /*
@@ -210,8 +210,17 @@ HALF4 EnvReflect( sampler envmapSampler,
 }
 */
 
+// Vectorized smoothstep for doing three smoothsteps at once.  Used by uberlight
+float3 smoothstep3( float3 edge0, float3 edge1, float3 OneOverWidth, float3 x )
+{
+	x = saturate((x - edge0) * OneOverWidth);	// Scale, bias and saturate x to the range of zero to one
+	return x*x*(3-2*x);							// Evaluate polynomial
+}
+
 float CalcWaterFogAlpha( const float flWaterZ, const float flEyePosZ, const float flWorldPosZ, const float flProjPosZ, const float flFogOORange )
 {
+#if 0
+	// This version is what you use if you want a line-integral throught he water for water fog.
 //	float flDepthFromWater = flWaterZ - flWorldPosZ + 2.0f; // hackity hack . .this is for the DF_FUDGE_UP in view_scene.cpp
 	float flDepthFromWater = flWaterZ - flWorldPosZ;
 
@@ -227,6 +236,13 @@ float CalcWaterFogAlpha( const float flWaterZ, const float flEyePosZ, const floa
 
 	// $tmp.w is now the distance that we see through water.
 	return saturate(f * flProjPosZ * flFogOORange);
+#else
+	// This version is simply using the depth of the water to determine fog factor,
+	// which is cheaper than doing the line integral and also fixes some problems with having 
+	// a hard line on the shore when the water surface is viewed tangentially.
+	// hackity hack . .the 2.0 is for the DF_FUDGE_UP in view_scene.cpp
+	return saturate( ( flWaterZ - flWorldPosZ - 2.0f ) * flFogOORange );
+#endif
 }
 
 float CalcRangeFog( const float flProjPosZ, const float flFogStartOverRange, const float flFogMaxDensity, const float flFogOORange )
@@ -283,23 +299,25 @@ float CalcPixelFogFactor( int iPIXELFOGTYPE, const float4 fogParams, const float
 
 float3 BlendPixelFog( const float3 vShaderColor, float pixelFogFactor, const float3 vFogColor, const int iPIXELFOGTYPE )
 {
+	float3 flRet = 0;
 	if( iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE || iPIXELFOGTYPE == PIXEL_FOG_TYPE_RANGE_RADIAL ) //either range fog or no fog depending on fog parameters and whether this is ps20 or ps2b
 	{
 #	if !(defined(SHADER_MODEL_PS_1_1) || defined(SHADER_MODEL_PS_1_4) || defined(SHADER_MODEL_PS_2_0)) //Minimum requirement of ps2b
 		pixelFogFactor = saturate( pixelFogFactor );
-		return lerp( vShaderColor.rgb, vFogColor.rgb, pixelFogFactor * pixelFogFactor ); //squaring the factor will get the middle range mixing closer to hardware fog
+		flRet = lerp( vShaderColor.rgb, vFogColor.rgb, pixelFogFactor * pixelFogFactor ); //squaring the factor will get the middle range mixing closer to hardware fog
 #	else
-		return vShaderColor;
+		flRet = vShaderColor;
 #	endif
 	}
 	else if( iPIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT )
 	{
-		return lerp( vShaderColor.rgb, vFogColor.rgb, saturate( pixelFogFactor ) );
+		flRet = lerp( vShaderColor.rgb, vFogColor.rgb, saturate( pixelFogFactor ) );
 	}
 	else if( iPIXELFOGTYPE == PIXEL_FOG_TYPE_NONE )
 	{
-		return vShaderColor;
+		flRet = vShaderColor;
 	}
+	return flRet;
 }
 
 

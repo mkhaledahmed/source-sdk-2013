@@ -4,7 +4,7 @@
 //
 //=============================================================================
 
-// STATIC: "CONVERT_TO_SRGB"		"0..1"	[ps20b][= g_pHardwareConfig->NeedsShaderSRGBConversion()] [PC]
+// STATIC: "CONVERT_TO_SRGB"		"0..0"	[ps20b][= g_pHardwareConfig->NeedsShaderSRGBConversion()] [PC] // TEMPTEMP: New shader compiler cannot currently compile with CONVERT_TO_SRGB
 // STATIC: "CONVERT_TO_SRGB"		"0..0"	[= 0] [XBOX]
 // STATIC: "CUBEMAP"				"0..1"
 // STATIC: "FLOWMAP"				"0..1"
@@ -44,6 +44,10 @@ const float g_CoreColorTexCoordOffset : register( c9 );
 
 const float3 g_EyePos			: register( c8 );
 const float4 g_FogParams		: register( c11 );
+
+
+const float3 g_SphereCenter				: register( c12 );
+const float3 g_SphereRadius				: register( c15 );
 
 float LengthThroughSphere( float3 vecRayOrigin, float3 vecRayDelta, 
 						  float3 vecSphereCenter, float flRadius, out float alpha )
@@ -125,10 +129,12 @@ float4 main( PS_INPUT i ) : COLOR
 	HALF blend = 1.0f;
 
 #if FLOWMAP
-	// hack
-	float3 g_SphereCenter = { 2688.0f, 12139.0f, 5170.0f };
-	float g_SphereDiameter = 430.0f;
-	float g_SphereRadius = g_SphereDiameter * 0.5f;
+	// Mapbase tries to un-hack some of this code
+	//float3 g_SphereCenter = { 2688.0f, 12139.0f, 5170.0f };
+	//float g_SphereDiameter = 430.0f;
+	//float g_SphereRadius = g_SphereDiameter * 0.5f;
+	
+	float g_SphereDiameter = g_SphereRadius * 2.0f;
 
 	float3 tmp = i.worldPos_projPosZ.xyz - g_SphereCenter;
 	float hackRadius = 1.05f * sqrt( dot( tmp, tmp ) );

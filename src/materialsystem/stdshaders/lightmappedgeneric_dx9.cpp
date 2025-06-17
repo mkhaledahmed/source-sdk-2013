@@ -49,6 +49,10 @@ BEGIN_VS_SHADER( LightmappedGeneric,
 		SHADER_PARAM( BUMPMASK, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader3_normal", "bump map" )
 		SHADER_PARAM( BASETEXTURE2, SHADER_PARAM_TYPE_TEXTURE, "shadertest/lightmappedtexture", "Blended texture" )
 		SHADER_PARAM( FRAME2, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $basetexture2" )
+#ifdef MAPBASE
+		// This needs to be a SHADER_PARAM_TYPE_STRING so it isn't considered "defined" by default.
+		SHADER_PARAM( BASETEXTURETRANSFORM2, SHADER_PARAM_TYPE_STRING, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$basetexture2 texcoord transform" )
+#endif
 		SHADER_PARAM( BASETEXTURENOENVMAP, SHADER_PARAM_TYPE_BOOL, "0", "" )
 		SHADER_PARAM( BASETEXTURE2NOENVMAP, SHADER_PARAM_TYPE_BOOL, "0", "" )
 		SHADER_PARAM( DETAIL_ALPHA_MASK_BASE_TEXTURE, SHADER_PARAM_TYPE_BOOL, "0", 
@@ -73,6 +77,20 @@ BEGIN_VS_SHADER( LightmappedGeneric,
 		SHADER_PARAM( OUTLINESTART1, SHADER_PARAM_TYPE_FLOAT, "0.0", "inner start value for outline")
 		SHADER_PARAM( OUTLINEEND0, SHADER_PARAM_TYPE_FLOAT, "0.0", "inner end value for outline")
 		SHADER_PARAM( OUTLINEEND1, SHADER_PARAM_TYPE_FLOAT, "0.0", "outer end value for outline")
+
+		SHADER_PARAM( PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting" )
+		SHADER_PARAM( PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)" )
+		SHADER_PARAM( PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0  0.5  1]", "Parameters for remapping fresnel output" )
+		SHADER_PARAM( PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights" )
+
+#ifdef PARALLAX_CORRECTED_CUBEMAPS
+		// Parallax cubemaps
+		SHADER_PARAM( ENVMAPPARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Enables parallax correction code for env_cubemaps" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB1, SHADER_PARAM_TYPE_VEC4, "[1 0 0 0]", "The first line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB2, SHADER_PARAM_TYPE_VEC4, "[0 1 0 0]", "The second line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB3, SHADER_PARAM_TYPE_VEC4, "[0 0 1 0]", "The third line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPORIGIN, SHADER_PARAM_TYPE_VEC3, "[0 0 0]", "The world space position of the env_cubemap being corrected" )
+#endif
 END_SHADER_PARAMS
 
 	void SetupVars( LightmappedGeneric_DX9_Vars_t& info )
@@ -111,6 +129,9 @@ END_SHADER_PARAMS
 		info.m_nBumpMask = BUMPMASK;
 		info.m_nBaseTexture2 = BASETEXTURE2;
 		info.m_nBaseTexture2Frame = FRAME2;
+#ifdef MAPBASE
+		info.m_nBaseTexture2Transform = BASETEXTURETRANSFORM2;
+#endif
 		info.m_nBaseTextureNoEnvmap = BASETEXTURENOENVMAP;
 		info.m_nBaseTexture2NoEnvmap = BASETEXTURE2NOENVMAP;
 		info.m_nDetailAlphaMaskBaseTexture = DETAIL_ALPHA_MASK_BASE_TEXTURE;
@@ -134,6 +155,20 @@ END_SHADER_PARAMS
 		info.m_nOutlineStart1 = OUTLINESTART1;
 		info.m_nOutlineEnd0 = OUTLINEEND0;
 		info.m_nOutlineEnd1 = OUTLINEEND1;
+
+		info.m_nPhong = PHONG;
+		info.m_nPhongBoost = PHONGBOOST;
+		info.m_nPhongFresnelRanges = PHONGFRESNELRANGES;
+		info.m_nPhongExponent = PHONGEXPONENT;
+
+#ifdef PARALLAX_CORRECTED_CUBEMAPS
+		// Parallax cubemaps
+		info.m_nEnvmapParallax = ENVMAPPARALLAX;
+		info.m_nEnvmapParallaxObb1 = ENVMAPPARALLAXOBB1;
+		info.m_nEnvmapParallaxObb2 = ENVMAPPARALLAXOBB2;
+		info.m_nEnvmapParallaxObb3 = ENVMAPPARALLAXOBB3;
+		info.m_nEnvmapOrigin = ENVMAPORIGIN;
+#endif
 	}
 
 	SHADER_FALLBACK

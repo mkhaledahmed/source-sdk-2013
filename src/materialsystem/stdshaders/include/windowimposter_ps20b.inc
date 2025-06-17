@@ -18,8 +18,21 @@
 #include "shaderlib/cshader.h"
 class windowimposter_ps20b_Static_Index
 {
+	unsigned int m_nPARALLAXCORRECT : 2;
 	unsigned int m_nCONVERT_TO_SRGB : 2;
+#ifdef _DEBUG
+	bool m_bPARALLAXCORRECT : 1;
+#endif	// _DEBUG
 public:
+	void SetPARALLAXCORRECT( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nPARALLAXCORRECT = i;
+#ifdef _DEBUG
+		m_bPARALLAXCORRECT = true;
+#endif	// _DEBUG
+	}
+
 	void SetCONVERT_TO_SRGB( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
@@ -28,16 +41,21 @@ public:
 
 	windowimposter_ps20b_Static_Index(  )
 	{
+		m_nPARALLAXCORRECT = 0;
 		m_nCONVERT_TO_SRGB = g_pHardwareConfig->NeedsShaderSRGBConversion();
+#ifdef _DEBUG
+		m_bPARALLAXCORRECT = false;
+#endif	// _DEBUG
 	}
 
 	int GetIndex() const
 	{
-		return ( 3 * m_nCONVERT_TO_SRGB ) + 0;
+		Assert( m_bPARALLAXCORRECT );
+		return ( 3 * m_nPARALLAXCORRECT ) + ( 6 * m_nCONVERT_TO_SRGB ) + 0;
 	}
 };
 
-#define shaderStaticTest_windowimposter_ps20b 1
+#define shaderStaticTest_windowimposter_ps20b psh_forgot_to_set_static_PARALLAXCORRECT
 
 
 class windowimposter_ps20b_Dynamic_Index

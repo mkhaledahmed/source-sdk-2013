@@ -1,54 +1,63 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
+// defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
+// defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPTINT && $LIGHTING_PREVIEW && $FASTPATHENVMAPTINT
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPCONTRAST && $LIGHTING_PREVIEW && $FASTPATHENVMAPCONTRAST
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+// ($FLASHLIGHT || $FLASHLIGHTSHADOWS) && $LIGHTING_PREVIEW
+// defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
+// defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
+// defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPTINT && $LIGHTING_PREVIEW && $FASTPATHENVMAPTINT
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPCONTRAST && $LIGHTING_PREVIEW && $FASTPATHENVMAPCONTRAST
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+// ($FLASHLIGHT || $FLASHLIGHTSHADOWS) && $LIGHTING_PREVIEW
+
+#pragma once
 #include "shaderlib/cshader.h"
 class unlittwotexture_ps20b_Static_Index
 {
-private:
-	int m_nCONVERT_TO_SRGB;
+	unsigned int m_nTRANSLUCENT : 2;
 #ifdef _DEBUG
-	bool m_bCONVERT_TO_SRGB;
-#endif
+	bool m_bTRANSLUCENT : 1;
+#endif	// _DEBUG
 public:
-	void SetCONVERT_TO_SRGB( int i )
+	void SetTRANSLUCENT( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
-		m_nCONVERT_TO_SRGB = i;
+		m_nTRANSLUCENT = i;
 #ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
+		m_bTRANSLUCENT = true;
+#endif	// _DEBUG
 	}
-	void SetCONVERT_TO_SRGB( bool i )
+
+	unlittwotexture_ps20b_Static_Index(  )
 	{
-		m_nCONVERT_TO_SRGB = i ? 1 : 0;
+		m_nTRANSLUCENT = 0;
 #ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
+		m_bTRANSLUCENT = false;
+#endif	// _DEBUG
 	}
-public:
-	unlittwotexture_ps20b_Static_Index( )
+
+	int GetIndex() const
 	{
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif // _DEBUG
-		m_nCONVERT_TO_SRGB =  g_pHardwareConfig->NeedsShaderSRGBConversion();
-	}
-	int GetIndex()
-	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
-		return ( 12 * m_nCONVERT_TO_SRGB ) + 0;
+		Assert( m_bTRANSLUCENT );
+		return ( 4 * m_nTRANSLUCENT ) + 0;
 	}
 };
-#define shaderStaticTest_unlittwotexture_ps20b 0
+
+#define shaderStaticTest_unlittwotexture_ps20b psh_forgot_to_set_static_TRANSLUCENT
+
+
 class unlittwotexture_ps20b_Dynamic_Index
 {
-private:
-	int m_nPIXELFOGTYPE;
+	unsigned int m_nPIXELFOGTYPE : 2;
+	unsigned int m_nWRITE_DEPTH_TO_DESTALPHA : 2;
 #ifdef _DEBUG
-	bool m_bPIXELFOGTYPE;
-#endif
+	bool m_bPIXELFOGTYPE : 1;
+	bool m_bWRITE_DEPTH_TO_DESTALPHA : 1;
+#endif	// _DEBUG
 public:
 	void SetPIXELFOGTYPE( int i )
 	{
@@ -56,82 +65,34 @@ public:
 		m_nPIXELFOGTYPE = i;
 #ifdef _DEBUG
 		m_bPIXELFOGTYPE = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetPIXELFOGTYPE( bool i )
-	{
-		m_nPIXELFOGTYPE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bPIXELFOGTYPE = true;
-#endif
-	}
-private:
-	int m_nLIGHTING_PREVIEW;
-#ifdef _DEBUG
-	bool m_bLIGHTING_PREVIEW;
-#endif
-public:
-	void SetLIGHTING_PREVIEW( int i )
-	{
-		Assert( i >= 0 && i <= 2 );
-		m_nLIGHTING_PREVIEW = i;
-#ifdef _DEBUG
-		m_bLIGHTING_PREVIEW = true;
-#endif
-	}
-	void SetLIGHTING_PREVIEW( bool i )
-	{
-		m_nLIGHTING_PREVIEW = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bLIGHTING_PREVIEW = true;
-#endif
-	}
-private:
-	int m_nWRITE_DEPTH_TO_DESTALPHA;
-#ifdef _DEBUG
-	bool m_bWRITE_DEPTH_TO_DESTALPHA;
-#endif
-public:
+
 	void SetWRITE_DEPTH_TO_DESTALPHA( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nWRITE_DEPTH_TO_DESTALPHA = i;
 #ifdef _DEBUG
 		m_bWRITE_DEPTH_TO_DESTALPHA = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetWRITE_DEPTH_TO_DESTALPHA( bool i )
+
+	unlittwotexture_ps20b_Dynamic_Index(  )
 	{
-		m_nWRITE_DEPTH_TO_DESTALPHA = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bWRITE_DEPTH_TO_DESTALPHA = true;
-#endif
-	}
-public:
-	unlittwotexture_ps20b_Dynamic_Index()
-	{
+		m_nPIXELFOGTYPE = 0;
+		m_nWRITE_DEPTH_TO_DESTALPHA = 0;
 #ifdef _DEBUG
 		m_bPIXELFOGTYPE = false;
-#endif // _DEBUG
-		m_nPIXELFOGTYPE = 0;
-#ifdef _DEBUG
-		m_bLIGHTING_PREVIEW = false;
-#endif // _DEBUG
-		m_nLIGHTING_PREVIEW = 0;
-#ifdef _DEBUG
 		m_bWRITE_DEPTH_TO_DESTALPHA = false;
-#endif // _DEBUG
-		m_nWRITE_DEPTH_TO_DESTALPHA = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllDynamicVarsDefined = m_bPIXELFOGTYPE && m_bLIGHTING_PREVIEW && m_bWRITE_DEPTH_TO_DESTALPHA;
-		Assert( bAllDynamicVarsDefined );
-#endif // _DEBUG
-		return ( 1 * m_nPIXELFOGTYPE ) + ( 2 * m_nLIGHTING_PREVIEW ) + ( 6 * m_nWRITE_DEPTH_TO_DESTALPHA ) + 0;
+		Assert( m_bPIXELFOGTYPE && m_bWRITE_DEPTH_TO_DESTALPHA );
+		return ( 1 * m_nPIXELFOGTYPE ) + ( 2 * m_nWRITE_DEPTH_TO_DESTALPHA ) + 0;
 	}
 };
-#define shaderDynamicTest_unlittwotexture_ps20b psh_forgot_to_set_dynamic_PIXELFOGTYPE + psh_forgot_to_set_dynamic_LIGHTING_PREVIEW + psh_forgot_to_set_dynamic_WRITE_DEPTH_TO_DESTALPHA + 0
+
+#define shaderDynamicTest_unlittwotexture_ps20b psh_forgot_to_set_dynamic_PIXELFOGTYPE + psh_forgot_to_set_dynamic_WRITE_DEPTH_TO_DESTALPHA
+

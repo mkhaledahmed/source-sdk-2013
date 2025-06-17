@@ -40,6 +40,9 @@ BEGIN_VS_SHADER_FLAGS( DepthWrite, "Help for Depth Write", SHADER_NOT_EDITABLE )
 		SHADER_PARAM( TREESWAYSPEEDLERPSTART, SHADER_PARAM_TYPE_FLOAT, "3", "" );
 		SHADER_PARAM( TREESWAYSPEEDLERPEND, SHADER_PARAM_TYPE_FLOAT, "6", "" );
 		SHADER_PARAM( TREESWAYSTATIC, SHADER_PARAM_TYPE_BOOL, "0", "" );
+#ifdef MAPBASE
+		SHADER_PARAM( TREESWAYSTATICVALUES, SHADER_PARAM_TYPE_VEC2, "[0.5 0.5]", "" );
+#endif
 	END_SHADER_PARAMS
 
 	SHADER_INIT_PARAMS()
@@ -228,7 +231,20 @@ BEGIN_VS_SHADER_FLAGS( DepthWrite, "Help for Depth Write", SHADER_NOT_EDITABLE )
 
 				flParams[ 0 ] = pShaderAPI->CurrentTime();
 
+#ifdef MAPBASE
+				Vector windDir;
+				if (params[TREESWAYSTATIC]->GetIntValue() == 0)
+				{
+					windDir = pShaderAPI->GetVectorRenderingParameter( VECTOR_RENDERPARM_WIND_DIRECTION );
+				}
+				else
+				{
+					// Use a static value instead of the env_wind value.
+					params[TREESWAYSTATICVALUES]->GetVecValue( windDir.Base(), 2);
+				}
+#else
 				Vector windDir = IsBoolSet( TREESWAYSTATIC, params ) ? Vector( 0.5f, 0.5f, 0 ) : pShaderAPI->GetVectorRenderingParameter( VECTOR_RENDERPARM_WIND_DIRECTION );
+#endif
 
 				flParams[ 1 ] = windDir.x;
 				flParams[ 2 ] = windDir.y;

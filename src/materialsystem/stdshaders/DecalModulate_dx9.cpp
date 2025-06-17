@@ -9,12 +9,12 @@
 #include "BaseVSShader.h"
 #include "cpp_shader_constant_register_map.h"
 
-#include "VertexLit_and_unlit_Generic_vs20.inc"
+#include "decalmodulate_vs20.inc"
 #include "decalmodulate_ps20.inc"
 #include "decalmodulate_ps20b.inc"
 
 #ifndef _X360
-#include "vertexlit_and_unlit_generic_vs30.inc"
+#include "decalmodulate_vs30.inc"
 #include "decalmodulate_ps30.inc"
 #endif
 
@@ -25,10 +25,18 @@ DEFINE_FALLBACK_SHADER( DecalModulate, DecalModulate_DX9 )
 
 extern ConVar r_flashlight_version2;
 
+#ifdef MAPBASE
+ConVar mat_decalmodulate_flashdraw( "mat_decalmodulate_flashdraw", "0" );
+#endif
+
 BEGIN_VS_SHADER( DecalModulate_dx9, 
 			  "Help for DecalModulate_dx9" )
 			  
 	BEGIN_SHADER_PARAMS
+#ifdef MAPBASE
+		SHADER_PARAM( FOGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "0.4", "exponent to tweak fog fade" )
+		SHADER_PARAM( FOGSCALE, SHADER_PARAM_TYPE_FLOAT, "1.0", "scale to tweak fog fade" )
+#endif
 	END_SHADER_PARAMS
 	
 	SHADER_FALLBACK
@@ -40,6 +48,18 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 
 	SHADER_INIT_PARAMS()
 	{
+#ifdef MAPBASE
+		if( !params[ FOGEXPONENT ]->IsDefined() )
+		{
+			params[ FOGEXPONENT ]->SetFloatValue( 0.4f );
+		}
+
+		if( !params[ FOGSCALE ]->IsDefined() )
+		{
+			params[ FOGSCALE ]->SetFloatValue( 1.0f );
+		}
+#endif
+
 		SET_FLAGS( MATERIAL_VAR_NO_DEBUG_OVERRIDE );
 
 #ifndef _X360
@@ -59,6 +79,14 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 
 	SHADER_DRAW
 	{
+#ifdef MAPBASE
+		// It is now believed the decals not appearing is a sorting issue.
+		// The flashlight part is transparent and overlaid on top of the decal.
+		// When a fix is found, this flashlight code could be removed.
+		bool bHasFlashlight = UsingFlashlight( params );
+		if (bHasFlashlight && !mat_decalmodulate_flashdraw.GetBool())
+			return;
+#endif
 		SHADOW_STATE
 		{
 			pShaderShadow->EnableAlphaTest( true );
@@ -79,28 +107,47 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 			pShaderShadow->DisableFogGammaCorrection( true ); //fog should stay exactly middle grey
 			FogToGrey();
 
+#ifdef MAPBASE
+			int userDataSize = 0;
+			int nShadowFilterMode = 0;
+			if ( bHasFlashlight )
+			{
+				pShaderShadow->EnableTexture( SHADER_SAMPLER8, true );	// Depth texture
+				pShaderShadow->SetShadowDepthFiltering( SHADER_SAMPLER8 );
+				pShaderShadow->EnableTexture( SHADER_SAMPLER6, true );	// Noise map
+				pShaderShadow->EnableTexture( SHADER_SAMPLER7, true );	// Flashlight cookie
+				pShaderShadow->EnableSRGBRead( SHADER_SAMPLER7, true );
+				userDataSize = 4; // tangent S
+
+				if ( g_pHardwareConfig->SupportsPixelShaders_2_b() )
+				{
+					nShadowFilterMode = g_pHardwareConfig->GetShadowFilterMode();	// Based upon vendor and device dependent formats
+				}
+			}
+#endif
+
+			bool bHasVertexAlpha = IS_FLAG_SET( MATERIAL_VAR_VERTEXCOLOR ) && IS_FLAG_SET( MATERIAL_VAR_VERTEXALPHA );
+
 #ifndef _X360
 			if ( !g_pHardwareConfig->HasFastVertexTextures() )
 #endif
 			{
-				bool bUseStaticControlFlow = g_pHardwareConfig->SupportsStaticControlFlow();
-
-				DECLARE_STATIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs20 );
-				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( CUBEMAP,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( HALFLAMBERT,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( FLASHLIGHT,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEAMLESS_BASE,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEAMLESS_DETAIL,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEPARATE_DETAIL_UVS, false );
-				SET_STATIC_VERTEX_SHADER_COMBO( USE_STATIC_CONTROL_FLOW, bUseStaticControlFlow );
-				SET_STATIC_VERTEX_SHADER_COMBO( DONT_GAMMA_CONVERT_VERTEX_COLOR, 0 );
-				SET_STATIC_VERTEX_SHADER_COMBO( TREESWAY, 0 );
-				SET_STATIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs20 );
+				DECLARE_STATIC_VERTEX_SHADER( decalmodulate_vs20 );
+				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  bHasVertexAlpha );
+				SET_STATIC_VERTEX_SHADER_COMBO( LIGHTING_PREVIEW, false );
+#ifdef MAPBASE
+				SET_STATIC_VERTEX_SHADER_COMBO( FLASHLIGHT, bHasFlashlight );
+#endif
+				SET_STATIC_VERTEX_SHADER( decalmodulate_vs20 );
 
 				if( g_pHardwareConfig->SupportsPixelShaders_2_b() )
 				{
 					DECLARE_STATIC_PIXEL_SHADER( decalmodulate_ps20b );
+#ifdef MAPBASE
+					SET_STATIC_PIXEL_SHADER_COMBO( VERTEXALPHA,  bHasVertexAlpha );
+					SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHT, bHasFlashlight );
+					SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHTDEPTHFILTERMODE, nShadowFilterMode );
+#endif
 					SET_STATIC_PIXEL_SHADER( decalmodulate_ps20b );
 				}
 				else
@@ -112,33 +159,38 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 #ifndef _X360
 			else
 			{
-				DECLARE_STATIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs30 );
-				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( CUBEMAP,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( HALFLAMBERT,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( FLASHLIGHT,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEAMLESS_BASE,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEAMLESS_DETAIL,  false );
-				SET_STATIC_VERTEX_SHADER_COMBO( SEPARATE_DETAIL_UVS, false );
-				SET_STATIC_VERTEX_SHADER_COMBO( DECAL, true );
-				SET_STATIC_VERTEX_SHADER_COMBO( DONT_GAMMA_CONVERT_VERTEX_COLOR, 0 );
-				SET_STATIC_VERTEX_SHADER_COMBO( TREESWAY, 0 );
-				SET_STATIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs30 );
+				DECLARE_STATIC_VERTEX_SHADER( decalmodulate_vs30 );
+				SET_STATIC_VERTEX_SHADER_COMBO( VERTEXCOLOR,  bHasVertexAlpha );
+				SET_STATIC_VERTEX_SHADER_COMBO( LIGHTING_PREVIEW, false );
+#ifdef MAPBASE
+				SET_STATIC_VERTEX_SHADER_COMBO( FLASHLIGHT, bHasFlashlight );
+#endif
+				SET_STATIC_VERTEX_SHADER( decalmodulate_vs30 );
 
 				DECLARE_STATIC_PIXEL_SHADER( decalmodulate_ps30 );
+#ifdef MAPBASE
+				SET_STATIC_PIXEL_SHADER_COMBO( VERTEXALPHA,  bHasVertexAlpha );
+				SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHT, bHasFlashlight );
+				SET_STATIC_PIXEL_SHADER_COMBO( FLASHLIGHTDEPTHFILTERMODE, nShadowFilterMode );
+#endif
 				SET_STATIC_PIXEL_SHADER( decalmodulate_ps30 );
 			}
 #endif
 
 			// Set stream format (note that this shader supports compression)
 			unsigned int flags = VERTEX_POSITION | VERTEX_FORMAT_COMPRESSED;
+
+			if ( bHasVertexAlpha )
+			{
+				flags |= VERTEX_COLOR;
+			}
+
 #ifndef _X360
 			// The VS30 shader offsets decals along the normal (for morphed geom)
 			flags |= g_pHardwareConfig->HasFastVertexTextures() ? VERTEX_NORMAL : 0;
 #endif
 			int pTexCoordDim[3] = { 2, 0, 3 };
 			int nTexCoordCount = 1;
-			int userDataSize = 0;
 
 #ifndef _X360
 			if ( g_pHardwareConfig->HasFastVertexTextures() )
@@ -151,12 +203,50 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 		}
 		DYNAMIC_STATE
 		{
+#ifdef MAPBASE // This fixes blood decals, etc. not showing up under flashlights.
+			//bHasFlashlight = pShaderAPI->InFlashlightMode();
+			bool bFlashlightShadows = false;
+			if ( bHasFlashlight )
+			{
+				VMatrix worldToTexture;
+				ITexture *pFlashlightDepthTexture;
+				FlashlightState_t state = pShaderAPI->GetFlashlightStateEx( worldToTexture, &pFlashlightDepthTexture );
+				bFlashlightShadows = state.m_bEnableShadows && ( pFlashlightDepthTexture != NULL );
+
+				if( pFlashlightDepthTexture && g_pConfig->ShadowDepthTexture() && state.m_bEnableShadows )
+				{
+					BindTexture( SHADER_SAMPLER8, pFlashlightDepthTexture, 0 );
+					pShaderAPI->BindStandardTexture( SHADER_SAMPLER6, TEXTURE_SHADOW_NOISE_2D );
+				}
+
+				SetFlashLightColorFromState( state, pShaderAPI, 28 );
+
+				Assert( state.m_pSpotlightTexture && state.m_nSpotlightTextureFrame >= 0 );
+				BindTexture( SHADER_SAMPLER7, state.m_pSpotlightTexture, state.m_nSpotlightTextureFrame );
+
+				float atten_pos[8];
+				atten_pos[0] = state.m_fConstantAtten;			// Set the flashlight attenuation factors
+				atten_pos[1] = state.m_fLinearAtten;
+				atten_pos[2] = state.m_fQuadraticAtten;
+				atten_pos[3] = state.m_FarZ;
+				atten_pos[4] = state.m_vecLightOrigin[0];			// Set the flashlight origin
+				atten_pos[5] = state.m_vecLightOrigin[1];
+				atten_pos[6] = state.m_vecLightOrigin[2];
+				atten_pos[7] = 1.0f;
+				pShaderAPI->SetPixelShaderConstant( 22, atten_pos, 2 );
+
+				pShaderAPI->SetPixelShaderConstant( 24, worldToTexture.Base(), 4 );
+			}
+
+			//if ( pShaderAPI->InFlashlightMode() && mat_decalmodulate_noflashdraw.GetBool() )
+#else
 			if ( pShaderAPI->InFlashlightMode() && ( !IsX360() && ( r_flashlight_version2.GetInt() == 0 ) ) )
 			{
 				// Don't draw anything for the flashlight pass
 				Draw( false );
 				return;
 			}
+#endif
 
 			BindTexture( SHADER_SAMPLER0, BASETEXTURE, FRAME );
 
@@ -166,9 +256,6 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 			transformation[1].Init( 0.0f, 1.0f, 0.0f, 0.0f );
 		 	pShaderAPI->SetVertexShaderConstant( VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, transformation[0].Base(), 2 ); 
 
-			MaterialFogMode_t fogType = s_pShaderAPI->GetSceneFogMode();
-			int fogIndex = ( fogType == MATERIAL_FOG_LINEAR_BELOW_FOG_Z ) ? 1 : 0;
-
 			pShaderAPI->SetPixelShaderFogParams( PSREG_FOG_PARAMS );					
 
 			float vEyePos_SpecExponent[4];
@@ -176,25 +263,32 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 			vEyePos_SpecExponent[3] = 0.0f;
 			pShaderAPI->SetPixelShaderConstant( PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1 );
 
+			// fog tweaks
+			float fConsts[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			fConsts[0] = params[ FOGEXPONENT ]->GetFloatValue();
+			fConsts[1] = params[ FOGSCALE ]->GetFloatValue();
+			pShaderAPI->SetPixelShaderConstant( 0, fConsts );
+
+			MaterialFogMode_t fogType = s_pShaderAPI->GetSceneFogMode();
+
 #ifndef _X360
 			if ( !g_pHardwareConfig->HasFastVertexTextures() )
 #endif
 			{
-				DECLARE_DYNAMIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs20 );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( DYNAMIC_LIGHT, 0 );	// Use simplest possible vertex lighting, since ps is so simple
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( STATIC_LIGHT_VERTEX, 0 );		//
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( STATIC_LIGHT_LIGHTMAP, 0);		//
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, fogIndex );
+				DECLARE_DYNAMIC_VERTEX_SHADER( decalmodulate_vs20 );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, fogType == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( SKINNING, 0 );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( LIGHTING_PREVIEW, 0 );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( COMPRESSED_VERTS, (int)vertexCompression );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( NUM_LIGHTS, 0 );
-				SET_DYNAMIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs20 );
+//				SET_DYNAMIC_VERTEX_SHADER_COMBO( TESSELLATION, 0 );             // JasonM TODO: set this appropriately when we care about decals on subds				
+				SET_DYNAMIC_VERTEX_SHADER( decalmodulate_vs20 );
 
 				if( g_pHardwareConfig->SupportsPixelShaders_2_b() )
 				{
 					DECLARE_DYNAMIC_PIXEL_SHADER( decalmodulate_ps20b );
 					SET_DYNAMIC_PIXEL_SHADER_COMBO( PIXELFOGTYPE, pShaderAPI->GetPixelFogCombo1( true ) );
+#ifdef MAPBASE
+					SET_DYNAMIC_PIXEL_SHADER_COMBO( FLASHLIGHTSHADOWS, bFlashlightShadows );
+#endif
 					SET_DYNAMIC_PIXEL_SHADER( decalmodulate_ps20b );
 				}
 				else
@@ -209,19 +303,19 @@ BEGIN_VS_SHADER( DecalModulate_dx9,
 			{
 				SetHWMorphVertexShaderState( VERTEX_SHADER_SHADER_SPECIFIC_CONST_6, VERTEX_SHADER_SHADER_SPECIFIC_CONST_7, SHADER_VERTEXTEXTURE_SAMPLER0 );
 
-				DECLARE_DYNAMIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs30 );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( DYNAMIC_LIGHT, 0 );	// Use simplest possible vertex lighting, since ps is so simple
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( STATIC_LIGHT_VERTEX, 0 );		//
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( STATIC_LIGHT_LIGHTMAP, 0);		//
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, fogIndex );
+				DECLARE_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( DOWATERFOG, fogType == MATERIAL_FOG_LINEAR_BELOW_FOG_Z );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( SKINNING, pShaderAPI->GetCurrentNumBones() > 0 );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( LIGHTING_PREVIEW, 0 );
-				SET_DYNAMIC_VERTEX_SHADER_COMBO( MORPHING, pShaderAPI->IsHWMorphingEnabled() );
 				SET_DYNAMIC_VERTEX_SHADER_COMBO( COMPRESSED_VERTS, (int)vertexCompression );
-				SET_DYNAMIC_VERTEX_SHADER( vertexlit_and_unlit_generic_vs30 );
+				SET_DYNAMIC_VERTEX_SHADER_COMBO( MORPHING, pShaderAPI->IsHWMorphingEnabled() );
+//				SET_DYNAMIC_VERTEX_SHADER_COMBO( TESSELLATION, 0 );             // JasonM TODO: set this appropriately when we care about decals on subds				
+				SET_DYNAMIC_VERTEX_SHADER( decalmodulate_vs30 );
 
 				DECLARE_DYNAMIC_PIXEL_SHADER( decalmodulate_ps30 );
 				SET_DYNAMIC_PIXEL_SHADER_COMBO( PIXELFOGTYPE, pShaderAPI->GetPixelFogCombo1( true ) );
+#ifdef MAPBASE
+				SET_DYNAMIC_PIXEL_SHADER_COMBO( FLASHLIGHTSHADOWS, bFlashlightShadows );
+#endif
 				SET_DYNAMIC_PIXEL_SHADER( decalmodulate_ps30 );
 
 				bool bUnusedTexCoords[3] = { false, false, !pShaderAPI->IsHWMorphingEnabled() };

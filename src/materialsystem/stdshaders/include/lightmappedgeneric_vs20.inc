@@ -1,4 +1,5 @@
 // ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// $SEAMLESS && $BASETEXTURETRANSFORM2
 // !$BUMPMAP && $DIFFUSEBUMPMAP
 // $SEAMLESS && $RELIEF_MAPPING
 // $BUMPMASK && $RELIEF_MAPPING
@@ -18,6 +19,7 @@ class lightmappedgeneric_vs20_Static_Index
 	unsigned int m_nRELIEF_MAPPING : 1;
 	unsigned int m_nSEAMLESS : 2;
 	unsigned int m_nBUMPMASK : 2;
+	unsigned int m_nBASETEXTURETRANSFORM2 : 2;
 #ifdef _DEBUG
 	bool m_bENVMAP_MASK : 1;
 	bool m_bTANGENTSPACE : 1;
@@ -28,6 +30,7 @@ class lightmappedgeneric_vs20_Static_Index
 	bool m_bRELIEF_MAPPING : 1;
 	bool m_bSEAMLESS : 1;
 	bool m_bBUMPMASK : 1;
+	bool m_bBASETEXTURETRANSFORM2 : 1;
 #endif	// _DEBUG
 public:
 	void SetENVMAP_MASK( int i )
@@ -111,6 +114,15 @@ public:
 #endif	// _DEBUG
 	}
 
+	void SetBASETEXTURETRANSFORM2( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nBASETEXTURETRANSFORM2 = i;
+#ifdef _DEBUG
+		m_bBASETEXTURETRANSFORM2 = true;
+#endif	// _DEBUG
+	}
+
 	lightmappedgeneric_vs20_Static_Index(  )
 	{
 		m_nENVMAP_MASK = 0;
@@ -122,6 +134,7 @@ public:
 		m_nRELIEF_MAPPING = 0;
 		m_nSEAMLESS = 0;
 		m_nBUMPMASK = 0;
+		m_nBASETEXTURETRANSFORM2 = 0;
 #ifdef _DEBUG
 		m_bENVMAP_MASK = false;
 		m_bTANGENTSPACE = false;
@@ -132,21 +145,23 @@ public:
 		m_bRELIEF_MAPPING = false;
 		m_bSEAMLESS = false;
 		m_bBUMPMASK = false;
+		m_bBASETEXTURETRANSFORM2 = false;
 #endif	// _DEBUG
 	}
 
 	int GetIndex() const
 	{
-		Assert( m_bENVMAP_MASK && m_bTANGENTSPACE && m_bBUMPMAP && m_bDIFFUSEBUMPMAP && m_bVERTEXCOLOR && m_bVERTEXALPHATEXBLENDFACTOR && m_bRELIEF_MAPPING && m_bSEAMLESS && m_bBUMPMASK );
+		Assert( m_bENVMAP_MASK && m_bTANGENTSPACE && m_bBUMPMAP && m_bDIFFUSEBUMPMAP && m_bVERTEXCOLOR && m_bVERTEXALPHATEXBLENDFACTOR && m_bRELIEF_MAPPING && m_bSEAMLESS && m_bBUMPMASK && m_bBASETEXTURETRANSFORM2 );
+		AssertMsg( !( m_nSEAMLESS && m_nBASETEXTURETRANSFORM2 ), "Invalid combo combination ( SEAMLESS && BASETEXTURETRANSFORM2 )" );
 		AssertMsg( !( !m_nBUMPMAP && m_nDIFFUSEBUMPMAP ), "Invalid combo combination ( !BUMPMAP && DIFFUSEBUMPMAP )" );
 		AssertMsg( !( m_nSEAMLESS && m_nRELIEF_MAPPING ), "Invalid combo combination ( SEAMLESS && RELIEF_MAPPING )" );
 		AssertMsg( !( m_nBUMPMASK && m_nRELIEF_MAPPING ), "Invalid combo combination ( BUMPMASK && RELIEF_MAPPING )" );
 		AssertMsg( !( m_nBUMPMASK && m_nSEAMLESS ), "Invalid combo combination ( BUMPMASK && SEAMLESS )" );
-		return ( 8 * m_nENVMAP_MASK ) + ( 16 * m_nTANGENTSPACE ) + ( 32 * m_nBUMPMAP ) + ( 64 * m_nDIFFUSEBUMPMAP ) + ( 128 * m_nVERTEXCOLOR ) + ( 256 * m_nVERTEXALPHATEXBLENDFACTOR ) + ( 512 * m_nRELIEF_MAPPING ) + ( 512 * m_nSEAMLESS ) + ( 1024 * m_nBUMPMASK ) + 0;
+		return ( 8 * m_nENVMAP_MASK ) + ( 16 * m_nTANGENTSPACE ) + ( 32 * m_nBUMPMAP ) + ( 64 * m_nDIFFUSEBUMPMAP ) + ( 128 * m_nVERTEXCOLOR ) + ( 256 * m_nVERTEXALPHATEXBLENDFACTOR ) + ( 512 * m_nRELIEF_MAPPING ) + ( 512 * m_nSEAMLESS ) + ( 1024 * m_nBUMPMASK ) + ( 2048 * m_nBASETEXTURETRANSFORM2 ) + 0;
 	}
 };
 
-#define shaderStaticTest_lightmappedgeneric_vs20 vsh_forgot_to_set_static_ENVMAP_MASK + vsh_forgot_to_set_static_TANGENTSPACE + vsh_forgot_to_set_static_BUMPMAP + vsh_forgot_to_set_static_DIFFUSEBUMPMAP + vsh_forgot_to_set_static_VERTEXCOLOR + vsh_forgot_to_set_static_VERTEXALPHATEXBLENDFACTOR + vsh_forgot_to_set_static_RELIEF_MAPPING + vsh_forgot_to_set_static_SEAMLESS + vsh_forgot_to_set_static_BUMPMASK
+#define shaderStaticTest_lightmappedgeneric_vs20 vsh_forgot_to_set_static_ENVMAP_MASK + vsh_forgot_to_set_static_TANGENTSPACE + vsh_forgot_to_set_static_BUMPMAP + vsh_forgot_to_set_static_DIFFUSEBUMPMAP + vsh_forgot_to_set_static_VERTEXCOLOR + vsh_forgot_to_set_static_VERTEXALPHATEXBLENDFACTOR + vsh_forgot_to_set_static_RELIEF_MAPPING + vsh_forgot_to_set_static_SEAMLESS + vsh_forgot_to_set_static_BUMPMASK + vsh_forgot_to_set_static_BASETEXTURETRANSFORM2
 
 
 class lightmappedgeneric_vs20_Dynamic_Index

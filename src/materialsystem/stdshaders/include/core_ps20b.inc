@@ -1,154 +1,103 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// ( $REFRACT || $CORECOLORTEXTURE ) && $CUBEMAP
+// defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
+// defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
+// defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPTINT && $LIGHTING_PREVIEW && $FASTPATHENVMAPTINT
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPCONTRAST && $LIGHTING_PREVIEW && $FASTPATHENVMAPCONTRAST
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+// ($FLASHLIGHT || $FLASHLIGHTSHADOWS) && $LIGHTING_PREVIEW
+
+#pragma once
 #include "shaderlib/cshader.h"
 class core_ps20b_Static_Index
 {
-private:
-	int m_nCONVERT_TO_SRGB;
+	unsigned int m_nCONVERT_TO_SRGB : 1;
+	unsigned int m_nCUBEMAP : 2;
+	unsigned int m_nFLOWMAP : 2;
+	unsigned int m_nCORECOLORTEXTURE : 2;
+	unsigned int m_nREFRACT : 2;
 #ifdef _DEBUG
-	bool m_bCONVERT_TO_SRGB;
-#endif
+	bool m_bCUBEMAP : 1;
+	bool m_bFLOWMAP : 1;
+	bool m_bCORECOLORTEXTURE : 1;
+	bool m_bREFRACT : 1;
+#endif	// _DEBUG
 public:
 	void SetCONVERT_TO_SRGB( int i )
 	{
-		Assert( i >= 0 && i <= 1 );
+		Assert( i >= 0 && i <= 0 );
 		m_nCONVERT_TO_SRGB = i;
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
 	}
-	void SetCONVERT_TO_SRGB( bool i )
-	{
-		m_nCONVERT_TO_SRGB = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
-	}
-private:
-	int m_nCUBEMAP;
-#ifdef _DEBUG
-	bool m_bCUBEMAP;
-#endif
-public:
+
 	void SetCUBEMAP( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nCUBEMAP = i;
 #ifdef _DEBUG
 		m_bCUBEMAP = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetCUBEMAP( bool i )
-	{
-		m_nCUBEMAP = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bCUBEMAP = true;
-#endif
-	}
-private:
-	int m_nFLOWMAP;
-#ifdef _DEBUG
-	bool m_bFLOWMAP;
-#endif
-public:
+
 	void SetFLOWMAP( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nFLOWMAP = i;
 #ifdef _DEBUG
 		m_bFLOWMAP = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetFLOWMAP( bool i )
-	{
-		m_nFLOWMAP = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bFLOWMAP = true;
-#endif
-	}
-private:
-	int m_nCORECOLORTEXTURE;
-#ifdef _DEBUG
-	bool m_bCORECOLORTEXTURE;
-#endif
-public:
+
 	void SetCORECOLORTEXTURE( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nCORECOLORTEXTURE = i;
 #ifdef _DEBUG
 		m_bCORECOLORTEXTURE = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetCORECOLORTEXTURE( bool i )
-	{
-		m_nCORECOLORTEXTURE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bCORECOLORTEXTURE = true;
-#endif
-	}
-private:
-	int m_nREFRACT;
-#ifdef _DEBUG
-	bool m_bREFRACT;
-#endif
-public:
+
 	void SetREFRACT( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nREFRACT = i;
 #ifdef _DEBUG
 		m_bREFRACT = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetREFRACT( bool i )
+
+	core_ps20b_Static_Index(  )
 	{
-		m_nREFRACT = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bREFRACT = true;
-#endif
-	}
-public:
-	core_ps20b_Static_Index( )
-	{
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif // _DEBUG
-		m_nCONVERT_TO_SRGB =  g_pHardwareConfig->NeedsShaderSRGBConversion();
+		m_nCONVERT_TO_SRGB = g_pHardwareConfig->NeedsShaderSRGBConversion();
+		m_nCUBEMAP = 0;
+		m_nFLOWMAP = 0;
+		m_nCORECOLORTEXTURE = 0;
+		m_nREFRACT = 0;
 #ifdef _DEBUG
 		m_bCUBEMAP = false;
-#endif // _DEBUG
-		m_nCUBEMAP = 0;
-#ifdef _DEBUG
 		m_bFLOWMAP = false;
-#endif // _DEBUG
-		m_nFLOWMAP = 0;
-#ifdef _DEBUG
 		m_bCORECOLORTEXTURE = false;
-#endif // _DEBUG
-		m_nCORECOLORTEXTURE = 0;
-#ifdef _DEBUG
 		m_bREFRACT = false;
-#endif // _DEBUG
-		m_nREFRACT = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB && m_bCUBEMAP && m_bFLOWMAP && m_bCORECOLORTEXTURE && m_bREFRACT;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
-		return ( 2 * m_nCONVERT_TO_SRGB ) + ( 4 * m_nCUBEMAP ) + ( 8 * m_nFLOWMAP ) + ( 16 * m_nCORECOLORTEXTURE ) + ( 32 * m_nREFRACT ) + 0;
+		Assert( m_bCUBEMAP && m_bFLOWMAP && m_bCORECOLORTEXTURE && m_bREFRACT );
+		AssertMsg( !( ( m_nREFRACT || m_nCORECOLORTEXTURE ) && m_nCUBEMAP ), "Invalid combo combination ( ( REFRACT || CORECOLORTEXTURE ) && CUBEMAP )" );
+		return ( 2 * m_nCONVERT_TO_SRGB ) + ( 2 * m_nCUBEMAP ) + ( 4 * m_nFLOWMAP ) + ( 8 * m_nCORECOLORTEXTURE ) + ( 16 * m_nREFRACT ) + 0;
 	}
 };
-#define shaderStaticTest_core_ps20b psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_FLOWMAP + psh_forgot_to_set_static_CORECOLORTEXTURE + psh_forgot_to_set_static_REFRACT + 0
+
+#define shaderStaticTest_core_ps20b psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_FLOWMAP + psh_forgot_to_set_static_CORECOLORTEXTURE + psh_forgot_to_set_static_REFRACT
+
+
 class core_ps20b_Dynamic_Index
 {
-private:
-	int m_nPIXELFOGTYPE;
+	unsigned int m_nPIXELFOGTYPE : 2;
 #ifdef _DEBUG
-	bool m_bPIXELFOGTYPE;
-#endif
+	bool m_bPIXELFOGTYPE : 1;
+#endif	// _DEBUG
 public:
 	void SetPIXELFOGTYPE( int i )
 	{
@@ -156,32 +105,23 @@ public:
 		m_nPIXELFOGTYPE = i;
 #ifdef _DEBUG
 		m_bPIXELFOGTYPE = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetPIXELFOGTYPE( bool i )
+
+	core_ps20b_Dynamic_Index(  )
 	{
-		m_nPIXELFOGTYPE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bPIXELFOGTYPE = true;
-#endif
-	}
-public:
-	core_ps20b_Dynamic_Index()
-	{
+		m_nPIXELFOGTYPE = 0;
 #ifdef _DEBUG
 		m_bPIXELFOGTYPE = false;
-#endif // _DEBUG
-		m_nPIXELFOGTYPE = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllDynamicVarsDefined = m_bPIXELFOGTYPE;
-		Assert( bAllDynamicVarsDefined );
-#endif // _DEBUG
+		Assert( m_bPIXELFOGTYPE );
 		return ( 1 * m_nPIXELFOGTYPE ) + 0;
 	}
 };
-#define shaderDynamicTest_core_ps20b psh_forgot_to_set_dynamic_PIXELFOGTYPE + 0
+
+#define shaderDynamicTest_core_ps20b psh_forgot_to_set_dynamic_PIXELFOGTYPE
+

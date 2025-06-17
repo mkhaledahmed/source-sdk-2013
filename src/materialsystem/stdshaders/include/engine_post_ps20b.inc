@@ -1,212 +1,228 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// ( $CONVERT_FROM_LINEAR == 0 ) && ( $CONVERT_TO_LINEAR == 1 )
+// ( $TOOL_MODE == 0 ) && ( $CONVERT_TO_LINEAR == 1 )
+// ( $LOCAL_CONTRAST_ENABLE == 0 ) && ( $BLURRED_VIGNETTE_ENABLE == 1 )
+// ( $TOOL_MODE == 0 ) && $TV_GAMMA
+// ( $TOOL_MODE == 0 ) && $DESATURATEENABLE
+// defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
+// defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
+// defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPTINT && $LIGHTING_PREVIEW && $FASTPATHENVMAPTINT
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPCONTRAST && $LIGHTING_PREVIEW && $FASTPATHENVMAPCONTRAST
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+// ($FLASHLIGHT || $FLASHLIGHTSHADOWS) && $LIGHTING_PREVIEW
+
+#pragma once
 #include "shaderlib/cshader.h"
 class engine_post_ps20b_Static_Index
 {
-private:
-	int m_nCONVERT_TO_SRGB;
+	unsigned int m_nTOOL_MODE : 2;
+	unsigned int m_nDEPTH_BLUR_ENABLE : 2;
 #ifdef _DEBUG
-	bool m_bCONVERT_TO_SRGB;
-#endif
+	bool m_bTOOL_MODE : 1;
+	bool m_bDEPTH_BLUR_ENABLE : 1;
+#endif	// _DEBUG
 public:
-	void SetCONVERT_TO_SRGB( int i )
+	void SetTOOL_MODE( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
-		m_nCONVERT_TO_SRGB = i;
+		m_nTOOL_MODE = i;
 #ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
+		m_bTOOL_MODE = true;
+#endif	// _DEBUG
 	}
-	void SetCONVERT_TO_SRGB( bool i )
-	{
-		m_nCONVERT_TO_SRGB = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
-	}
-private:
-	int m_nLINEAR_INPUT;
-#ifdef _DEBUG
-	bool m_bLINEAR_INPUT;
-#endif
-public:
-	void SetLINEAR_INPUT( int i )
+
+	void SetDEPTH_BLUR_ENABLE( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
-		m_nLINEAR_INPUT = i;
+		m_nDEPTH_BLUR_ENABLE = i;
 #ifdef _DEBUG
-		m_bLINEAR_INPUT = true;
-#endif
+		m_bDEPTH_BLUR_ENABLE = true;
+#endif	// _DEBUG
 	}
-	void SetLINEAR_INPUT( bool i )
+
+	engine_post_ps20b_Static_Index(  )
 	{
-		m_nLINEAR_INPUT = i ? 1 : 0;
+		m_nTOOL_MODE = 0;
+		m_nDEPTH_BLUR_ENABLE = 0;
 #ifdef _DEBUG
-		m_bLINEAR_INPUT = true;
-#endif
+		m_bTOOL_MODE = false;
+		m_bDEPTH_BLUR_ENABLE = false;
+#endif	// _DEBUG
 	}
-private:
-	int m_nLINEAR_OUTPUT;
-#ifdef _DEBUG
-	bool m_bLINEAR_OUTPUT;
-#endif
-public:
-	void SetLINEAR_OUTPUT( int i )
+
+	int GetIndex() const
 	{
-		Assert( i >= 0 && i <= 1 );
-		m_nLINEAR_OUTPUT = i;
-#ifdef _DEBUG
-		m_bLINEAR_OUTPUT = true;
-#endif
-	}
-	void SetLINEAR_OUTPUT( bool i )
-	{
-		m_nLINEAR_OUTPUT = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bLINEAR_OUTPUT = true;
-#endif
-	}
-public:
-	engine_post_ps20b_Static_Index( )
-	{
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif // _DEBUG
-		m_nCONVERT_TO_SRGB =  g_pHardwareConfig->NeedsShaderSRGBConversion();
-#ifdef _DEBUG
-		m_bLINEAR_INPUT = false;
-#endif // _DEBUG
-		m_nLINEAR_INPUT = 0;
-#ifdef _DEBUG
-		m_bLINEAR_OUTPUT = false;
-#endif // _DEBUG
-		m_nLINEAR_OUTPUT = 0;
-	}
-	int GetIndex()
-	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB && m_bLINEAR_INPUT && m_bLINEAR_OUTPUT;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
-		return ( 40 * m_nCONVERT_TO_SRGB ) + ( 80 * m_nLINEAR_INPUT ) + ( 160 * m_nLINEAR_OUTPUT ) + 0;
+		Assert( m_bTOOL_MODE && m_bDEPTH_BLUR_ENABLE );
+		return ( 2048 * m_nTOOL_MODE ) + ( 4096 * m_nDEPTH_BLUR_ENABLE ) + 0;
 	}
 };
-#define shaderStaticTest_engine_post_ps20b psh_forgot_to_set_static_LINEAR_INPUT + psh_forgot_to_set_static_LINEAR_OUTPUT + 0
+
+#define shaderStaticTest_engine_post_ps20b psh_forgot_to_set_static_TOOL_MODE + psh_forgot_to_set_static_DEPTH_BLUR_ENABLE
+
+
 class engine_post_ps20b_Dynamic_Index
 {
-private:
-	int m_nAA_ENABLE;
+	unsigned int m_nAA_ENABLE : 1;
+	unsigned int m_nCOL_CORRECT_NUM_LOOKUPS : 3;
+	unsigned int m_nCONVERT_FROM_LINEAR : 2;
+	unsigned int m_nCONVERT_TO_LINEAR : 2;
+	unsigned int m_nNOISE_ENABLE : 2;
+	unsigned int m_nVIGNETTE_ENABLE : 2;
+	unsigned int m_nLOCAL_CONTRAST_ENABLE : 2;
+	unsigned int m_nBLURRED_VIGNETTE_ENABLE : 2;
+	unsigned int m_nVOMIT_ENABLE : 2;
+	unsigned int m_nTV_GAMMA : 2;
+	unsigned int m_nDESATURATEENABLE : 2;
 #ifdef _DEBUG
-	bool m_bAA_ENABLE;
-#endif
+	bool m_bAA_ENABLE : 1;
+	bool m_bCOL_CORRECT_NUM_LOOKUPS : 1;
+	bool m_bCONVERT_FROM_LINEAR : 1;
+	bool m_bCONVERT_TO_LINEAR : 1;
+	bool m_bNOISE_ENABLE : 1;
+	bool m_bVIGNETTE_ENABLE : 1;
+	bool m_bLOCAL_CONTRAST_ENABLE : 1;
+	bool m_bBLURRED_VIGNETTE_ENABLE : 1;
+	bool m_bVOMIT_ENABLE : 1;
+	bool m_bTV_GAMMA : 1;
+	bool m_bDESATURATEENABLE : 1;
+#endif	// _DEBUG
 public:
 	void SetAA_ENABLE( int i )
 	{
-		Assert( i >= 0 && i <= 1 );
+		Assert( i >= 0 && i <= 0 );
 		m_nAA_ENABLE = i;
 #ifdef _DEBUG
 		m_bAA_ENABLE = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetAA_ENABLE( bool i )
-	{
-		m_nAA_ENABLE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bAA_ENABLE = true;
-#endif
-	}
-private:
-	int m_nAA_QUALITY_MODE;
-#ifdef _DEBUG
-	bool m_bAA_QUALITY_MODE;
-#endif
-public:
-	void SetAA_QUALITY_MODE( int i )
-	{
-		Assert( i >= 0 && i <= 1 );
-		m_nAA_QUALITY_MODE = i;
-#ifdef _DEBUG
-		m_bAA_QUALITY_MODE = true;
-#endif
-	}
-	void SetAA_QUALITY_MODE( bool i )
-	{
-		m_nAA_QUALITY_MODE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bAA_QUALITY_MODE = true;
-#endif
-	}
-private:
-	int m_nAA_REDUCE_ONE_PIXEL_LINE_BLUR;
-#ifdef _DEBUG
-	bool m_bAA_REDUCE_ONE_PIXEL_LINE_BLUR;
-#endif
-public:
-	void SetAA_REDUCE_ONE_PIXEL_LINE_BLUR( int i )
-	{
-		Assert( i >= 0 && i <= 1 );
-		m_nAA_REDUCE_ONE_PIXEL_LINE_BLUR = i;
-#ifdef _DEBUG
-		m_bAA_REDUCE_ONE_PIXEL_LINE_BLUR = true;
-#endif
-	}
-	void SetAA_REDUCE_ONE_PIXEL_LINE_BLUR( bool i )
-	{
-		m_nAA_REDUCE_ONE_PIXEL_LINE_BLUR = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bAA_REDUCE_ONE_PIXEL_LINE_BLUR = true;
-#endif
-	}
-private:
-	int m_nCOL_CORRECT_NUM_LOOKUPS;
-#ifdef _DEBUG
-	bool m_bCOL_CORRECT_NUM_LOOKUPS;
-#endif
-public:
+
 	void SetCOL_CORRECT_NUM_LOOKUPS( int i )
 	{
-		Assert( i >= 0 && i <= 4 );
+		Assert( i >= 0 && i <= 3 );
 		m_nCOL_CORRECT_NUM_LOOKUPS = i;
 #ifdef _DEBUG
 		m_bCOL_CORRECT_NUM_LOOKUPS = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetCOL_CORRECT_NUM_LOOKUPS( bool i )
+
+	void SetCONVERT_FROM_LINEAR( int i )
 	{
-		m_nCOL_CORRECT_NUM_LOOKUPS = i ? 1 : 0;
+		Assert( i >= 0 && i <= 1 );
+		m_nCONVERT_FROM_LINEAR = i;
 #ifdef _DEBUG
-		m_bCOL_CORRECT_NUM_LOOKUPS = true;
-#endif
+		m_bCONVERT_FROM_LINEAR = true;
+#endif	// _DEBUG
 	}
-public:
-	engine_post_ps20b_Dynamic_Index()
+
+	void SetCONVERT_TO_LINEAR( int i )
 	{
+		Assert( i >= 0 && i <= 1 );
+		m_nCONVERT_TO_LINEAR = i;
+#ifdef _DEBUG
+		m_bCONVERT_TO_LINEAR = true;
+#endif	// _DEBUG
+	}
+
+	void SetNOISE_ENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nNOISE_ENABLE = i;
+#ifdef _DEBUG
+		m_bNOISE_ENABLE = true;
+#endif	// _DEBUG
+	}
+
+	void SetVIGNETTE_ENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nVIGNETTE_ENABLE = i;
+#ifdef _DEBUG
+		m_bVIGNETTE_ENABLE = true;
+#endif	// _DEBUG
+	}
+
+	void SetLOCAL_CONTRAST_ENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nLOCAL_CONTRAST_ENABLE = i;
+#ifdef _DEBUG
+		m_bLOCAL_CONTRAST_ENABLE = true;
+#endif	// _DEBUG
+	}
+
+	void SetBLURRED_VIGNETTE_ENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nBLURRED_VIGNETTE_ENABLE = i;
+#ifdef _DEBUG
+		m_bBLURRED_VIGNETTE_ENABLE = true;
+#endif	// _DEBUG
+	}
+
+	void SetVOMIT_ENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nVOMIT_ENABLE = i;
+#ifdef _DEBUG
+		m_bVOMIT_ENABLE = true;
+#endif	// _DEBUG
+	}
+
+	void SetTV_GAMMA( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nTV_GAMMA = i;
+#ifdef _DEBUG
+		m_bTV_GAMMA = true;
+#endif	// _DEBUG
+	}
+
+	void SetDESATURATEENABLE( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nDESATURATEENABLE = i;
+#ifdef _DEBUG
+		m_bDESATURATEENABLE = true;
+#endif	// _DEBUG
+	}
+
+	engine_post_ps20b_Dynamic_Index(  )
+	{
+		m_nAA_ENABLE = 0;
+		m_nCOL_CORRECT_NUM_LOOKUPS = 0;
+		m_nCONVERT_FROM_LINEAR = 0;
+		m_nCONVERT_TO_LINEAR = 0;
+		m_nNOISE_ENABLE = 0;
+		m_nVIGNETTE_ENABLE = 0;
+		m_nLOCAL_CONTRAST_ENABLE = 0;
+		m_nBLURRED_VIGNETTE_ENABLE = 0;
+		m_nVOMIT_ENABLE = 0;
+		m_nTV_GAMMA = 0;
+		m_nDESATURATEENABLE = 0;
 #ifdef _DEBUG
 		m_bAA_ENABLE = false;
-#endif // _DEBUG
-		m_nAA_ENABLE = 0;
-#ifdef _DEBUG
-		m_bAA_QUALITY_MODE = false;
-#endif // _DEBUG
-		m_nAA_QUALITY_MODE = 0;
-#ifdef _DEBUG
-		m_bAA_REDUCE_ONE_PIXEL_LINE_BLUR = false;
-#endif // _DEBUG
-		m_nAA_REDUCE_ONE_PIXEL_LINE_BLUR = 0;
-#ifdef _DEBUG
 		m_bCOL_CORRECT_NUM_LOOKUPS = false;
-#endif // _DEBUG
-		m_nCOL_CORRECT_NUM_LOOKUPS = 0;
+		m_bCONVERT_FROM_LINEAR = false;
+		m_bCONVERT_TO_LINEAR = false;
+		m_bNOISE_ENABLE = false;
+		m_bVIGNETTE_ENABLE = false;
+		m_bLOCAL_CONTRAST_ENABLE = false;
+		m_bBLURRED_VIGNETTE_ENABLE = false;
+		m_bVOMIT_ENABLE = false;
+		m_bTV_GAMMA = false;
+		m_bDESATURATEENABLE = false;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllDynamicVarsDefined = m_bAA_ENABLE && m_bAA_QUALITY_MODE && m_bAA_REDUCE_ONE_PIXEL_LINE_BLUR && m_bCOL_CORRECT_NUM_LOOKUPS;
-		Assert( bAllDynamicVarsDefined );
-#endif // _DEBUG
-		return ( 1 * m_nAA_ENABLE ) + ( 2 * m_nAA_QUALITY_MODE ) + ( 4 * m_nAA_REDUCE_ONE_PIXEL_LINE_BLUR ) + ( 8 * m_nCOL_CORRECT_NUM_LOOKUPS ) + 0;
+		Assert( m_bAA_ENABLE && m_bCOL_CORRECT_NUM_LOOKUPS && m_bCONVERT_FROM_LINEAR && m_bCONVERT_TO_LINEAR && m_bNOISE_ENABLE && m_bVIGNETTE_ENABLE && m_bLOCAL_CONTRAST_ENABLE && m_bBLURRED_VIGNETTE_ENABLE && m_bVOMIT_ENABLE && m_bTV_GAMMA && m_bDESATURATEENABLE );
+		AssertMsg( !( ( m_nCONVERT_FROM_LINEAR == 0 ) && ( m_nCONVERT_TO_LINEAR == 1 ) ), "Invalid combo combination ( ( CONVERT_FROM_LINEAR == 0 ) && ( CONVERT_TO_LINEAR == 1 ) )" );
+		AssertMsg( !( ( m_nLOCAL_CONTRAST_ENABLE == 0 ) && ( m_nBLURRED_VIGNETTE_ENABLE == 1 ) ), "Invalid combo combination ( ( LOCAL_CONTRAST_ENABLE == 0 ) && ( BLURRED_VIGNETTE_ENABLE == 1 ) )" );
+		return ( 1 * m_nAA_ENABLE ) + ( 1 * m_nCOL_CORRECT_NUM_LOOKUPS ) + ( 4 * m_nCONVERT_FROM_LINEAR ) + ( 8 * m_nCONVERT_TO_LINEAR ) + ( 16 * m_nNOISE_ENABLE ) + ( 32 * m_nVIGNETTE_ENABLE ) + ( 64 * m_nLOCAL_CONTRAST_ENABLE ) + ( 128 * m_nBLURRED_VIGNETTE_ENABLE ) + ( 256 * m_nVOMIT_ENABLE ) + ( 512 * m_nTV_GAMMA ) + ( 1024 * m_nDESATURATEENABLE ) + 0;
 	}
 };
-#define shaderDynamicTest_engine_post_ps20b psh_forgot_to_set_dynamic_AA_ENABLE + psh_forgot_to_set_dynamic_AA_QUALITY_MODE + psh_forgot_to_set_dynamic_AA_REDUCE_ONE_PIXEL_LINE_BLUR + psh_forgot_to_set_dynamic_COL_CORRECT_NUM_LOOKUPS + 0
+
+#define shaderDynamicTest_engine_post_ps20b psh_forgot_to_set_dynamic_AA_ENABLE + psh_forgot_to_set_dynamic_COL_CORRECT_NUM_LOOKUPS + psh_forgot_to_set_dynamic_CONVERT_FROM_LINEAR + psh_forgot_to_set_dynamic_CONVERT_TO_LINEAR + psh_forgot_to_set_dynamic_NOISE_ENABLE + psh_forgot_to_set_dynamic_VIGNETTE_ENABLE + psh_forgot_to_set_dynamic_LOCAL_CONTRAST_ENABLE + psh_forgot_to_set_dynamic_BLURRED_VIGNETTE_ENABLE + psh_forgot_to_set_dynamic_VOMIT_ENABLE + psh_forgot_to_set_dynamic_TV_GAMMA + psh_forgot_to_set_dynamic_DESATURATEENABLE
+

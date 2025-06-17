@@ -7,6 +7,7 @@
 // ( $FLASHLIGHT == 1 ) && ( $SELFILLUMFRESNEL == 1 )
 // ( $FLASHLIGHT == 1 ) && ( $SELFILLUM == 1 )
 // ( $BLENDTINTBYBASEALPHA ) && ( $SELFILLUM )
+// $ENVMAPMASK && !$CUBEMAP
 // $FASTPATH_NOBUMP && ( $RIMLIGHT || $DETAILTEXTURE || $PHONGWARPTEXTURE || $SELFILLUM || $BLENDTINTBYBASEALPHA )
 // defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
 // defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
@@ -41,6 +42,8 @@ class skin_ps30_Static_Index
 	unsigned int m_nFLASHLIGHTDEPTHFILTERMODE : 2;
 	unsigned int m_nFASTPATH_NOBUMP : 2;
 	unsigned int m_nBLENDTINTBYBASEALPHA : 2;
+	unsigned int m_nPHONG_HALFLAMBERT : 2;
+	unsigned int m_nENVMAPMASK : 2;
 #ifdef _DEBUG
 	bool m_bCONVERT_TO_SRGB : 1;
 	bool m_bCUBEMAP : 1;
@@ -56,6 +59,8 @@ class skin_ps30_Static_Index
 	bool m_bFLASHLIGHTDEPTHFILTERMODE : 1;
 	bool m_bFASTPATH_NOBUMP : 1;
 	bool m_bBLENDTINTBYBASEALPHA : 1;
+	bool m_bPHONG_HALFLAMBERT : 1;
+	bool m_bENVMAPMASK : 1;
 #endif	// _DEBUG
 public:
 	void SetCONVERT_TO_SRGB( int i )
@@ -184,6 +189,24 @@ public:
 #endif	// _DEBUG
 	}
 
+	void SetPHONG_HALFLAMBERT( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nPHONG_HALFLAMBERT = i;
+#ifdef _DEBUG
+		m_bPHONG_HALFLAMBERT = true;
+#endif	// _DEBUG
+	}
+
+	void SetENVMAPMASK( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nENVMAPMASK = i;
+#ifdef _DEBUG
+		m_bENVMAPMASK = true;
+#endif	// _DEBUG
+	}
+
 	skin_ps30_Static_Index(  )
 	{
 		m_nCONVERT_TO_SRGB = 0;
@@ -200,6 +223,8 @@ public:
 		m_nFLASHLIGHTDEPTHFILTERMODE = 0;
 		m_nFASTPATH_NOBUMP = 0;
 		m_nBLENDTINTBYBASEALPHA = 0;
+		m_nPHONG_HALFLAMBERT = 0;
+		m_nENVMAPMASK = 0;
 #ifdef _DEBUG
 		m_bCONVERT_TO_SRGB = false;
 		m_bCUBEMAP = false;
@@ -215,24 +240,27 @@ public:
 		m_bFLASHLIGHTDEPTHFILTERMODE = false;
 		m_bFASTPATH_NOBUMP = false;
 		m_bBLENDTINTBYBASEALPHA = false;
+		m_bPHONG_HALFLAMBERT = false;
+		m_bENVMAPMASK = false;
 #endif	// _DEBUG
 	}
 
 	int GetIndex() const
 	{
-		Assert( m_bCONVERT_TO_SRGB && m_bCUBEMAP && m_bSELFILLUM && m_bSELFILLUMFRESNEL && m_bFLASHLIGHT && m_bLIGHTWARPTEXTURE && m_bPHONGWARPTEXTURE && m_bWRINKLEMAP && m_bDETAIL_BLEND_MODE && m_bDETAILTEXTURE && m_bRIMLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE && m_bFASTPATH_NOBUMP && m_bBLENDTINTBYBASEALPHA );
+		Assert( m_bCONVERT_TO_SRGB && m_bCUBEMAP && m_bSELFILLUM && m_bSELFILLUMFRESNEL && m_bFLASHLIGHT && m_bLIGHTWARPTEXTURE && m_bPHONGWARPTEXTURE && m_bWRINKLEMAP && m_bDETAIL_BLEND_MODE && m_bDETAILTEXTURE && m_bRIMLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE && m_bFASTPATH_NOBUMP && m_bBLENDTINTBYBASEALPHA && m_bPHONG_HALFLAMBERT && m_bENVMAPMASK );
 		AssertMsg( !( !m_nDETAILTEXTURE && ( m_nDETAIL_BLEND_MODE != 0 ) ), "Invalid combo combination ( !DETAILTEXTURE && ( DETAIL_BLEND_MODE != 0 ) )" );
 		AssertMsg( !( ( m_nFLASHLIGHT == 0 ) && ( m_nFLASHLIGHTDEPTHFILTERMODE != 0 ) ), "Invalid combo combination ( ( FLASHLIGHT == 0 ) && ( FLASHLIGHTDEPTHFILTERMODE != 0 ) )" );
 		AssertMsg( !( ( m_nSELFILLUM == 0 ) && ( m_nSELFILLUMFRESNEL == 1 ) ), "Invalid combo combination ( ( SELFILLUM == 0 ) && ( SELFILLUMFRESNEL == 1 ) )" );
 		AssertMsg( !( ( m_nFLASHLIGHT == 1 ) && ( m_nSELFILLUMFRESNEL == 1 ) ), "Invalid combo combination ( ( FLASHLIGHT == 1 ) && ( SELFILLUMFRESNEL == 1 ) )" );
 		AssertMsg( !( ( m_nFLASHLIGHT == 1 ) && ( m_nSELFILLUM == 1 ) ), "Invalid combo combination ( ( FLASHLIGHT == 1 ) && ( SELFILLUM == 1 ) )" );
 		AssertMsg( !( m_nBLENDTINTBYBASEALPHA && m_nSELFILLUM ), "Invalid combo combination ( BLENDTINTBYBASEALPHA && SELFILLUM )" );
+		AssertMsg( !( m_nENVMAPMASK && !m_nCUBEMAP ), "Invalid combo combination ( ENVMAPMASK && !CUBEMAP )" );
 		AssertMsg( !( m_nFASTPATH_NOBUMP && ( m_nRIMLIGHT || ( m_nDETAILTEXTURE || ( m_nPHONGWARPTEXTURE || ( m_nSELFILLUM || m_nBLENDTINTBYBASEALPHA ) ) ) ) ), "Invalid combo combination ( FASTPATH_NOBUMP && ( RIMLIGHT || ( DETAILTEXTURE || ( PHONGWARPTEXTURE || ( SELFILLUM || BLENDTINTBYBASEALPHA ) ) ) ) )" );
-		return ( 240 * m_nCONVERT_TO_SRGB ) + ( 240 * m_nCUBEMAP ) + ( 480 * m_nSELFILLUM ) + ( 960 * m_nSELFILLUMFRESNEL ) + ( 1920 * m_nFLASHLIGHT ) + ( 3840 * m_nLIGHTWARPTEXTURE ) + ( 7680 * m_nPHONGWARPTEXTURE ) + ( 15360 * m_nWRINKLEMAP ) + ( 30720 * m_nDETAIL_BLEND_MODE ) + ( 215040 * m_nDETAILTEXTURE ) + ( 430080 * m_nRIMLIGHT ) + ( 860160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 2580480 * m_nFASTPATH_NOBUMP ) + ( 5160960 * m_nBLENDTINTBYBASEALPHA ) + 0;
+		return ( 240 * m_nCONVERT_TO_SRGB ) + ( 240 * m_nCUBEMAP ) + ( 480 * m_nSELFILLUM ) + ( 960 * m_nSELFILLUMFRESNEL ) + ( 1920 * m_nFLASHLIGHT ) + ( 3840 * m_nLIGHTWARPTEXTURE ) + ( 7680 * m_nPHONGWARPTEXTURE ) + ( 15360 * m_nWRINKLEMAP ) + ( 30720 * m_nDETAIL_BLEND_MODE ) + ( 215040 * m_nDETAILTEXTURE ) + ( 430080 * m_nRIMLIGHT ) + ( 860160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 2580480 * m_nFASTPATH_NOBUMP ) + ( 5160960 * m_nBLENDTINTBYBASEALPHA ) + ( 10321920 * m_nPHONG_HALFLAMBERT ) + ( 20643840 * m_nENVMAPMASK ) + 0;
 	}
 };
 
-#define shaderStaticTest_skin_ps30 psh_forgot_to_set_static_CONVERT_TO_SRGB + psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_SELFILLUMFRESNEL + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_LIGHTWARPTEXTURE + psh_forgot_to_set_static_PHONGWARPTEXTURE + psh_forgot_to_set_static_WRINKLEMAP + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_RIMLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_FASTPATH_NOBUMP + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA
+#define shaderStaticTest_skin_ps30 psh_forgot_to_set_static_CONVERT_TO_SRGB + psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_SELFILLUMFRESNEL + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_LIGHTWARPTEXTURE + psh_forgot_to_set_static_PHONGWARPTEXTURE + psh_forgot_to_set_static_WRINKLEMAP + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_RIMLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_FASTPATH_NOBUMP + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA + psh_forgot_to_set_static_PHONG_HALFLAMBERT + psh_forgot_to_set_static_ENVMAPMASK
 
 
 class skin_ps30_Dynamic_Index

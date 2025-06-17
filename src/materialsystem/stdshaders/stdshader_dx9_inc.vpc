@@ -39,6 +39,9 @@ $Configuration
 		$AdditionalIncludeDirectories	"$BASE;..\..\dx9sdk\include"	[$WINDOWS]
 		$PreprocessorDefinitions		"$BASE;STDSHADER_DX9_DLL_EXPORT;FAST_MATERIALVAR_ACCESS"
 		$PreprocessorDefinitions		"$BASE;USE_ACTUAL_DX" [($WINDOWS||$X360) && !$GL]
+
+		// https://developer.valvesoftware.com/wiki/Parallax_Corrected_Cubemaps
+		$PreprocessorDefinitions		"$BASE;PARALLAX_CORRECTED_CUBEMAPS"	[$MAPBASE]
 	}
 
 	$Linker
@@ -61,7 +64,7 @@ $Project
 		$File	"BlurFilterX.cpp"
 		$File	"BlurFilterY.cpp"
 		$File	"BufferClearObeyStencil_dx9.cpp"
-		$File	"cable_dx9.cpp"
+		$File	"cable_dx9.cpp"	[!$MAPBASE]
 		$File	"cloak.cpp"
 		$File	"cloak_blended_pass_helper.cpp"
 		$File	"cloak_dx9_helper.cpp"
@@ -157,6 +160,9 @@ $Project
 		$File	"worldvertextransition_dx8_helper.cpp"
 		$File	"writez_dx9.cpp"
 		$File	"writestencil_dx9.cpp"
+
+		$File	"splinerope.cpp"	[$MAPBASE]
+		$File	"mapbase_sdk_stubs.cpp"	[$MAPBASE]
 
 		$Folder	"Remove me when VAC2 is out" [$WINDOWS && !$SOURCESDK]
 		{

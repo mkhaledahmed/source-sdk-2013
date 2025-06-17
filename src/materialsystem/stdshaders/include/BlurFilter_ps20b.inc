@@ -1,85 +1,68 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
+// defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
+// defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPTINT && $LIGHTING_PREVIEW && $FASTPATHENVMAPTINT
+// defined $LIGHTING_PREVIEW && defined $FASTPATHENVMAPCONTRAST && $LIGHTING_PREVIEW && $FASTPATHENVMAPCONTRAST
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+// ($FLASHLIGHT || $FLASHLIGHTSHADOWS) && $LIGHTING_PREVIEW
+
+#pragma once
 #include "shaderlib/cshader.h"
 class blurfilter_ps20b_Static_Index
 {
-private:
-	int m_nCONVERT_TO_SRGB;
+	unsigned int m_nCONVERT_TO_SRGB : 2;
+	unsigned int m_nAPPROX_SRGB_ADAPTER : 2;
 #ifdef _DEBUG
-	bool m_bCONVERT_TO_SRGB;
-#endif
+	bool m_bAPPROX_SRGB_ADAPTER : 1;
+#endif	// _DEBUG
 public:
 	void SetCONVERT_TO_SRGB( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nCONVERT_TO_SRGB = i;
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
 	}
-	void SetCONVERT_TO_SRGB( bool i )
-	{
-		m_nCONVERT_TO_SRGB = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif
-	}
-private:
-	int m_nAPPROX_SRGB_ADAPTER;
-#ifdef _DEBUG
-	bool m_bAPPROX_SRGB_ADAPTER;
-#endif
-public:
+
 	void SetAPPROX_SRGB_ADAPTER( int i )
 	{
 		Assert( i >= 0 && i <= 1 );
 		m_nAPPROX_SRGB_ADAPTER = i;
 #ifdef _DEBUG
 		m_bAPPROX_SRGB_ADAPTER = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetAPPROX_SRGB_ADAPTER( bool i )
+
+	blurfilter_ps20b_Static_Index(  )
 	{
-		m_nAPPROX_SRGB_ADAPTER = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bAPPROX_SRGB_ADAPTER = true;
-#endif
-	}
-public:
-	blurfilter_ps20b_Static_Index( )
-	{
-#ifdef _DEBUG
-		m_bCONVERT_TO_SRGB = true;
-#endif // _DEBUG
-		m_nCONVERT_TO_SRGB =  g_pHardwareConfig->NeedsShaderSRGBConversion();
+		m_nCONVERT_TO_SRGB = g_pHardwareConfig->NeedsShaderSRGBConversion();
+		m_nAPPROX_SRGB_ADAPTER = 0;
 #ifdef _DEBUG
 		m_bAPPROX_SRGB_ADAPTER = false;
-#endif // _DEBUG
-		m_nAPPROX_SRGB_ADAPTER = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB && m_bAPPROX_SRGB_ADAPTER;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
+		Assert( m_bAPPROX_SRGB_ADAPTER );
 		return ( 1 * m_nCONVERT_TO_SRGB ) + ( 2 * m_nAPPROX_SRGB_ADAPTER ) + 0;
 	}
 };
-#define shaderStaticTest_blurfilter_ps20b psh_forgot_to_set_static_APPROX_SRGB_ADAPTER + 0
+
+#define shaderStaticTest_blurfilter_ps20b psh_forgot_to_set_static_APPROX_SRGB_ADAPTER
+
+
 class blurfilter_ps20b_Dynamic_Index
 {
 public:
-	blurfilter_ps20b_Dynamic_Index()
+	blurfilter_ps20b_Dynamic_Index(  )
 	{
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-#endif // _DEBUG
 		return 0;
 	}
 };
-#define shaderDynamicTest_blurfilter_ps20b 0
+
+#define shaderDynamicTest_blurfilter_ps20b 1
+

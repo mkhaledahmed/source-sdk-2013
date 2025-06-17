@@ -56,7 +56,7 @@ const float4 cDetailTexCoordTransform[2]	:  register( SHADER_SPECIFIC_CONST_4 );
 const float4x4 g_FlashlightWorldToTexture :  register( SHADER_SPECIFIC_CONST_6 ); // 6, 7, 8, 9
 #endif
 
-#ifdef SHADER_MODEL_VS_3_0
+#if defined( SHADER_MODEL_VS_3_0 )
 // NOTE: cMorphTargetTextureDim.xy = target dimensions,
 //		 cMorphTargetTextureDim.z = 4tuples/morph
 const float3 cMorphTargetTextureDim			: register( SHADER_SPECIFIC_CONST_10 );
@@ -110,7 +110,7 @@ struct VS_INPUT
 	// Position and normal/tangent deltas
 	float3 vPosFlex			: POSITION1;
 	float3 vNormalFlex		: NORMAL1;
-#ifdef SHADER_MODEL_VS_3_0
+#if defined( SHADER_MODEL_VS_3_0 )
 	float vVertexID			: POSITION2;
 #endif
 };
@@ -135,7 +135,7 @@ struct VS_OUTPUT
 #endif
 	float4 color					: TEXCOORD2;		// Vertex color (from lighting or unlit)
 
-#if CUBEMAP || _X360
+#if 1 //CUBEMAP || _X360
 	float3 worldVertToEyeVector		: TEXCOORD3;		// Necessary for cubemaps
 #endif
 
@@ -184,7 +184,7 @@ VS_OUTPUT main( const VS_INPUT v )
 	ApplyMorph( morphSampler, cMorphTargetTextureDim, cMorphSubrect, 
 		v.vVertexID, v.vTexCoord2, vPosition.xyz, vNormal );
 #endif
-	  
+
 	#if ( TREESWAY )
 	{
 		vPosition.xyz = ComputeTreeSway( vPosition.xyz, g_flTime ) + 0;
@@ -225,7 +225,7 @@ VS_OUTPUT main( const VS_INPUT v )
 	o.worldPos_ProjPosZ.w = vProjPos.z;
 
 	// Needed for cubemaps 
-#if CUBEMAP
+#if 1 //CUBEMAP
 	o.worldVertToEyeVector.xyz = VSHADER_VECT_SCALE * (cEyePos - worldPos);
 #endif
 
@@ -266,10 +266,18 @@ VS_OUTPUT main( const VS_INPUT v )
 	// that scale works. More smartness could allow 3d xform.
 	o.SeamlessDetailTexCoord.xyz = (SEAMLESS_SCALE*cDetailTexCoordTransform[0].x) * v.vPos.xyz;
 #else
-	// Detail texture coordinates
-	// FIXME: This shouldn't have to be computed all the time.
-	o.detailTexCoord.x = dot( v.vTexCoord0, cDetailTexCoordTransform[0] );
-	o.detailTexCoord.y = dot( v.vTexCoord0, cDetailTexCoordTransform[1] );
+		#if ( TREESWAY )
+		{
+			o.detailTexCoord.xy = v.vTexCoord0;
+		}
+		#else
+		{
+			// Detail texture coordinates
+			// FIXME: This shouldn't have to be computed all the time.
+			o.detailTexCoord.x = dot( v.vTexCoord0, cDetailTexCoordTransform[0] );
+			o.detailTexCoord.y = dot( v.vTexCoord0, cDetailTexCoordTransform[1] );
+		}
+		#endif
 #endif
 
 #if SEPARATE_DETAIL_UVS

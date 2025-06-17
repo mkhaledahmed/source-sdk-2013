@@ -1,11 +1,14 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+
+#pragma once
 #include "shaderlib/cshader.h"
 class shatteredglass_vs20_Static_Index
 {
-private:
-	int m_nENVMAP_MASK;
+	unsigned int m_nENVMAP_MASK : 2;
 #ifdef _DEBUG
-	bool m_bENVMAP_MASK;
-#endif
+	bool m_bENVMAP_MASK : 1;
+#endif	// _DEBUG
 public:
 	void SetENVMAP_MASK( int i )
 	{
@@ -13,42 +16,33 @@ public:
 		m_nENVMAP_MASK = i;
 #ifdef _DEBUG
 		m_bENVMAP_MASK = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetENVMAP_MASK( bool i )
+
+	shatteredglass_vs20_Static_Index(  )
 	{
-		m_nENVMAP_MASK = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bENVMAP_MASK = true;
-#endif
-	}
-public:
-	shatteredglass_vs20_Static_Index( )
-	{
+		m_nENVMAP_MASK = 0;
 #ifdef _DEBUG
 		m_bENVMAP_MASK = false;
-#endif // _DEBUG
-		m_nENVMAP_MASK = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bENVMAP_MASK;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
+		Assert( m_bENVMAP_MASK );
 		return ( 2 * m_nENVMAP_MASK ) + 0;
 	}
 };
-#define shaderStaticTest_shatteredglass_vs20 vsh_forgot_to_set_static_ENVMAP_MASK + 0
+
+#define shaderStaticTest_shatteredglass_vs20 vsh_forgot_to_set_static_ENVMAP_MASK
+
+
 class shatteredglass_vs20_Dynamic_Index
 {
-private:
-	int m_nDOWATERFOG;
+	unsigned int m_nDOWATERFOG : 2;
 #ifdef _DEBUG
-	bool m_bDOWATERFOG;
-#endif
+	bool m_bDOWATERFOG : 1;
+#endif	// _DEBUG
 public:
 	void SetDOWATERFOG( int i )
 	{
@@ -56,32 +50,23 @@ public:
 		m_nDOWATERFOG = i;
 #ifdef _DEBUG
 		m_bDOWATERFOG = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetDOWATERFOG( bool i )
+
+	shatteredglass_vs20_Dynamic_Index(  )
 	{
-		m_nDOWATERFOG = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bDOWATERFOG = true;
-#endif
-	}
-public:
-	shatteredglass_vs20_Dynamic_Index()
-	{
+		m_nDOWATERFOG = 0;
 #ifdef _DEBUG
 		m_bDOWATERFOG = false;
-#endif // _DEBUG
-		m_nDOWATERFOG = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllDynamicVarsDefined = m_bDOWATERFOG;
-		Assert( bAllDynamicVarsDefined );
-#endif // _DEBUG
+		Assert( m_bDOWATERFOG );
 		return ( 1 * m_nDOWATERFOG ) + 0;
 	}
 };
-#define shaderDynamicTest_shatteredglass_vs20 vsh_forgot_to_set_dynamic_DOWATERFOG + 0
+
+#define shaderDynamicTest_shatteredglass_vs20 vsh_forgot_to_set_dynamic_DOWATERFOG
+

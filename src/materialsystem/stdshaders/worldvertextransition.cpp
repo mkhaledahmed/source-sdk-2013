@@ -50,6 +50,10 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 		SHADER_PARAM( BUMPMASK, SHADER_PARAM_TYPE_TEXTURE, "models/shadertest/shader1_normal", "bump map" )
 		SHADER_PARAM( BASETEXTURE2, SHADER_PARAM_TYPE_TEXTURE, "shadertest/detail", "detail texture" )
 		SHADER_PARAM( FRAME2, SHADER_PARAM_TYPE_INTEGER, "0", "frame number for $basetexture2" )
+#ifdef MAPBASE
+		// This needs to be a SHADER_PARAM_TYPE_STRING so it isn't considered "defined" by default.
+		SHADER_PARAM( BASETEXTURETRANSFORM2, SHADER_PARAM_TYPE_STRING, "center .5 .5 scale 1 1 rotate 0 translate 0 0", "$basetexture2 texcoord transform" )
+#endif
 		SHADER_PARAM( BASETEXTURENOENVMAP, SHADER_PARAM_TYPE_BOOL, "0", "" )
 		SHADER_PARAM( BASETEXTURE2NOENVMAP, SHADER_PARAM_TYPE_BOOL, "0", "" )
 		SHADER_PARAM( DETAIL_ALPHA_MASK_BASE_TEXTURE, SHADER_PARAM_TYPE_BOOL, "0", 
@@ -61,6 +65,20 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 		SHADER_PARAM( MASKEDBLENDING, SHADER_PARAM_TYPE_INTEGER, "0", "blend using texture with no vertex alpha. For using texture blending on non-displacements" )
 		SHADER_PARAM( SSBUMP, SHADER_PARAM_TYPE_INTEGER, "0", "whether or not to use alternate bumpmap format with height" )
 		SHADER_PARAM( SEAMLESS_SCALE, SHADER_PARAM_TYPE_FLOAT, "0", "Scale factor for 'seamless' texture mapping. 0 means to use ordinary mapping" )
+
+		SHADER_PARAM( PHONG, SHADER_PARAM_TYPE_BOOL, "0", "enables phong lighting" )
+		SHADER_PARAM( PHONGBOOST, SHADER_PARAM_TYPE_FLOAT, "1.0", "Phong overbrightening factor (specular mask channel should be authored to account for this)" )
+		SHADER_PARAM( PHONGFRESNELRANGES, SHADER_PARAM_TYPE_VEC3, "[0  0.5  1]", "Parameters for remapping fresnel output" )
+		SHADER_PARAM( PHONGEXPONENT, SHADER_PARAM_TYPE_FLOAT, "5.0", "Phong exponent for local specular lights" )
+
+#ifdef PARALLAX_CORRECTED_CUBEMAPS
+		// Parallax cubemaps
+		SHADER_PARAM( ENVMAPPARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Enables parallax correction code for env_cubemaps" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB1, SHADER_PARAM_TYPE_VEC4, "[1 0 0 0]", "The first line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB2, SHADER_PARAM_TYPE_VEC4, "[0 1 0 0]", "The second line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPPARALLAXOBB3, SHADER_PARAM_TYPE_VEC4, "[0 0 1 0]", "The third line of the parallax correction OBB matrix" )
+		SHADER_PARAM( ENVMAPORIGIN, SHADER_PARAM_TYPE_VEC3, "[0 0 0]", "The world space position of the env_cubemap being corrected" )
+#endif
 	END_SHADER_PARAMS
 
 	void SetupVars( WorldVertexTransitionEditor_DX8_Vars_t& info )
@@ -70,7 +88,11 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 		info.m_nBaseTextureTransformVar = BASETEXTURETRANSFORM;
 		info.m_nBaseTexture2Var = BASETEXTURE2;
 		info.m_nBaseTexture2FrameVar = FRAME2;
+#ifdef MAPBASE
+		info.m_nBaseTexture2TransformVar = BASETEXTURETRANSFORM2;
+#else
 		info.m_nBaseTexture2TransformVar = BASETEXTURETRANSFORM; // FIXME!!!!
+#endif
 	}
 
 	void SetupVars( LightmappedGeneric_DX9_Vars_t& info )
@@ -105,6 +127,9 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 		info.m_nBumpFrame2 = BUMPFRAME2;
 		info.m_nBaseTexture2 = BASETEXTURE2;
 		info.m_nBaseTexture2Frame = FRAME2;
+#ifdef MAPBASE
+		info.m_nBaseTexture2Transform = BASETEXTURETRANSFORM2;
+#endif
 		info.m_nBumpTransform2 = BUMPTRANSFORM2;
 		info.m_nBumpMask = BUMPMASK;
 		info.m_nBaseTextureNoEnvmap = BASETEXTURENOENVMAP;
@@ -119,6 +144,20 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 		info.m_nSelfShadowedBumpFlag = SSBUMP;
 		info.m_nSeamlessMappingScale = SEAMLESS_SCALE;
 		info.m_nAlphaTestReference = -1;
+
+		info.m_nPhong = PHONG;
+		info.m_nPhongBoost = PHONGBOOST;
+		info.m_nPhongFresnelRanges = PHONGFRESNELRANGES;
+		info.m_nPhongExponent = PHONGEXPONENT;
+
+#ifdef PARALLAX_CORRECTED_CUBEMAPS
+		// Parallax cubemaps
+		info.m_nEnvmapParallax = ENVMAPPARALLAX;
+		info.m_nEnvmapParallaxObb1 = ENVMAPPARALLAXOBB1;
+		info.m_nEnvmapParallaxObb2 = ENVMAPPARALLAXOBB2;
+		info.m_nEnvmapParallaxObb3 = ENVMAPPARALLAXOBB3;
+		info.m_nEnvmapOrigin = ENVMAPORIGIN;
+#endif
 	}
 
 	SHADER_FALLBACK

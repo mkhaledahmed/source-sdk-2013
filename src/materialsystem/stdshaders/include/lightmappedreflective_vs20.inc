@@ -1,11 +1,14 @@
+// ALL SKIP STATEMENTS THAT AFFECT THIS SHADER!!!
+// defined $LIGHTING_PREVIEW && defined $FASTPATH && $LIGHTING_PREVIEW && $FASTPATH
+
+#pragma once
 #include "shaderlib/cshader.h"
 class lightmappedreflective_vs20_Static_Index
 {
-private:
-	int m_nBASETEXTURE;
+	unsigned int m_nBASETEXTURE : 2;
 #ifdef _DEBUG
-	bool m_bBASETEXTURE;
-#endif
+	bool m_bBASETEXTURE : 1;
+#endif	// _DEBUG
 public:
 	void SetBASETEXTURE( int i )
 	{
@@ -13,48 +16,39 @@ public:
 		m_nBASETEXTURE = i;
 #ifdef _DEBUG
 		m_bBASETEXTURE = true;
-#endif
+#endif	// _DEBUG
 	}
-	void SetBASETEXTURE( bool i )
+
+	lightmappedreflective_vs20_Static_Index(  )
 	{
-		m_nBASETEXTURE = i ? 1 : 0;
-#ifdef _DEBUG
-		m_bBASETEXTURE = true;
-#endif
-	}
-public:
-	lightmappedreflective_vs20_Static_Index( )
-	{
+		m_nBASETEXTURE = 0;
 #ifdef _DEBUG
 		m_bBASETEXTURE = false;
-#endif // _DEBUG
-		m_nBASETEXTURE = 0;
+#endif	// _DEBUG
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bBASETEXTURE;
-		Assert( bAllStaticVarsDefined );
-#endif // _DEBUG
+		Assert( m_bBASETEXTURE );
 		return ( 1 * m_nBASETEXTURE ) + 0;
 	}
 };
-#define shaderStaticTest_lightmappedreflective_vs20 vsh_forgot_to_set_static_BASETEXTURE + 0
+
+#define shaderStaticTest_lightmappedreflective_vs20 vsh_forgot_to_set_static_BASETEXTURE
+
+
 class lightmappedreflective_vs20_Dynamic_Index
 {
 public:
-	lightmappedreflective_vs20_Dynamic_Index()
+	lightmappedreflective_vs20_Dynamic_Index(  )
 	{
 	}
-	int GetIndex()
+
+	int GetIndex() const
 	{
-		// Asserts to make sure that we aren't using any skipped combinations.
-		// Asserts to make sure that we are setting all of the combination vars.
-#ifdef _DEBUG
-#endif // _DEBUG
 		return 0;
 	}
 };
-#define shaderDynamicTest_lightmappedreflective_vs20 0
+
+#define shaderDynamicTest_lightmappedreflective_vs20 1
+

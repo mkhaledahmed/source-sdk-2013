@@ -259,6 +259,9 @@ END_SHADER_PARAMS
 #ifdef _X360
 			SET_STATIC_VERTEX_SHADER_COMBO( FLASHLIGHT, hasFlashlight );
 #endif
+#ifdef MAPBASE
+			SET_STATIC_VERTEX_SHADER_COMBO( BASETEXTURETRANSFORM2, false );
+#endif
 			SET_STATIC_VERTEX_SHADER( lightmappedgeneric_vs20 );
 
 			if ( g_pHardwareConfig->SupportsPixelShaders_2_b() )

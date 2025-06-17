@@ -191,12 +191,16 @@ BEGIN_VS_SHADER( UnlitTwoTexture_DX9, "Help for UnlitTwoTexture_DX9" )
 				}
 				pShaderShadow->VertexShaderVertexFormat( flags, nTexCoordCount, NULL, userDataSize );
 
+				// If this is set, blend with the alpha channels of the textures and modulation color
+				bool bTranslucent = IsAlphaModulating() || IS_FLAG_SET( MATERIAL_VAR_TRANSLUCENT ) || TextureIsTranslucent( BASETEXTURE, true ) || TextureIsTranslucent( TEXTURE2, true );
+
 				DECLARE_STATIC_VERTEX_SHADER( unlittwotexture_vs20 );
 				SET_STATIC_VERTEX_SHADER( unlittwotexture_vs20 );
 
 				if( g_pHardwareConfig->SupportsPixelShaders_2_b() )
 				{
 					DECLARE_STATIC_PIXEL_SHADER( unlittwotexture_ps20b );
+					SET_STATIC_PIXEL_SHADER_COMBO( TRANSLUCENT, bTranslucent );
 					SET_STATIC_PIXEL_SHADER( unlittwotexture_ps20b );
 				}
 				else
@@ -239,8 +243,10 @@ BEGIN_VS_SHADER( UnlitTwoTexture_DX9, "Help for UnlitTwoTexture_DX9" )
 					DECLARE_DYNAMIC_PIXEL_SHADER( unlittwotexture_ps20b );
 					SET_DYNAMIC_PIXEL_SHADER_COMBO( PIXELFOGTYPE, pShaderAPI->GetPixelFogCombo() );
 					SET_DYNAMIC_PIXEL_SHADER_COMBO( WRITE_DEPTH_TO_DESTALPHA, bFullyOpaque && pShaderAPI->ShouldWriteDepthToDestAlpha() );
+#ifndef MAPBASE
 					SET_DYNAMIC_PIXEL_SHADER_COMBO(	LIGHTING_PREVIEW, 
 						pShaderAPI->GetIntRenderingParameter(INT_RENDERPARM_ENABLE_FIXED_LIGHTING) );
+#endif
 					SET_DYNAMIC_PIXEL_SHADER( unlittwotexture_ps20b );
 				}
 				else

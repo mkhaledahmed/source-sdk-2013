@@ -14,6 +14,8 @@
 // ($BLENDTINTBYBASEALPHA) && ($SELFILLUM)
 // $FLASHLIGHT && $CUBEMAP
 // $NORMALMAPALPHAENVMAPMASK && !$CUBEMAP
+// $NORMALMAPALPHAENVMAPMASK && $ENVMAPMASK
+// $ENVMAPMASK && !$CUBEMAP
 // defined $HDRTYPE && defined $HDRENABLED && !$HDRTYPE && $HDRENABLED
 // defined $PIXELFOGTYPE && defined $WRITEWATERFOGTODESTALPHA && ( $PIXELFOGTYPE != 1 ) && $WRITEWATERFOGTODESTALPHA
 // defined $LIGHTING_PREVIEW && defined $HDRTYPE && $LIGHTING_PREVIEW && $HDRTYPE != 0
@@ -45,6 +47,7 @@ class vertexlit_and_unlit_generic_bump_ps30_Static_Index
 	unsigned int m_nDETAIL_BLEND_MODE : 3;
 	unsigned int m_nFLASHLIGHTDEPTHFILTERMODE : 2;
 	unsigned int m_nBLENDTINTBYBASEALPHA : 2;
+	unsigned int m_nENVMAPMASK : 2;
 #ifdef _DEBUG
 	bool m_bCUBEMAP : 1;
 	bool m_bDIFFUSELIGHTING : 1;
@@ -58,6 +61,7 @@ class vertexlit_and_unlit_generic_bump_ps30_Static_Index
 	bool m_bDETAIL_BLEND_MODE : 1;
 	bool m_bFLASHLIGHTDEPTHFILTERMODE : 1;
 	bool m_bBLENDTINTBYBASEALPHA : 1;
+	bool m_bENVMAPMASK : 1;
 #endif	// _DEBUG
 public:
 	void SetCUBEMAP( int i )
@@ -168,6 +172,15 @@ public:
 #endif	// _DEBUG
 	}
 
+	void SetENVMAPMASK( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nENVMAPMASK = i;
+#ifdef _DEBUG
+		m_bENVMAPMASK = true;
+#endif	// _DEBUG
+	}
+
 	vertexlit_and_unlit_generic_bump_ps30_Static_Index(  )
 	{
 		m_nCUBEMAP = 0;
@@ -182,6 +195,7 @@ public:
 		m_nDETAIL_BLEND_MODE = 0;
 		m_nFLASHLIGHTDEPTHFILTERMODE = 0;
 		m_nBLENDTINTBYBASEALPHA = 0;
+		m_nENVMAPMASK = 0;
 #ifdef _DEBUG
 		m_bCUBEMAP = false;
 		m_bDIFFUSELIGHTING = false;
@@ -195,12 +209,13 @@ public:
 		m_bDETAIL_BLEND_MODE = false;
 		m_bFLASHLIGHTDEPTHFILTERMODE = false;
 		m_bBLENDTINTBYBASEALPHA = false;
+		m_bENVMAPMASK = false;
 #endif	// _DEBUG
 	}
 
 	int GetIndex() const
 	{
-		Assert( m_bCUBEMAP && m_bDIFFUSELIGHTING && m_bLIGHTWARPTEXTURE && m_bSELFILLUM && m_bSELFILLUMFRESNEL && m_bNORMALMAPALPHAENVMAPMASK && m_bHALFLAMBERT && m_bFLASHLIGHT && m_bDETAILTEXTURE && m_bDETAIL_BLEND_MODE && m_bFLASHLIGHTDEPTHFILTERMODE && m_bBLENDTINTBYBASEALPHA );
+		Assert( m_bCUBEMAP && m_bDIFFUSELIGHTING && m_bLIGHTWARPTEXTURE && m_bSELFILLUM && m_bSELFILLUMFRESNEL && m_bNORMALMAPALPHAENVMAPMASK && m_bHALFLAMBERT && m_bFLASHLIGHT && m_bDETAILTEXTURE && m_bDETAIL_BLEND_MODE && m_bFLASHLIGHTDEPTHFILTERMODE && m_bBLENDTINTBYBASEALPHA && m_bENVMAPMASK );
 		AssertMsg( !( ( m_nFLASHLIGHT == 0 ) && ( m_nFLASHLIGHTDEPTHFILTERMODE != 0 ) ), "Invalid combo combination ( ( FLASHLIGHT == 0 ) && ( FLASHLIGHTDEPTHFILTERMODE != 0 ) )" );
 		AssertMsg( !( !m_nDETAILTEXTURE && ( m_nDETAIL_BLEND_MODE != 0 ) ), "Invalid combo combination ( !DETAILTEXTURE && ( DETAIL_BLEND_MODE != 0 ) )" );
 		AssertMsg( !( ( m_nFLASHLIGHT == 1 ) && ( m_nLIGHTWARPTEXTURE == 1 ) ), "Invalid combo combination ( ( FLASHLIGHT == 1 ) && ( LIGHTWARPTEXTURE == 1 ) )" );
@@ -214,11 +229,13 @@ public:
 		AssertMsg( !( m_nBLENDTINTBYBASEALPHA && m_nSELFILLUM ), "Invalid combo combination ( BLENDTINTBYBASEALPHA && SELFILLUM )" );
 		AssertMsg( !( m_nFLASHLIGHT && m_nCUBEMAP ), "Invalid combo combination ( FLASHLIGHT && CUBEMAP )" );
 		AssertMsg( !( m_nNORMALMAPALPHAENVMAPMASK && !m_nCUBEMAP ), "Invalid combo combination ( NORMALMAPALPHAENVMAPMASK && !CUBEMAP )" );
-		return ( 60 * m_nCUBEMAP ) + ( 120 * m_nDIFFUSELIGHTING ) + ( 240 * m_nLIGHTWARPTEXTURE ) + ( 480 * m_nSELFILLUM ) + ( 960 * m_nSELFILLUMFRESNEL ) + ( 1920 * m_nNORMALMAPALPHAENVMAPMASK ) + ( 3840 * m_nHALFLAMBERT ) + ( 7680 * m_nFLASHLIGHT ) + ( 15360 * m_nDETAILTEXTURE ) + ( 30720 * m_nDETAIL_BLEND_MODE ) + ( 215040 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 645120 * m_nBLENDTINTBYBASEALPHA ) + 0;
+		AssertMsg( !( m_nNORMALMAPALPHAENVMAPMASK && m_nENVMAPMASK ), "Invalid combo combination ( NORMALMAPALPHAENVMAPMASK && ENVMAPMASK )" );
+		AssertMsg( !( m_nENVMAPMASK && !m_nCUBEMAP ), "Invalid combo combination ( ENVMAPMASK && !CUBEMAP )" );
+		return ( 60 * m_nCUBEMAP ) + ( 120 * m_nDIFFUSELIGHTING ) + ( 240 * m_nLIGHTWARPTEXTURE ) + ( 480 * m_nSELFILLUM ) + ( 960 * m_nSELFILLUMFRESNEL ) + ( 1920 * m_nNORMALMAPALPHAENVMAPMASK ) + ( 3840 * m_nHALFLAMBERT ) + ( 7680 * m_nFLASHLIGHT ) + ( 15360 * m_nDETAILTEXTURE ) + ( 30720 * m_nDETAIL_BLEND_MODE ) + ( 215040 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 645120 * m_nBLENDTINTBYBASEALPHA ) + ( 1290240 * m_nENVMAPMASK ) + 0;
 	}
 };
 
-#define shaderStaticTest_vertexlit_and_unlit_generic_bump_ps30 psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_DIFFUSELIGHTING + psh_forgot_to_set_static_LIGHTWARPTEXTURE + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_SELFILLUMFRESNEL + psh_forgot_to_set_static_NORMALMAPALPHAENVMAPMASK + psh_forgot_to_set_static_HALFLAMBERT + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA
+#define shaderStaticTest_vertexlit_and_unlit_generic_bump_ps30 psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_DIFFUSELIGHTING + psh_forgot_to_set_static_LIGHTWARPTEXTURE + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_SELFILLUMFRESNEL + psh_forgot_to_set_static_NORMALMAPALPHAENVMAPMASK + psh_forgot_to_set_static_HALFLAMBERT + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA + psh_forgot_to_set_static_ENVMAPMASK
 
 
 class vertexlit_and_unlit_generic_bump_ps30_Dynamic_Index

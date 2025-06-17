@@ -10,9 +10,11 @@
 // $BASEALPHAENVMAPMASK && ($SEAMLESS_BASE || $SEAMLESS_DETAIL)
 // ($DISTANCEALPHA == 0) && ($DISTANCEALPHAFROMDETAIL || $SOFT_MASK || $OUTLINE || $OUTER_GLOW)
 // ($DETAILTEXTURE == 0) && ($DISTANCEALPHAFROMDETAIL)
+// ( $CUBEMAP == 0 ) && ( ( $ENVMAPFRESNEL == 1 ) || ( $BASEALPHAENVMAPMASK == 1 ) )
+// ( $CUBEMAP == 0 ) && ( $ENVMAPMASK == 1 ) && ( $SELFILLUM_ENVMAPMASK_ALPHA == 0 )
 // ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTSHADOWS == 1 )
 // ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTDEPTHFILTERMODE != 0 )
-// ($DISTANCEALPHA) && ($ENVMAPMASK || $BASEALPHAENVMAPMASK || $SELFILLUM || $SELFILLUM_ENVMAPMASK_ALPHA )
+// ($DISTANCEALPHA) && ($ENVMAPMASK || $BASEALPHAENVMAPMASK || $SELFILLUM || $SELFILLUM_ENVMAPMASK_ALPHA || $ENVMAPFRESNEL)
 // ($DISTANCEALPHA) && ($SEAMLESS_BASE || $SEAMLESS_DETAIL || $CUBEMAP || $LIGHTING_PREVIEW )
 // ($DISTANCEALPHA) && ($WRITEWATERFOGTODESTALPHA || $FLASHLIGHT || $FLASHLIGHTSHADOWS || $SRGB_INPUT_ADAPTER )
 // $SEAMLESS_BASE && $SRGB_INPUT_ADAPTER
@@ -61,7 +63,6 @@ class vertexlit_and_unlit_generic_ps20b_Static_Index
 	unsigned int m_nDEPTHBLEND : 2;
 	unsigned int m_nBLENDTINTBYBASEALPHA : 2;
 	unsigned int m_nSRGB_INPUT_ADAPTER : 2;
-	unsigned int m_nCUBEMAP_SPHERE_LEGACY : 2;
 #ifdef _DEBUG
 	bool m_bDETAILTEXTURE : 1;
 	bool m_bCUBEMAP : 1;
@@ -84,7 +85,6 @@ class vertexlit_and_unlit_generic_ps20b_Static_Index
 	bool m_bDEPTHBLEND : 1;
 	bool m_bBLENDTINTBYBASEALPHA : 1;
 	bool m_bSRGB_INPUT_ADAPTER : 1;
-	bool m_bCUBEMAP_SPHERE_LEGACY : 1;
 #endif	// _DEBUG
 public:
 	void SetDETAILTEXTURE( int i )
@@ -276,15 +276,6 @@ public:
 #endif	// _DEBUG
 	}
 
-	void SetCUBEMAP_SPHERE_LEGACY( int i )
-	{
-		Assert( i >= 0 && i <= 1 );
-		m_nCUBEMAP_SPHERE_LEGACY = i;
-#ifdef _DEBUG
-		m_bCUBEMAP_SPHERE_LEGACY = true;
-#endif	// _DEBUG
-	}
-
 	vertexlit_and_unlit_generic_ps20b_Static_Index(  )
 	{
 		m_nDETAILTEXTURE = 0;
@@ -308,7 +299,6 @@ public:
 		m_nDEPTHBLEND = 0;
 		m_nBLENDTINTBYBASEALPHA = 0;
 		m_nSRGB_INPUT_ADAPTER = 0;
-		m_nCUBEMAP_SPHERE_LEGACY = 0;
 #ifdef _DEBUG
 		m_bDETAILTEXTURE = false;
 		m_bCUBEMAP = false;
@@ -331,13 +321,12 @@ public:
 		m_bDEPTHBLEND = false;
 		m_bBLENDTINTBYBASEALPHA = false;
 		m_bSRGB_INPUT_ADAPTER = false;
-		m_bCUBEMAP_SPHERE_LEGACY = false;
 #endif	// _DEBUG
 	}
 
 	int GetIndex() const
 	{
-		Assert( m_bDETAILTEXTURE && m_bCUBEMAP && m_bDIFFUSELIGHTING && m_bENVMAPMASK && m_bBASEALPHAENVMAPMASK && m_bSELFILLUM && m_bVERTEXCOLOR && m_bFLASHLIGHT && m_bSELFILLUM_ENVMAPMASK_ALPHA && m_bDETAIL_BLEND_MODE && m_bSEAMLESS_BASE && m_bSEAMLESS_DETAIL && m_bDISTANCEALPHA && m_bDISTANCEALPHAFROMDETAIL && m_bSOFT_MASK && m_bOUTLINE && m_bOUTER_GLOW && m_bFLASHLIGHTDEPTHFILTERMODE && m_bDEPTHBLEND && m_bBLENDTINTBYBASEALPHA && m_bSRGB_INPUT_ADAPTER && m_bCUBEMAP_SPHERE_LEGACY );
+		Assert( m_bDETAILTEXTURE && m_bCUBEMAP && m_bDIFFUSELIGHTING && m_bENVMAPMASK && m_bBASEALPHAENVMAPMASK && m_bSELFILLUM && m_bVERTEXCOLOR && m_bFLASHLIGHT && m_bSELFILLUM_ENVMAPMASK_ALPHA && m_bDETAIL_BLEND_MODE && m_bSEAMLESS_BASE && m_bSEAMLESS_DETAIL && m_bDISTANCEALPHA && m_bDISTANCEALPHAFROMDETAIL && m_bSOFT_MASK && m_bOUTLINE && m_bOUTER_GLOW && m_bFLASHLIGHTDEPTHFILTERMODE && m_bDEPTHBLEND && m_bBLENDTINTBYBASEALPHA && m_bSRGB_INPUT_ADAPTER );
 		AssertMsg( !( ( m_nDETAILTEXTURE == 0 ) && ( m_nDETAIL_BLEND_MODE != 0 ) ), "Invalid combo combination ( ( DETAILTEXTURE == 0 ) && ( DETAIL_BLEND_MODE != 0 ) )" );
 		AssertMsg( !( ( m_nDETAILTEXTURE == 0 ) && m_nSEAMLESS_DETAIL ), "Invalid combo combination ( ( DETAILTEXTURE == 0 ) && SEAMLESS_DETAIL )" );
 		AssertMsg( !( ( m_nENVMAPMASK || m_nSELFILLUM_ENVMAPMASK_ALPHA ) && ( m_nSEAMLESS_BASE || m_nSEAMLESS_DETAIL ) ), "Invalid combo combination ( ( ENVMAPMASK || SELFILLUM_ENVMAPMASK_ALPHA ) && ( SEAMLESS_BASE || SEAMLESS_DETAIL ) )" );
@@ -348,18 +337,17 @@ public:
 		AssertMsg( !( m_nBASEALPHAENVMAPMASK && ( m_nSEAMLESS_BASE || m_nSEAMLESS_DETAIL ) ), "Invalid combo combination ( BASEALPHAENVMAPMASK && ( SEAMLESS_BASE || SEAMLESS_DETAIL ) )" );
 		AssertMsg( !( ( m_nDISTANCEALPHA == 0 ) && ( m_nDISTANCEALPHAFROMDETAIL || ( m_nSOFT_MASK || ( m_nOUTLINE || m_nOUTER_GLOW ) ) ) ), "Invalid combo combination ( ( DISTANCEALPHA == 0 ) && ( DISTANCEALPHAFROMDETAIL || ( SOFT_MASK || ( OUTLINE || OUTER_GLOW ) ) ) )" );
 		AssertMsg( !( ( m_nDETAILTEXTURE == 0 ) && m_nDISTANCEALPHAFROMDETAIL ), "Invalid combo combination ( ( DETAILTEXTURE == 0 ) && DISTANCEALPHAFROMDETAIL )" );
+		AssertMsg( !( ( m_nCUBEMAP == 0 ) && ( ( m_nENVMAPMASK == 1 ) && ( m_nSELFILLUM_ENVMAPMASK_ALPHA == 0 ) ) ), "Invalid combo combination ( ( CUBEMAP == 0 ) && ( ( ENVMAPMASK == 1 ) && ( SELFILLUM_ENVMAPMASK_ALPHA == 0 ) ) )" );
 		AssertMsg( !( ( m_nFLASHLIGHT == 0 ) && ( m_nFLASHLIGHTDEPTHFILTERMODE != 0 ) ), "Invalid combo combination ( ( FLASHLIGHT == 0 ) && ( FLASHLIGHTDEPTHFILTERMODE != 0 ) )" );
-		AssertMsg( !( m_nDISTANCEALPHA && ( m_nENVMAPMASK || ( m_nBASEALPHAENVMAPMASK || ( m_nSELFILLUM || m_nSELFILLUM_ENVMAPMASK_ALPHA ) ) ) ), "Invalid combo combination ( DISTANCEALPHA && ( ENVMAPMASK || ( BASEALPHAENVMAPMASK || ( SELFILLUM || SELFILLUM_ENVMAPMASK_ALPHA ) ) ) )" );
 		AssertMsg( !( m_nSEAMLESS_BASE && m_nSRGB_INPUT_ADAPTER ), "Invalid combo combination ( SEAMLESS_BASE && SRGB_INPUT_ADAPTER )" );
 		AssertMsg( !( m_nSEAMLESS_BASE && m_nBLENDTINTBYBASEALPHA ), "Invalid combo combination ( SEAMLESS_BASE && BLENDTINTBYBASEALPHA )" );
 		AssertMsg( !( m_nBLENDTINTBYBASEALPHA && ( m_nSELFILLUM || ( ( m_nDISTANCEALPHA && ( m_nDISTANCEALPHAFROMDETAIL == 0 ) ) || m_nBASEALPHAENVMAPMASK ) ) ), "Invalid combo combination ( BLENDTINTBYBASEALPHA && ( SELFILLUM || ( ( DISTANCEALPHA && ( DISTANCEALPHAFROMDETAIL == 0 ) ) || BASEALPHAENVMAPMASK ) ) )" );
 		AssertMsg( !( m_nFLASHLIGHT && m_nCUBEMAP ), "Invalid combo combination ( FLASHLIGHT && CUBEMAP )" );
-		AssertMsg( !( m_nCUBEMAP_SPHERE_LEGACY && ( m_nCUBEMAP == 0 ) ), "Invalid combo combination ( CUBEMAP_SPHERE_LEGACY && ( CUBEMAP == 0 ) )" );
-		return ( 72 * m_nDETAILTEXTURE ) + ( 144 * m_nCUBEMAP ) + ( 288 * m_nDIFFUSELIGHTING ) + ( 576 * m_nENVMAPMASK ) + ( 1152 * m_nBASEALPHAENVMAPMASK ) + ( 2304 * m_nSELFILLUM ) + ( 4608 * m_nVERTEXCOLOR ) + ( 9216 * m_nFLASHLIGHT ) + ( 18432 * m_nSELFILLUM_ENVMAPMASK_ALPHA ) + ( 36864 * m_nDETAIL_BLEND_MODE ) + ( 368640 * m_nSEAMLESS_BASE ) + ( 737280 * m_nSEAMLESS_DETAIL ) + ( 1474560 * m_nDISTANCEALPHA ) + ( 2949120 * m_nDISTANCEALPHAFROMDETAIL ) + ( 5898240 * m_nSOFT_MASK ) + ( 11796480 * m_nOUTLINE ) + ( 23592960 * m_nOUTER_GLOW ) + ( 47185920 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 141557760 * m_nDEPTHBLEND ) + ( 283115520 * m_nBLENDTINTBYBASEALPHA ) + ( 566231040 * m_nSRGB_INPUT_ADAPTER ) + ( 1132462080 * m_nCUBEMAP_SPHERE_LEGACY ) + 0;
+		return ( 72 * m_nDETAILTEXTURE ) + ( 144 * m_nCUBEMAP ) + ( 288 * m_nDIFFUSELIGHTING ) + ( 576 * m_nENVMAPMASK ) + ( 1152 * m_nBASEALPHAENVMAPMASK ) + ( 2304 * m_nSELFILLUM ) + ( 4608 * m_nVERTEXCOLOR ) + ( 9216 * m_nFLASHLIGHT ) + ( 18432 * m_nSELFILLUM_ENVMAPMASK_ALPHA ) + ( 36864 * m_nDETAIL_BLEND_MODE ) + ( 368640 * m_nSEAMLESS_BASE ) + ( 737280 * m_nSEAMLESS_DETAIL ) + ( 1474560 * m_nDISTANCEALPHA ) + ( 2949120 * m_nDISTANCEALPHAFROMDETAIL ) + ( 5898240 * m_nSOFT_MASK ) + ( 11796480 * m_nOUTLINE ) + ( 23592960 * m_nOUTER_GLOW ) + ( 47185920 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 141557760 * m_nDEPTHBLEND ) + ( 283115520 * m_nBLENDTINTBYBASEALPHA ) + ( 566231040 * m_nSRGB_INPUT_ADAPTER ) + 0;
 	}
 };
 
-#define shaderStaticTest_vertexlit_and_unlit_generic_ps20b psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_DIFFUSELIGHTING + psh_forgot_to_set_static_ENVMAPMASK + psh_forgot_to_set_static_BASEALPHAENVMAPMASK + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_VERTEXCOLOR + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_SELFILLUM_ENVMAPMASK_ALPHA + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_SEAMLESS_BASE + psh_forgot_to_set_static_SEAMLESS_DETAIL + psh_forgot_to_set_static_DISTANCEALPHA + psh_forgot_to_set_static_DISTANCEALPHAFROMDETAIL + psh_forgot_to_set_static_SOFT_MASK + psh_forgot_to_set_static_OUTLINE + psh_forgot_to_set_static_OUTER_GLOW + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_DEPTHBLEND + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA + psh_forgot_to_set_static_SRGB_INPUT_ADAPTER + psh_forgot_to_set_static_CUBEMAP_SPHERE_LEGACY
+#define shaderStaticTest_vertexlit_and_unlit_generic_ps20b psh_forgot_to_set_static_DETAILTEXTURE + psh_forgot_to_set_static_CUBEMAP + psh_forgot_to_set_static_DIFFUSELIGHTING + psh_forgot_to_set_static_ENVMAPMASK + psh_forgot_to_set_static_BASEALPHAENVMAPMASK + psh_forgot_to_set_static_SELFILLUM + psh_forgot_to_set_static_VERTEXCOLOR + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_SELFILLUM_ENVMAPMASK_ALPHA + psh_forgot_to_set_static_DETAIL_BLEND_MODE + psh_forgot_to_set_static_SEAMLESS_BASE + psh_forgot_to_set_static_SEAMLESS_DETAIL + psh_forgot_to_set_static_DISTANCEALPHA + psh_forgot_to_set_static_DISTANCEALPHAFROMDETAIL + psh_forgot_to_set_static_SOFT_MASK + psh_forgot_to_set_static_OUTLINE + psh_forgot_to_set_static_OUTER_GLOW + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_DEPTHBLEND + psh_forgot_to_set_static_BLENDTINTBYBASEALPHA + psh_forgot_to_set_static_SRGB_INPUT_ADAPTER
 
 
 class vertexlit_and_unlit_generic_ps20b_Dynamic_Index
