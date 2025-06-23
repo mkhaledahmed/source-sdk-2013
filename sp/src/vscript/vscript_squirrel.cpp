@@ -1562,15 +1562,23 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 	Assert(pSquirrelVM);
 
 	sq_resetobject(&pSquirrelVM->lastError_);
-
-	void* instance = pClassDesc->m_pfnConstruct();
-
-	// expect construction to always succeed
-	Assert(sq_isnull(pSquirrelVM->lastError_));
-
 	{
 		SQUserPointer p;
-		sq_getinstanceup(vm, 1, &p, 0);
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
+		{
+			return SQ_ERROR;
+		}
+
+		if (!p)
+		{
+			return sq_throwerror(vm, "Accessed null instance");
+		}
+
+		void* instance = pClassDesc->m_pfnConstruct();
+
+		// expect construction to always succeed
+		Assert(sq_isnull(pSquirrelVM->lastError_));
+
 		new(p) ClassInstanceData(instance, pClassDesc, nullptr, true);
 	}
 
