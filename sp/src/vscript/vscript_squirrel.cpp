@@ -1548,7 +1548,15 @@ SQInteger destructor_stub_instance(SQUserPointer p, SQInteger size)
 SQInteger constructor_stub(HSQUIRRELVM vm)
 {
 	ScriptClassDesc_t* pClassDesc = nullptr;
-	sq_gettypetag(vm, 1, (SQUserPointer*)&pClassDesc);
+	if (SQ_FAILED(sq_gettypetag(vm, 1, (SQUserPointer*)&pClassDesc)))
+	{
+		return sq_throwerror(vm, "Expected native class");
+	}
+
+	if (!pClassDesc || (void*)pClassDesc == TYPETAG_VECTOR)
+	{
+		return sq_throwerror(vm, "Unable to obtain native class description");
+	}
 
 	if (!pClassDesc->m_pfnConstruct)
 	{
