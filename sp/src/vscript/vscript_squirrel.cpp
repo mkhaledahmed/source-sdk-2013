@@ -327,7 +327,16 @@ namespace SQVector
 		}
 
 		SQUserPointer p;
-		sq_getinstanceup(vm, 1, &p, 0);
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
+		{
+			return SQ_ERROR;
+		}
+
+		if (!p)
+		{
+			return sq_throwerror(vm, "Accessed null instance");
+		}
+
 		new (p) Vector(x, y, z);
 
 		return 0;
