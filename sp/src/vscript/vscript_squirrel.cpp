@@ -1460,8 +1460,6 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 	Assert(pSquirrelVM);
 
-	sq_resetobject(&pSquirrelVM->lastError_);
-
 	bool call_success = (*pFunc->m_pfnBinding)(pFunc->m_pFunction, instance, params.Base(), nargs,
 		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &script_retval, script_retval_storage);
 	Assert(call_success);
@@ -1555,29 +1553,27 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 		return sqstd_throwerrorf(vm, "Unable to construct instances of %s", pClassDesc->m_pszScriptName);
 	}
 
+	SQUserPointer p;
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
+	{
+		return SQ_ERROR;
+	}
+
+	if (!p)
+	{
+		return sq_throwerror(vm, "Accessed null instance");
+	}
+
+	void* instance = pClassDesc->m_pfnConstruct();
+
+#ifdef DBGFLAG_ASSERT
 	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 	Assert(pSquirrelVM);
+	// expect construction to always succeed
+	Assert(sq_isnull(pSquirrelVM->lastError_));
+#endif
 
-	sq_resetobject(&pSquirrelVM->lastError_);
-	{
-		SQUserPointer p;
-		if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
-		{
-			return SQ_ERROR;
-		}
-
-		if (!p)
-		{
-			return sq_throwerror(vm, "Accessed null instance");
-		}
-
-		void* instance = pClassDesc->m_pfnConstruct();
-
-		// expect construction to always succeed
-		Assert(sq_isnull(pSquirrelVM->lastError_));
-
-		new(p) ClassInstanceData(instance, pClassDesc, nullptr, true);
-	}
+	new(p) ClassInstanceData(instance, pClassDesc, nullptr, true);
 
 	sq_setreleasehook(vm, 1, &destructor_stub);
 
