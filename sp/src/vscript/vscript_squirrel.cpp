@@ -1300,10 +1300,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 	case OT_INSTANCE:
 	{
 		Vector* v = nullptr;
-		SQUserPointer tag;
-		if (SQ_SUCCEEDED(sq_gettypetag(vm, idx, &tag)) &&
-			tag == TYPETAG_VECTOR &&
-			SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
+		if (SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
 		{
 			variant.Free();
 			variant = (Vector*)malloc(sizeof(Vector));
