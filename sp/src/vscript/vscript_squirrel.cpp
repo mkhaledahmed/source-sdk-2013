@@ -352,7 +352,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._get(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
@@ -378,7 +378,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._set(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
