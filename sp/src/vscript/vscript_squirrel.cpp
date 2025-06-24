@@ -1583,7 +1583,10 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 SQInteger tostring_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	char buffer[128] = "";
 
@@ -1613,7 +1616,10 @@ SQInteger tostring_stub(HSQUIRRELVM vm)
 SQInteger get_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	const char* key = nullptr;
 	sq_getstring(vm, 2, &key);
@@ -1645,7 +1651,10 @@ SQInteger get_stub(HSQUIRRELVM vm)
 SQInteger set_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	const char* key = nullptr;
 	sq_getstring(vm, 2, &key);
@@ -2741,10 +2750,8 @@ void SquirrelVM::SetInstanceUniqeId(HSCRIPT hInstance, const char* pszId)
 	HSQOBJECT* obj = (HSQOBJECT*)hInstance;
 	sq_pushobject(vm_, *obj);
 
-	SQUserPointer self;
-	sq_getinstanceup(vm_, -1, &self, nullptr);
-
-	auto classInstanceData = (ClassInstanceData*)self;
+	ClassInstanceData* classInstanceData;
+	sq_getinstanceup(vm_, -1, (SQUserPointer*)&classInstanceData, nullptr);
 
 	classInstanceData->instanceId = pszId;
 
@@ -2802,11 +2809,10 @@ void* SquirrelVM::GetInstanceValue(HSCRIPT hInstance, ScriptClassDesc_t* pExpect
 	}
 
 	sq_pushobject(vm_, *obj);
-	SQUserPointer self;
-	sq_getinstanceup(vm_, -1, &self, nullptr);
+	ClassInstanceData* classInstanceData;
+	sq_getinstanceup(vm_, -1, (SQUserPointer*)&classInstanceData, nullptr);
 	sq_pop(vm_, 1);
 
-	auto classInstanceData = (ClassInstanceData*)self;
 
 	if (!classInstanceData)
 	{
