@@ -1469,6 +1469,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	if (!sq_isnull(pSquirrelVM->lastError_))
 	{
 		sq_pushobject(vm, pSquirrelVM->lastError_);
+		sq_release(vm, &pSquirrelVM->lastError_);
 		sq_resetobject(&pSquirrelVM->lastError_);
 		sq_retval = sq_throwobject(vm);
 	}
