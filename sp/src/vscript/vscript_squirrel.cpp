@@ -1332,15 +1332,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 {
 	SQInteger top = sq_gettop(vm);
 
-	SQUserPointer userptr = nullptr;
-	if (SQ_FAILED(sq_getuserpointer(vm, top, &userptr)))
-	{
-		return sq_throwerror(vm, "Expected userpointer");
-	}
+	ScriptFunctionBinding_t* pFunc = nullptr;
+	sq_getuserpointer(vm, top, (SQUserPointer*)&pFunc);
 
-	Assert(userptr);
-
-	ScriptFunctionBinding_t* pFunc = (ScriptFunctionBinding_t*)userptr;
+	Assert(pFunc);
 
 	int nargs = pFunc->m_desc.m_Parameters.Count();
 	int nLastHScriptIdx = -1;
