@@ -1604,7 +1604,19 @@ SQInteger get_stub(HSQUIRRELVM vm)
 	}
 	else
 	{
-		sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		// Fallback
+		// Extra stack variables don't need to be popped, they are cleaned up on exit
+		sq_pushroottable(vm);
+		sq_push(vm, -2);
+
+		if ( SQ_SUCCEEDED( sq_rawget(vm, -2) ) )
+		{
+			sq_retval = 1;
+		}
+		else
+		{
+			sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		}
 	}
 
 	var.Free();
@@ -1635,11 +1647,24 @@ SQInteger set_stub(HSQUIRRELVM vm)
 		classInstanceData->desc->pHelper->Set(classInstanceData->instance, key, var)
 	))
 	{
-		sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		// Fallback
+		sq_pushroottable(vm);
+		sq_push(vm, -3);
+		sq_push(vm, -3);
+
+		if ( SQ_SUCCEEDED( sq_rawset(vm, -3) ) )
+		{
+			// rawset doesn't return correctly, pop env to return val
+			sq_pop(vm, 1);
+			sq_retval = 1;
+		}
+		else
+		{
+			sq_retval = sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
+		}
 	}
 
 	var.Free();
-	sq_pop(vm, 1);
 	return sq_retval;
 }
 
@@ -2515,13 +2540,16 @@ bool SquirrelVM::RegisterClass(ScriptClassDesc_t* pClassDesc)
 	sq_newclosure(vm_, tostring_stub, 0);
 	sq_newslot(vm_, -3, SQFalse);
 
-	sq_pushstring(vm_, "_get", -1);
-	sq_newclosure(vm_, get_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
+	if ( pClassDesc->pHelper )
+	{
+		sq_pushstring(vm_, "_get", -1);
+		sq_newclosure(vm_, get_stub, 0);
+		sq_newslot(vm_, -3, SQFalse);
 
-	sq_pushstring(vm_, "_set", -1);
-	sq_newclosure(vm_, set_stub, 0);
-	sq_newslot(vm_, -3, SQFalse);
+		sq_pushstring(vm_, "_set", -1);
+		sq_newclosure(vm_, set_stub, 0);
+		sq_newslot(vm_, -3, SQFalse);
+	}
 
 	sq_pushstring(vm_, "IsValid", -1);
 	sq_newclosure(vm_, IsValid_stub, 0);
