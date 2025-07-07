@@ -61,6 +61,9 @@ private:
 
 		// Multiplayer
 		int nTeam = TEAM_ANY;
+
+		// Precached (used by system, not actual data)
+		bool bPrecached = false;
 #endif
 
 		// Weapon Data
