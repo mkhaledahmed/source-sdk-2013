@@ -119,6 +119,8 @@ private:
 										// until it completes.
 	int m_iFireSequence;				// (For any sequences in the fire layer, including grenade throw).
 	float m_flFireCycle;
+
+	int m_nPoseAimYaw, m_nPoseAimPitch, m_nPoseHeadPitch, m_nPoseWeaponLower;
 };
 
 CMapbasePlayerAnimState *CreatePlayerAnimationState( CBasePlayer *pPlayer );
