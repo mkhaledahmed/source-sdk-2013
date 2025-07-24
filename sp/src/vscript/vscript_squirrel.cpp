@@ -327,7 +327,16 @@ namespace SQVector
 		}
 
 		SQUserPointer p;
-		sq_getinstanceup(vm, 1, &p, 0);
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
+		{
+			return SQ_ERROR;
+		}
+
+		if (!p)
+		{
+			return sq_throwerror(vm, "Accessed null instance");
+		}
+
 		new (p) Vector(x, y, z);
 
 		return 0;
@@ -343,7 +352,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._get(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
@@ -369,7 +378,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._set(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
@@ -1291,10 +1300,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 	case OT_INSTANCE:
 	{
 		Vector* v = nullptr;
-		SQUserPointer tag;
-		if (SQ_SUCCEEDED(sq_gettypetag(vm, idx, &tag)) &&
-			tag == TYPETAG_VECTOR &&
-			SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
+		if (SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
 		{
 			variant.Free();
 			variant = (Vector*)malloc(sizeof(Vector));
@@ -1323,12 +1329,10 @@ SQInteger function_stub(HSQUIRRELVM vm)
 {
 	SQInteger top = sq_gettop(vm);
 
-	SQUserPointer userptr = nullptr;
-	sq_getuserpointer(vm, top, &userptr);
+	ScriptFunctionBinding_t* pFunc = nullptr;
+	sq_getuserpointer(vm, top, (SQUserPointer*)&pFunc);
 
-	Assert(userptr);
-
-	ScriptFunctionBinding_t* pFunc = (ScriptFunctionBinding_t*)userptr;
+	Assert(pFunc);
 
 	int nargs = pFunc->m_desc.m_Parameters.Count();
 	int nLastHScriptIdx = -1;
@@ -1424,15 +1428,30 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	if (pFunc->m_flags & SF_MEMBER_FUNC)
 	{
-		SQUserPointer self;
-		sq_getinstanceup(vm, 1, &self, nullptr);
+		ClassInstanceData* classInstanceData;
+		if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+		{
+			return SQ_ERROR;
+		}
 
-		if (!self)
+		if (!classInstanceData)
 		{
 			return sq_throwerror(vm, "Accessed null instance");
 		}
 
-		instance = ((ClassInstanceData*)self)->instance;
+		// check that the type of self, or any basetype, matches the function description
+		ScriptClassDesc_t *selfType = classInstanceData->desc;
+		while (selfType != pFunc->m_desc.m_pScriptClassDesc)
+		{
+			if (!selfType)
+			{
+				return sq_throwerror(vm, "Mismatched instance type");
+			}
+			selfType = selfType->m_pBaseDesc;
+			Assert(selfType != classInstanceData->desc); // there should be no infinite loop
+		}
+
+		instance = classInstanceData->instance;
 	}
 
 	ScriptVariant_t script_retval;
@@ -1440,8 +1459,6 @@ SQInteger function_stub(HSQUIRRELVM vm)
 
 	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
 	Assert(pSquirrelVM);
-
-	sq_resetobject(&pSquirrelVM->lastError_);
 
 	bool call_success = (*pFunc->m_pfnBinding)(pFunc->m_pFunction, instance, params.Base(), nargs,
 		pFunc->m_desc.m_ReturnType == FIELD_VOID ? nullptr : &script_retval, script_retval_storage);
@@ -1452,6 +1469,7 @@ SQInteger function_stub(HSQUIRRELVM vm)
 	if (!sq_isnull(pSquirrelVM->lastError_))
 	{
 		sq_pushobject(vm, pSquirrelVM->lastError_);
+		sq_release(vm, &pSquirrelVM->lastError_);
 		sq_resetobject(&pSquirrelVM->lastError_);
 		sq_retval = sq_throwobject(vm);
 	}
@@ -1521,28 +1539,42 @@ SQInteger destructor_stub_instance(SQUserPointer p, SQInteger size)
 SQInteger constructor_stub(HSQUIRRELVM vm)
 {
 	ScriptClassDesc_t* pClassDesc = nullptr;
-	sq_gettypetag(vm, 1, (SQUserPointer*)&pClassDesc);
+	if (SQ_FAILED(sq_gettypetag(vm, 1, (SQUserPointer*)&pClassDesc)))
+	{
+		return sq_throwerror(vm, "Expected native class");
+	}
+
+	if (!pClassDesc || (void*)pClassDesc == TYPETAG_VECTOR)
+	{
+		return sq_throwerror(vm, "Unable to obtain native class description");
+	}
 
 	if (!pClassDesc->m_pfnConstruct)
 	{
 		return sqstd_throwerrorf(vm, "Unable to construct instances of %s", pClassDesc->m_pszScriptName);
 	}
 
-	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
-	Assert(pSquirrelVM);
+	SQUserPointer p;
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, &p, 0)))
+	{
+		return SQ_ERROR;
+	}
 
-	sq_resetobject(&pSquirrelVM->lastError_);
+	if (!p)
+	{
+		return sq_throwerror(vm, "Accessed null instance");
+	}
 
 	void* instance = pClassDesc->m_pfnConstruct();
 
+#ifdef DBGFLAG_ASSERT
+	SquirrelVM* pSquirrelVM = (SquirrelVM*)sq_getsharedforeignptr(vm);
+	Assert(pSquirrelVM);
 	// expect construction to always succeed
 	Assert(sq_isnull(pSquirrelVM->lastError_));
+#endif
 
-	{
-		SQUserPointer p;
-		sq_getinstanceup(vm, 1, &p, 0);
-		new(p) ClassInstanceData(instance, pClassDesc, nullptr, true);
-	}
+	new(p) ClassInstanceData(instance, pClassDesc, nullptr, true);
 
 	sq_setreleasehook(vm, 1, &destructor_stub);
 
@@ -1552,7 +1584,10 @@ SQInteger constructor_stub(HSQUIRRELVM vm)
 SQInteger tostring_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	char buffer[128] = "";
 
@@ -1582,7 +1617,10 @@ SQInteger tostring_stub(HSQUIRRELVM vm)
 SQInteger get_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	const char* key = nullptr;
 	sq_getstring(vm, 2, &key);
@@ -1614,7 +1652,10 @@ SQInteger get_stub(HSQUIRRELVM vm)
 SQInteger set_stub(HSQUIRRELVM vm)
 {
 	ClassInstanceData* classInstanceData = nullptr;
-	sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0);
+	if (SQ_FAILED(sq_getinstanceup(vm, 1, (SQUserPointer*)&classInstanceData, 0)))
+	{
+		return SQ_ERROR;
+	}
 
 	const char* key = nullptr;
 	sq_getstring(vm, 2, &key);
@@ -2710,10 +2751,8 @@ void SquirrelVM::SetInstanceUniqeId(HSCRIPT hInstance, const char* pszId)
 	HSQOBJECT* obj = (HSQOBJECT*)hInstance;
 	sq_pushobject(vm_, *obj);
 
-	SQUserPointer self;
-	sq_getinstanceup(vm_, -1, &self, nullptr);
-
-	auto classInstanceData = (ClassInstanceData*)self;
+	ClassInstanceData* classInstanceData;
+	sq_getinstanceup(vm_, -1, (SQUserPointer*)&classInstanceData, nullptr);
 
 	classInstanceData->instanceId = pszId;
 
@@ -2771,11 +2810,10 @@ void* SquirrelVM::GetInstanceValue(HSCRIPT hInstance, ScriptClassDesc_t* pExpect
 	}
 
 	sq_pushobject(vm_, *obj);
-	SQUserPointer self;
-	sq_getinstanceup(vm_, -1, &self, nullptr);
+	ClassInstanceData* classInstanceData;
+	sq_getinstanceup(vm_, -1, (SQUserPointer*)&classInstanceData, nullptr);
 	sq_pop(vm_, 1);
 
-	auto classInstanceData = (ClassInstanceData*)self;
 
 	if (!classInstanceData)
 	{
