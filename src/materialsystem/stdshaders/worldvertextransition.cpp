@@ -182,6 +182,7 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 
 	SHADER_DRAW
 	{
+#ifndef MAPBASE
 		if ( UsingEditor( params ) )
 		{
 			WorldVertexTransitionEditor_DX8_Vars_t info;
@@ -189,6 +190,7 @@ BEGIN_VS_SHADER( WorldVertexTransition_DX9, "Help for WorldVertexTransition" )
 			DrawWorldVertexTransitionEditor_DX8( this, params, pShaderAPI, pShaderShadow, info );
 			return;
 		}
+#endif
 
 		DrawLightmappedGeneric_DX9( this, params, pShaderAPI, pShaderShadow, s_info, pContextDataPtr );
 	}
