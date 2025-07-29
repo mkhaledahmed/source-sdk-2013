@@ -1202,10 +1202,10 @@ void PushVariant(HSQUIRRELVM vm, const ScriptVariant_t& value)
 		sq_pushinteger(vm, value.m_int);
 		break;
 	case FIELD_UINT:
-		sq_pushinteger(vm, (int)value.m_uint);
+		sq_pushinteger(vm, value.m_uint);
 		break;
 	case FIELD_UINT64:
-		sq_pushinteger(vm, (int)value.m_uint64);
+		sq_pushinteger(vm, value.m_uint64);
 		break;
 	case FIELD_BOOLEAN:
 		sq_pushbool(vm, value.m_bool);
@@ -3453,22 +3453,23 @@ void SquirrelVM::WriteObject( const SQObjectPtr &obj, CUtlBuffer* pBuffer, Write
 			Assert( pThis->_outervalues[0]._type == OT_USERPOINTER );
 
 			const SQUserPointer userpointer = pThis->_outervalues[0]._unVal.pUserPointer;
-			const CUtlVector< ScriptClassDesc_t* > &classes = ScriptClassDesc_t::AllClassesDesc();
-			FOR_EACH_VEC( classes, i )
+			ScriptClassDesc_t *pCurrent = *ScriptClassDesc_t::GetDescList();
+			while ( pCurrent )
 			{
-				const CUtlVector< ScriptFunctionBinding_t > &funcs = classes[i]->m_FunctionBindings;
+				const CUtlVector< ScriptFunctionBinding_t > &funcs = pCurrent->m_FunctionBindings;
 				FOR_EACH_VEC( funcs, j )
 				{
 					if ( &funcs[j] == userpointer )
 					{
 						AssertMsg( 0, "SquirrelVM: Native closure is not saved! '%s' -> %s::%s",
 								pThis->_name._unVal.pString->_val,
-								classes[i]->m_pszScriptName,
+								pCurrent->m_pszScriptName,
 								funcs[j].m_desc.m_pszScriptName );
 						bAsserted = true;
 						goto done;
 					}
 				}
+				pCurrent = pCurrent->m_pNextDesc;
 			}
 			done:;
 		}
