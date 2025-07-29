@@ -1388,10 +1388,10 @@ void CHudCommentary::StartCommentary( C_PointCommentaryNode *pNode, char *pszSpe
 
 	// Get our scheme and font information
 	vgui::HScheme scheme = GetScheme();
-	m_hFont = vgui::scheme()->GetIScheme(scheme)->GetFont( "CommentaryDefault" );
+	m_hFont = vgui::scheme()->GetIScheme(scheme)->GetFont( "CommentaryDefault", true );
 	if ( !m_hFont )
 	{
-		m_hFont = vgui::scheme()->GetIScheme(scheme)->GetFont( "Default" );
+		m_hFont = vgui::scheme()->GetIScheme(scheme)->GetFont( "Default", true );
 	}
 
 	m_hSmallFont = vgui::scheme()->GetIScheme(scheme)->GetFont( "CommentarySmall" );
