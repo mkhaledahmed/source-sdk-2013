@@ -955,7 +955,12 @@ inline bool CVariantBase<CValueAllocator>::AssignTo( const char **pszString ) co
 		return NULL;
 	}
 
+#ifdef MAPBASE_VSCRIPT
+	*pszString = m_pszString;
+	return true;
+#else
 	return m_pszString;
+#endif
 }
 
 
