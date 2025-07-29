@@ -1334,10 +1334,7 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 		Vector* v = nullptr;
 		if (SQ_SUCCEEDED(sq_getinstanceup(vm, idx, (SQUserPointer*)&v, TYPETAG_VECTOR)))
 		{
-			variant.Free();
-			variant = (Vector*)malloc(sizeof(Vector));
-			//variant.EmplaceAllocedVector(*v);
-			variant.m_flags |= SV_FREE;
+			variant = *v;
 			return true;
 		}
 		// fall-through for non-vector
