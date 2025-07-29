@@ -229,6 +229,8 @@ union ScriptVariantTemporaryStorage_t
 
 //---------------------------------------------------------
 
+struct ScriptClassDesc_t;
+
 struct ScriptFuncDescriptor_t
 {
 	ScriptFuncDescriptor_t()
@@ -237,11 +239,13 @@ struct ScriptFuncDescriptor_t
 		m_pszFunction = NULL;
 		m_ReturnType = FIELD_TYPEUNKNOWN;
 		m_pszDescription = NULL;
+		m_pScriptClassDesc = NULL;
 	}
 
 	const char *m_pszScriptName;
 	const char *m_pszFunction;
 	const char *m_pszDescription;
+	ScriptClassDesc_t *m_pScriptClassDesc;
 	ScriptDataType_t m_ReturnType;
 	CUtlVector<ScriptDataType_t> m_Parameters;
 };
@@ -751,7 +755,7 @@ public:
 	virtual void Shutdown() = 0;
 
 #ifdef MAPBASE_VSCRIPT
-	virtual bool ConnectDebugger( int port = 0 ) = 0;
+	virtual bool ConnectDebugger( int port = 0, float timeout = 0.0f ) = 0;
 #else
 	virtual bool ConnectDebugger() = 0;
 #endif

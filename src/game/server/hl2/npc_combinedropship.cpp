@@ -1110,7 +1110,7 @@ void CNPC_CombineDropship::Spawn( void )
 
 	// moving this after we've created m_hContainer so we can properly setup the
 	// weapon_pitch and weapon_yaw pose parameter indexes in PopulatePoseParameters()
-	SetModel( "models/combine_dropship.mdl" );
+	SetModel( DefaultOrCustomModel( "models/combine_dropship.mdl" ) );
 
 	// Setup our bbox
 	if ( m_hContainer )
@@ -1191,7 +1191,7 @@ void CNPC_CombineDropship::Activate( void )
 void CNPC_CombineDropship::Precache( void )
 {
 	// Models
-	PrecacheModel("models/combine_dropship.mdl");
+	PrecacheModel( DefaultOrCustomModel( "models/combine_dropship.mdl" ) );
 	switch ( m_iCrateType )
 	{
 	case CRATE_SOLDIER:

@@ -1244,17 +1244,20 @@ public:
 				return -1;
 		}
 
-		if ( pInfo->datatype == types::_VEC3 )
-			index /= 3;
+		unsigned int arraysize = pInfo->arraysize;
 
-		if ( index < 0 || (unsigned int)index >= pInfo->arraysize )
+		if ( pInfo->datatype == types::_VEC3 )
+			arraysize *= 3;
+
+		if ( index < 0 || (unsigned int)index >= arraysize )
 			return -1;
 
 		switch ( pInfo->datatype )
 		{
-		case types::_VEC3:
 		case types::_FLOAT:
 			return *(float*)((char*)pEnt + pInfo->GetOffset( index ));
+		case types::_VEC3:
+			return ((float*)((char*)pEnt + pInfo->GetOffset( index / 3 )))[ index % 3 ];
 #ifdef GAME_DLL
 		case types::_DAR_FLOAT:
 		{
@@ -1286,18 +1289,23 @@ public:
 				return;
 		}
 
-		if ( pInfo->datatype == types::_VEC3 )
-			index /= 3;
+		unsigned int arraysize = pInfo->arraysize;
 
-		if ( index < 0 || (unsigned int)index >= pInfo->arraysize )
+		if ( pInfo->datatype == types::_VEC3 )
+			arraysize *= 3;
+
+		if ( index < 0 || (unsigned int)index >= arraysize )
 			return;
 
 		switch ( pInfo->datatype )
 		{
-		case types::_VEC3:
 		case types::_FLOAT:
 			*(float*)((char*)pEnt + pInfo->GetOffset( index )) = value;
 			NetworkStateChanged( pEnt, pInfo->GetOffset( index ) );
+			break;
+		case types::_VEC3:
+			((float*)((char*)pEnt + pInfo->GetOffset( index / 3 )))[ index % 3 ] = value;
+			NetworkStateChanged( pEnt, pInfo->GetOffset( index / 3 ) );
 			break;
 #ifdef GAME_DLL
 		case types::_DAR_FLOAT:
@@ -5138,6 +5146,11 @@ bool CScriptConvarAccessor::Init()
 	AddBlockedConVar( "cl_allowdownload" );
 	AddBlockedConVar( "cl_allowupload" );
 	AddBlockedConVar( "cl_downloadfilter" );
+#ifdef GAME_DLL
+	AddBlockedConVar( "script_connect_debugger_on_mapspawn" );
+#else
+	AddBlockedConVar( "script_connect_debugger_on_mapspawn_client" );
+#endif
 
 	return true;
 }

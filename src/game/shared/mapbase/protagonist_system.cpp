@@ -176,11 +176,11 @@ void CProtagonistSystem::LoadProtagonistFile( const char *pszFile )
 				else if (FStrEq( pszSubKeyName, "team" ))
 				{
 #ifdef HL2MP
-					if (FStrEq( pszSubKeyName, "combine" ))
+					if (FStrEq( pSubKey->GetString(), "combine" ))
 					{
 						pProtag->nTeam = TEAM_COMBINE;
 					}
-					else if (FStrEq( pszSubKeyName, "rebels" ))
+					else if (FStrEq( pSubKey->GetString(), "rebels" ))
 					{
 						pProtag->nTeam = TEAM_REBELS;
 					}
@@ -188,7 +188,7 @@ void CProtagonistSystem::LoadProtagonistFile( const char *pszFile )
 #endif
 					{
 						// Try to get a direct integer
-						pProtag->nTeam = atoi( pszSubKeyName );
+						pProtag->nTeam = atoi( pSubKey->GetString() );
 					}
 				}
 #endif
@@ -335,6 +335,12 @@ void CProtagonistSystem::PrecacheProtagonist( CBaseEntity *pSource, int nIdx )
 
 	ProtagonistData_t &pProtag = m_Protagonists[nIdx];
 
+	// Don't if it's already precached
+	if (pProtag.bPrecached)
+		return;
+
+	CBaseEntity::SetAllowPrecache( true );
+
 	// Playermodel
 	if (pProtag.pszPlayerModel)
 	{
@@ -358,6 +364,16 @@ void CProtagonistSystem::PrecacheProtagonist( CBaseEntity *pSource, int nIdx )
 			pSource->PrecacheModel( pProtag.dictWpnData[i].pszVM );
 		}
 	}
+
+	CBaseEntity::SetAllowPrecache( false );
+
+	// Precache parents
+	FOR_EACH_VEC( pProtag.vecParents, i )
+	{
+		PrecacheProtagonist( pSource, pProtag.vecParents[i] );
+	}
+
+	pProtag.bPrecached = true;
 #endif
 }
 
@@ -416,7 +432,6 @@ GetProtagParamBody( ResponseContexts,	bool,			GetProtagParamInner( ResponseConte
 			int nLast = V_strlen( pszContexts )-1;
 			if (pszContexts[nLast] == ',')
 			{
-				Msg( "Removing trailing comma from \"%s\"\n", pszContexts );
 				pszContexts[nLast] = '\0';
 			}
 		}
@@ -680,6 +695,11 @@ void CProtagonistSystem::PrintProtagonistData()
 #else
 		if (pProtag.pszPlayerModel)
 			Msg( "\t\tPlayer model: \"%s\" (%i, %i)\n", pProtag.pszPlayerModel, pProtag.nPlayerSkin, pProtag.nPlayerBody );
+
+#ifdef HL2MP
+		if ( pProtag.nTeam != TEAM_ANY )
+			Msg( "\t\tTeam: %i\n", pProtag.nTeam );
+#endif
 
 		for (int j = 0; j < NUM_HAND_RIG_TYPES; j++)
 		{

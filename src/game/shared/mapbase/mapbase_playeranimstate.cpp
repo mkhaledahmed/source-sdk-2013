@@ -27,6 +27,9 @@
 #include "datacache/imdlcache.h"
 #ifdef CLIENT_DLL
 #include "input.h"
+#ifdef HL2MP
+#include "c_hl2mp_player.h"
+#endif
 #endif
 
 extern ConVar mp_facefronttime, mp_feetyawrate;
@@ -76,6 +79,13 @@ extern ConVar mp_facefronttime;
 
 CMapbasePlayerAnimState::CMapbasePlayerAnimState( CBasePlayer *pPlayer ): m_pPlayer( pPlayer )
 {
+	if (pPlayer)
+	{
+		m_nPoseAimYaw = pPlayer->LookupPoseParameter( "aim_yaw" );
+		m_nPoseAimPitch = pPlayer->LookupPoseParameter( "aim_pitch" );
+		m_nPoseHeadPitch = pPlayer->LookupPoseParameter( "head_pitch" );
+		m_nPoseWeaponLower = pPlayer->LookupPoseParameter( "weapon_lower" );
+	}
 };
 
 //-----------------------------------------------------------------------------
@@ -288,6 +298,14 @@ void CMapbasePlayerAnimState::ComputeSequences( CStudioHdr *pStudioHdr )
 	ComputeReloadSequence();
 	ComputeWeaponSwitchSequence();
     ComputeRelaxSequence();
+
+#if defined(HL2MP) && defined(CLIENT_DLL)
+	C_HL2MP_Player *pHL2MPPlayer = static_cast<C_HL2MP_Player*>(GetOuter());
+	if (pHL2MPPlayer)
+	{
+		pHL2MPPlayer->UpdateLookAt();
+	}
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -343,6 +361,7 @@ void CMapbasePlayerAnimState::ClearAnimationState()
 	m_bReloading = false;
 	m_bWeaponSwitching = false;
 	m_bWeaponRelaxing = false;
+	m_flWeaponRelaxAmount = 0.0f;
 	m_bPlayingMisc = false;
     m_flReloadBlendIn = 0.0f;
     m_flReloadBlendOut = 0.0f;
@@ -527,7 +546,7 @@ void CMapbasePlayerAnimState::ComputeRelaxSequence()
 
         m_flWeaponRelaxAmount = clamp( m_flWeaponRelaxAmount, 0.0f, 1.0f );
 
-        GetOuter()->SetPoseParameter( GetOuter()->LookupPoseParameter( "weapon_lower" ), m_flWeaponRelaxAmount );
+        GetOuter()->SetPoseParameter( m_nPoseWeaponLower, m_flWeaponRelaxAmount );
 
         /*int nPose = GetOuter()->LookupPoseParameter( "weapon_lower" );
         if (nPose != -1)
@@ -548,7 +567,7 @@ void CMapbasePlayerAnimState::ComputeRelaxSequence()
     }
     else if (bRelaxing)
     {
-        GetOuter()->SetPoseParameter( GetOuter()->LookupPoseParameter( "weapon_lower" ), 1.0f );
+        GetOuter()->SetPoseParameter( m_nPoseWeaponLower, 1.0f );
     }
 
     /*bool bEnabled = m_bWeaponRelaxing;
@@ -646,7 +665,7 @@ float CMapbasePlayerAnimState::SetOuterBodyYaw( float flValue )
 {
     float flAimPoseBlend = GetAimPoseBlend();
 
-    GetOuter()->SetPoseParameter( GetOuter()->LookupPoseParameter( "aim_yaw" ), flValue * flAimPoseBlend );
+    GetOuter()->SetPoseParameter( m_nPoseAimYaw, flValue * flAimPoseBlend );
     return CBasePlayerAnimState::SetOuterBodyYaw( flValue * (1.0f - flAimPoseBlend) );
 }
 
@@ -667,7 +686,7 @@ void CMapbasePlayerAnimState::ComputePoseParam_BodyYaw( void )
 void CMapbasePlayerAnimState::ComputePoseParam_BodyLookYaw( void )
 {
     // See if we even have a blender for pitch
-    int upper_body_yaw = GetOuter()->LookupPoseParameter( "aim_yaw" );
+    int upper_body_yaw = m_nPoseAimYaw;
     if ( upper_body_yaw < 0 )
     {
         return;
@@ -815,8 +834,10 @@ void CMapbasePlayerAnimState::ComputePoseParam_BodyPitch( CStudioHdr *pStudioHdr
     //float flAimPoseBlend = GetAimPoseBlend();
 
     // See if we have a blender for pitch
-    GetOuter()->SetPoseParameter( pStudioHdr, "aim_pitch", flPitch );
-    GetOuter()->SetPoseParameter( pStudioHdr, "head_pitch", flPitch );
+	if (m_nPoseAimPitch >= 0)
+		GetOuter()->SetPoseParameter( pStudioHdr, m_nPoseAimPitch, flPitch );
+	if (m_nPoseHeadPitch >= 0)
+		GetOuter()->SetPoseParameter( pStudioHdr, m_nPoseHeadPitch, flPitch );
 
     //ComputePoseParam_HeadPitch( pStudioHdr );
 }
@@ -826,9 +847,6 @@ void CMapbasePlayerAnimState::ComputePoseParam_BodyPitch( CStudioHdr *pStudioHdr
 //-----------------------------------------------------------------------------
 void CMapbasePlayerAnimState::ComputePoseParam_HeadPitch( CStudioHdr *pStudioHdr )
 {
-    // Get pitch from v_angle
-    int iHeadPitch = GetOuter()->LookupPoseParameter("head_pitch");
-
     float flPitch = m_flEyePitch;
 
     if ( flPitch > 180.0f )
@@ -837,5 +855,5 @@ void CMapbasePlayerAnimState::ComputePoseParam_HeadPitch( CStudioHdr *pStudioHdr
     }
     flPitch = clamp( flPitch, -90, 90 );
 
-    GetOuter()->SetPoseParameter( pStudioHdr, iHeadPitch, flPitch );
+    GetOuter()->SetPoseParameter( pStudioHdr, m_nPoseHeadPitch, flPitch );
 }

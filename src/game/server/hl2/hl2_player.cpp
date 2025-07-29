@@ -1624,6 +1624,9 @@ void CHL2_Player::Spawn(void)
 
 	if (m_iszProtagonistName == NULL_STRING && *g_szDefaultProtagonist)
 		m_iszProtagonistName = MAKE_STRING( g_szDefaultProtagonist );
+	
+	if (m_iszProtagonistName != NULL_STRING)
+		SetProtagonist( STRING( m_iszProtagonistName ) );
 #endif
 
 	//

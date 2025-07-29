@@ -60,10 +60,6 @@ extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 
 extern CServerGameDLL g_ServerGameDLL;
 
-#ifdef MAPBASE_VSCRIPT
-extern int vscript_debugger_port;
-#endif
-
 // #define VMPROFILE 1
 
 #ifdef VMPROFILE
@@ -3769,10 +3765,13 @@ REGISTER_SCRIPT_CONST_TABLE( Server )
 				g_pScriptVM->SetValue( "Constants", vConstantsTable );
 
 #ifdef MAPBASE_VSCRIPT
-				if ( vscript_debugger_port )
+				if ( script_connect_debugger_on_mapspawn.GetInt() == 2 )
+				{
+					g_pScriptVM->ConnectDebugger( vscript_debugger_port, 10.0f );
+				}
+				else if ( script_connect_debugger_on_mapspawn.GetInt() != 0 )
 				{
 					g_pScriptVM->ConnectDebugger( vscript_debugger_port );
-					vscript_debugger_port = 0;
 				}
 #endif
 
@@ -3793,10 +3792,12 @@ REGISTER_SCRIPT_CONST_TABLE( Server )
 				GetWorldEntity()->RunVScripts();
 #endif
 
+#ifndef MAPBASE_VSCRIPT
 				if ( script_connect_debugger_on_mapspawn.GetBool() )
 				{
 					g_pScriptVM->ConnectDebugger();
 				}
+#endif
 
 				VMPROF_SHOW( pszScriptLanguage, "virtual machine startup" );
 

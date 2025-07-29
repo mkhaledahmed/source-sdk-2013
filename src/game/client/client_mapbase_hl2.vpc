@@ -16,6 +16,7 @@ $Project
 			$File	"$SRCDIR\game\shared\mapbase\protagonist_system.h"
 			$File	"$SRCDIR\game\shared\mapbase\vscript_funcs_hl2.cpp" [$MAPBASE_VSCRIPT]
 			$File	"mapbase\c_weapon_custom_hl2.cpp"
+			$File	"mapbase\hud_generic_timer.cpp"
 		}
 		
 		$Folder "HL2 DLL"

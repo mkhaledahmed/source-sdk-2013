@@ -65,6 +65,7 @@ bool		g_NodrawTriggers = false;
 bool		g_DisableWaterLighting = false;
 bool		g_bAllowDetailCracks = false;
 bool		g_bNoVirtualMesh = false;
+bool		g_bNoHiddenManifestMaps = false;
 #ifdef MAPBASE
 bool		g_bNoDefaultCubemaps = true;
 bool		g_bSkyboxCubemaps = false;
@@ -1175,6 +1176,10 @@ int RunVBSP( int argc, char **argv )
 		{
 			EnableFullMinidumps( true );
 		}
+		else if ( !Q_stricmp( argv[i], "-nohiddenmaps" ) )
+		{
+			g_bNoHiddenManifestMaps = true;
+		}
 		else if ( !Q_stricmp( argv[i], "-embed" ) && i < argc - 1 )
 		{
 			V_MakeAbsolutePath( g_szEmbedDir, sizeof( g_szEmbedDir ), argv[++i], "." );
@@ -1285,6 +1290,7 @@ int RunVBSP( int argc, char **argv )
 			CmdLib_Cleanup();
 			CmdLib_Exit( 1 );
 		}
+#endif
 		else if (argv[i][0] == '-')
 		{
 			Warning("VBSP: Unknown option \"%s\"\n\n", argv[i]);
@@ -1331,8 +1337,9 @@ int RunVBSP( int argc, char **argv )
 			Warning(
 				"Other options  :\n"
 				"  -novconfig   : Don't bring up graphical UI on vproject errors.\n"
-				"  -threads     : Control the number of threads vbsp uses (defaults to the # of\n"
-				"                 processors on your machine).\n"
+				"  -threads #   : Control the number of threads vbsp uses (defaults to the #\n"
+				"                or processors on your machine).\n"
+				"				 Threads can be negative; if so, they will be subtracted from the total thread count.\n"
 				"  -verboseentities: If -v is on, this disables verbose output for submodels.\n"
 				"  -noweld      : Don't join face vertices together.\n"
 				"  -nocsg       : Don't chop out intersecting brush areas.\n"
