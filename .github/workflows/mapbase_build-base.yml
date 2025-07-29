@@ -47,19 +47,29 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    - name: Add MSBuild to PATH
-      uses: compnerd/gha-setup-vsdevenv@v6
-
     - uses: actions/setup-python@v5
       with:
         python-version: '3.13'
+
+    - name: Add MSBuild to PATH
+      uses: compnerd/gha-setup-vsdevenv@v6
 
     - name: Pick game
       if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
       working-directory: 'src'
       shell: bash
       run: sed -i 's/\/hl2mp \/tf/\/${{inputs.game}}/' create${{inputs.project-group}}projects.bat
+
+      # HACKHACK: MSBuild doesn't seem to recognize Python even when its directory is within PATH,
+      # so we currently have to make it call Python directly.
+      # This assumes %Python3_ROOT_DIR% will always be set by setup-python above.
+    - name: Implement Python workaround
+      if: inputs.project-group == 'game' || inputs.project-group == 'all'
+      working-directory: 'src/game/server'
+      shell: bash
+      run: |
+        sed -i 's/\"python/\"%Python3_ROOT_DIR%\\python/' server_base.vpc
+        cat server_base.vpc
 
     - name: Create project files
       working-directory: 'src'
@@ -127,9 +137,6 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get -y install podman python3
-
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2
 
     - name: Pick game
       if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
