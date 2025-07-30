@@ -12,6 +12,7 @@ on:
   pull_request:
     branches:
       - develop
+      - mapbase-mp-2025
     paths:
       - '.github/workflows/mapbase_build-shaders.yml'
       - 'src/vpc_scripts/**'

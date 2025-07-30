@@ -12,6 +12,7 @@ on:
   pull_request:
     branches:
       - develop
+      - mapbase-mp-2025
     paths:
       - '.github/workflows/mapbase_build-base.yml'
       - '.github/workflows/mapbase_build-games.yml'
