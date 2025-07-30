@@ -2708,6 +2708,18 @@ void CScriptGameEventListener::LoadAllEvents()
 		"resource/serverevents.res",
 		"resource/gameevents.res",
 		"resource/mapbaseevents.res",
+#ifdef MAPBASE_MP
+		"resource/mapbaseevents_mp.res",
+#endif
+#ifdef HL2_DLL
+		"resource/mapbaseevents_hl2.res",
+#endif
+#ifdef HL2MP
+		"resource/mapbaseevents_hl2mp.res",
+#endif
+#ifdef TF_DLL
+		"resource/mapbaseevents_tf.res",
+#endif
 		"resource/modevents.res"
 	};
 
