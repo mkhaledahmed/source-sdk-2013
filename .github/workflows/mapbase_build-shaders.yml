@@ -26,7 +26,6 @@ jobs:
     uses: ./.github/workflows/mapbase_build-base.yml
     with:
       configuration: ${{ matrix.configuration }}
-      branch: 'sp'
       game: 'episodic' # Change this if your mod is not using HL2/Episodic game projects
       project-group: 'shaders'
       solution-name: 'shaders'
