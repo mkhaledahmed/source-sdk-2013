@@ -5,6 +5,7 @@
 //-----------------------------------------------------------------------------
 
 $Include "$SRCDIR\game\server\server_mapbase_hl2.vpc"	[$HL2||$EPISODIC||$HL2MP]
+$Include "$SRCDIR\game\server\server_mapbase_tf.vpc"	[$TF]
 
 $Configuration
 {
