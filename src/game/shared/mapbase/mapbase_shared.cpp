@@ -213,6 +213,15 @@ public:
 		InitializeRTs();
 #endif
 
+		// Shared Mapbase scripts to avoid overwriting mod files
+		g_pVGuiLocalize->AddFile( "resource/mapbase_%language%.txt" );
+#if defined(HL2_DLL) || defined(HL2_CLIENT_DLL)
+		g_pVGuiLocalize->AddFile( "resource/mapbase_hl2_%language%.txt" );
+#endif
+#if defined(TF_DLL) || defined(TF_CLIENT_DLL)
+		g_pVGuiLocalize->AddFile( "resource/mapbase_tf_%language%.txt" );
+#endif
+
 		return true;
 	}
 
@@ -270,7 +279,6 @@ public:
 		RefreshMapName();
 
 		// Shared Mapbase scripts to avoid overwriting mod files
-		g_pVGuiLocalize->AddFile( "resource/mapbase_%language%.txt" );
 #ifdef CLIENT_DLL
 		PanelMetaClassMgr()->LoadMetaClassDefinitionFile( "scripts/vgui_screens_mapbase.txt" );
 #endif
@@ -865,3 +873,32 @@ CON_COMMAND_SHARED( con_group_toggle, "Toggles a console group." )
 {
 	ToggleConsoleGroups( args.Arg( 1 ) );
 }
+
+//-----------------------------------------------------------------------------
+
+#ifndef CLIENT_DLL
+
+// Used by CServerGameDLL::DLLInit to initialize Mapbase events.
+// These are usually new events which are added separately so that mods don't need to manually add them to modevents.res.
+// Events specific to a certain game are usually separated due to having game-specific uses and/or because they were ported from another
+// game that already has it.
+// modevents.res will still override events listed in these files.
+void RegisterMapbaseGameEvents()
+{
+	gameeventmanager->LoadEventsFromFile( "resource/mapbaseevents.res" );
+
+#ifdef MAPBASE_MP
+	gameeventmanager->LoadEventsFromFile( "resource/mapbaseevents_mp.res" );
+#endif
+#ifdef HL2_DLL
+	gameeventmanager->LoadEventsFromFile( "resource/mapbaseevents_hl2.res" );
+#endif
+#ifdef HL2MP
+	gameeventmanager->LoadEventsFromFile( "resource/mapbaseevents_hl2mp.res" );
+#endif
+#ifdef TF_DLL
+	gameeventmanager->LoadEventsFromFile( "resource/mapbaseevents_tf.res" );
+#endif
+}
+
+#endif

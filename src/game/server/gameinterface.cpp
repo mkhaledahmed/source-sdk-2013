@@ -253,6 +253,10 @@ static void UpdateChapterRestrictions( const char *mapname );
 
 static void UpdateRichPresence ( void );
 
+#ifdef MAPBASE
+extern void RegisterMapbaseGameEvents();
+#endif
+
 
 #if !defined( _XBOX ) // Don't doubly define this symbol.
 CSharedEdictChangeInfo *g_pSharedChangeInfo = NULL;
@@ -720,10 +724,12 @@ bool CServerGameDLL::DLLInit( CreateInterfaceFn appSystemFactory,
 	// Add sound emitter
 	IGameSystem::Add( SoundEmitterSystem() );
 
-	// load Mod specific game events ( MUST be before InitAllSystems() so it can pickup the mod specific events)
 #ifdef MAPBASE
-	gameeventmanager->LoadEventsFromFile("resource/MapbaseEvents.res");
+	// Load Mapbase game events
+	RegisterMapbaseGameEvents();
 #endif
+
+	// load Mod specific game events ( MUST be before InitAllSystems() so it can pickup the mod specific events)
 	gameeventmanager->LoadEventsFromFile("resource/ModEvents.res");
 
 #ifdef CSTRIKE_DLL // BOTPORT: TODO: move these ifdefs out
