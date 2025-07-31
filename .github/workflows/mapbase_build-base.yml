@@ -30,10 +30,6 @@ on:
         description: 'Which group of projects to compile'
         required: true
         type: string
-      solution-name:
-        description: 'The name of the solution/makefile'
-        required: true
-        type: string
       build-on-linux:
         description: 'Build on Ubuntu/Linux?'
         default: true
@@ -54,17 +50,11 @@ jobs:
     - name: Add MSBuild to PATH
       uses: compnerd/gha-setup-vsdevenv@v6
 
-    - name: Pick game
-      if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
-      working-directory: 'src'
-      shell: bash
-      run: sed -i 's/\/hl2mp \/tf/\/${{inputs.game}}/' create${{inputs.project-group}}projects.bat
-
       # HACKHACK: MSBuild doesn't seem to recognize Python even when its directory is within PATH,
       # so we currently have to make it call Python directly.
       # This assumes %Python3_ROOT_DIR% will always be set by setup-python above.
     - name: Implement Python workaround
-      if: inputs.project-group == 'game' || inputs.project-group == 'all'
+      if: inputs.project-group == 'game' || inputs.project-group == 'everything'
       working-directory: 'src/game/server'
       shell: bash
       run: |
@@ -75,7 +65,7 @@ jobs:
       working-directory: 'src'
       shell: cmd
       run: |
-        create${{inputs.project-group}}projects.bat
+        devtools\bin\vpc.exe /${{inputs.game}} /define:SOURCESDK +${{inputs.project-group}} /mksln build.sln
 
       # --------------------------------------------------------------------
 
@@ -84,43 +74,22 @@ jobs:
       working-directory: 'src'
       shell: cmd
       run: |
-        devenv ${{inputs.solution-name}}.sln /upgrade
-        msbuild -m -t:Rebuild -p:Configuration=${{inputs.configuration}};Platform=win64 ${{inputs.solution-name}}.sln
+        devenv build.sln /upgrade
+        msbuild -m -t:Rebuild -p:Configuration=${{inputs.configuration}};Platform=win64 build.sln
 
       # --------------------------------------------------------------------
 
-    - name: Publish game binaries
-      if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
+    - name: Publish binaries
       uses: actions/upload-artifact@v4
       with:
-        name: '${{inputs.project-group}}_${{inputs.game}}_win32_${{ inputs.configuration }}'
-        path: |
-          game/mod_${{inputs.game}}/bin/*.dll
-          game/mod_${{inputs.game}}/bin/x64/*.dll
-        if-no-files-found: error
-
-    - name: Publish map tools
-      if: inputs.project-group == 'maptools'
-      uses: actions/upload-artifact@v4
-      with:
-        name: '${{inputs.project-group}}_win32_${{ inputs.configuration }}'
-        path: |
-          game/bin/*.exe
-          game/bin/*.dll
-          game/bin/x64/*.exe
-          game/bin/x64/*.dll
-        if-no-files-found: error
-
-    - name: Publish everything
-      if: inputs.project-group == 'all'
-      uses: actions/upload-artifact@v4
-      with:
-        name: 'everything_win32_${{ inputs.configuration }}'
+        name: '${{inputs.project-group}}_win64_${{ inputs.configuration }}'
         path: |
           game/bin
           game/bin/x64
           game/mod_*/bin
           game/mod_*/x64/bin
+          !game/bin/x64/steam_api64.dll
+          !game/bin/linux64/libsteam_api.so
         if-no-files-found: error
 
   build_ubuntu:
@@ -142,7 +111,9 @@ jobs:
       if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
       working-directory: 'src'
       shell: bash
-      run: sed -i 's/\/hl2mp \/tf/\/${{inputs.game}}/' build${{inputs.project-group}}projects
+      run: |
+        sed -i 's|/hl2mp /tf|/${{inputs.game}}|' buildgameprojects
+        sed -i 's|+game|+${{inputs.project-group}}|' buildgameprojects
 
     - name: Set configuration
       working-directory: 'src'
@@ -156,42 +127,25 @@ jobs:
 
     - name: Build
       working-directory: 'src'
-      run: ./build${{inputs.project-group}}projects ${config,,}
+      run: ./buildgameprojects ${config,,}
 
       # --------------------------------------------------------------------
 
-    - name: Publish game binaries
-      if: inputs.project-group == 'game' || inputs.project-group == 'shaders'
-      uses: actions/upload-artifact@v4
-      with:
-        name: '${{inputs.project-group}}_${{inputs.game}}_linux32_${{ inputs.configuration }}'
-        path: |
-          game/mod_${{inputs.game}}/bin/*.so
-          game/mod_${{inputs.game}}/bin/linux64/*.so
-          !game/mod_${{inputs.game}}/bin/*_srv.so
-          !game/mod_${{inputs.game}}/bin/linux64/*_srv.so
-        if-no-files-found: error
-
-    #- name: Publish map tools
-    #  if: inputs.project-group == 'maptools'
-    #  uses: actions/upload-artifact@v4
-    #  with:
-    #    name: '${{inputs.project-group}}_linux32_${{ inputs.configuration }}'
-    #    path: |
-    #      game/bin/vbsp
-    #      game/bin/vvis
-    #      game/bin/vvis_dll.so
-    #      game/bin/vrad
-    #      game/bin/vrad_dll.so
-    #    if-no-files-found: error
+    # Workaround for debug symbols being included in release builds
+    - name: Strip debug symbols
+      if: inputs.configuration == 'Release'
+      shell: bash
+      run: |
+        find game -type f -name "*.so" | while read -r file; do
+          strip -S "$file"
+        done
 
     # For now, don't publish the .dbg files even though we publish .pdb files on Windows
     # (they're too big)
-    - name: Publish everything
-      if: inputs.project-group == 'all'
+    - name: Publish binaries
       uses: actions/upload-artifact@v4
       with:
-        name: 'everything_linux32_${{ inputs.configuration }}'
+        name: '${{inputs.project-group}}_linux64_${{ inputs.configuration }}'
         path: |
           game/bin/linux64/*.so
           game/bin/*.so
@@ -201,4 +155,5 @@ jobs:
           game/mod_*/bin/*.so
           !game/mod_*/bin/linux64/*_srv.so
           !game/mod_*/bin/*_srv.so
+          !game/bin/linux64/libsteam_api.so
         if-no-files-found: error
