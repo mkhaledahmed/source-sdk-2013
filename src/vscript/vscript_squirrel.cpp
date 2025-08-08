@@ -1155,6 +1155,7 @@ bool CreateParamCheck(const ScriptFunctionBinding_t& func, char* output)
 			*output++ = 's';
 			break;
 		case FIELD_HSCRIPT:
+		case FIELD_VARIANT:
 			*output++ = '.';
 			break;
 		default:
@@ -1446,6 +1447,12 @@ SQInteger function_stub(HSQUIRRELVM vm)
 			}
 
 			nLastHScriptIdx = i;
+			break;
+		}
+		case FIELD_VARIANT:
+		{
+			if (!getVariant( vm, i + 2, params[i] ))
+				return sq_throwerror(vm, "Expected variant");
 			break;
 		}
 		default:
