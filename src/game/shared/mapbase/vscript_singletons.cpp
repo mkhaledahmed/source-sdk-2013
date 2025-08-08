@@ -3328,7 +3328,11 @@ const char *CScriptReadWriteFile::FileRead( const char *szFile )
 	char pszFullName[MAX_PATH];
 	V_snprintf( pszFullName, sizeof(pszFullName), SCRIPT_RW_FULL_PATH_FMT, szFile );
 
+#ifdef MAPBASE_MP
+	if ( !V_RemoveDotSlashes( pszFullName, CORRECT_PATH_SEPARATOR, true ) )
+#else
 	if ( !CommandLine()->FindParm( "-script_dotslash_read" ) && !V_RemoveDotSlashes( pszFullName, CORRECT_PATH_SEPARATOR, true ) )
+#endif
 	{
 		DevWarning( 2, "Invalid file location : %s\n", szFile );
 		return NULL;
@@ -4955,6 +4959,45 @@ public:
 		SetValue( pszConVar, value );
 	}
 
+	void SetVariant( const char *pszConVar, ScriptVariant_t value )
+	{
+		ConVarRef cvar( pszConVar );
+		if ( !cvar.IsValid() )
+			return;
+
+		if ( cvar.IsFlagSet( FCVAR_NOT_CONNECTED | FCVAR_PROTECTED | FCVAR_SERVER_CANNOT_QUERY ) )
+			return;
+
+		if ( IsBlockedConvar( pszConVar ) )
+			return;
+		
+		bool bSave = true;
+		switch( value.GetType() )
+		{
+		case FIELD_BOOLEAN:
+			cvar.SetValue( (bool)value );
+			break;
+		case FIELD_INTEGER:
+			cvar.SetValue( (int)value );
+			break;
+		case FIELD_FLOAT:
+			cvar.SetValue( (float)value );
+			break;
+		case FIELD_CSTRING:
+			cvar.SetValue( (const char *)value );
+			break;
+		default:
+			Warning( "%s.SetValue() unsupported value type %s\n", pszConVar, ScriptFieldTypeName( value.GetType() ) );
+			bSave = false;
+			break;
+		}
+
+		if ( bSave )
+		{
+			GameRules()->SaveConvar( cvar );
+		}
+	}
+
 	template <typename T>
 	void SetValue( const char *pszConVar, T value )
 	{
@@ -4962,13 +5005,15 @@ public:
 		if ( !cvar.IsValid() )
 			return;
 
-		if ( cvar.IsFlagSet( FCVAR_NOT_CONNECTED | FCVAR_SERVER_CANNOT_QUERY ) )
+		if ( cvar.IsFlagSet( FCVAR_NOT_CONNECTED | FCVAR_PROTECTED | FCVAR_SERVER_CANNOT_QUERY ) )
 			return;
 
 		if ( IsBlockedConvar( pszConVar ) )
 			return;
 
 		cvar.SetValue( value );
+
+		GameRules()->SaveConvar( cvar );
 	}
 
 } g_ScriptConvarAccessor;
@@ -5187,6 +5232,7 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptConvarAccessor, "CConvars", SCRIPT_SINGLETON
 	DEFINE_SCRIPTFUNC( SetInt, "Sets the value of the convar as an int." )
 	DEFINE_SCRIPTFUNC( SetBool, "Sets the value of the convar as a bool." )
 	DEFINE_SCRIPTFUNC( SetStr, "Sets the value of the convar as a string." )
+	DEFINE_SCRIPTFUNC_NAMED( SetVariant, "SetValue", "Sets the value of the convar with any applicable type." )
 END_SCRIPTDESC();
 
 

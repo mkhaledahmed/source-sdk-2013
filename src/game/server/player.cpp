@@ -514,7 +514,15 @@ ScriptHook_t	g_Hook_FindUseEntity;
 
 BEGIN_ENT_SCRIPTDESC( CBasePlayer, CBaseCombatCharacter, "The player entity." )
 
-	DEFINE_SCRIPTFUNC_NAMED( ScriptIsPlayerNoclipping, "IsNoclipping", "Returns true if the player is in noclip mode." ) 
+	DEFINE_SCRIPTFUNC_NAMED( ScriptIsPlayerNoclipping, "IsNoclipping", "Returns true if the player is in noclip mode." )
+	DEFINE_SCRIPTFUNC( ViewPunchReset, "Reset's the player's view punch" )
+	DEFINE_SCRIPTFUNC( SnapEyeAngles, "Snap the player's eye angles to this." )
+	DEFINE_SCRIPTFUNC( GetPlayerMins, "" )
+	DEFINE_SCRIPTFUNC( GetPlayerMaxs, "" )
+	DEFINE_SCRIPTFUNC( SetForceLocalDraw, "Forces the player to be drawn as if they are third person" )
+	DEFINE_SCRIPTFUNC( GetForceLocalDraw, "Gets the state of whether the player is being forced by SetForceLocalDraw to be drawn" )
+	DEFINE_SCRIPTFUNC( GetScriptOverlayMaterial, "Gets the current view overlay material" )
+	DEFINE_SCRIPTFUNC( SetScriptOverlayMaterial, "Sets a view overlay material" )
 
 	DEFINE_SCRIPTFUNC_NAMED( VScriptGetExpresser, "GetExpresser", "Gets a handle for this player's expresser." )
 
