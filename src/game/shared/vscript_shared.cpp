@@ -336,6 +336,9 @@ bool VScriptRunScriptAbsolute( const char *pszScriptName, HSCRIPT hScope, bool b
 }
 #endif
 
+#ifdef MAPBASE_VSCRIPT
+ConVar sv_allowcvscript( "sv_allowcvscript", "1", FCVAR_REPLICATED, "Allows clients to run clientside vscripts. Should be toggled before clients start connecting" );
+#endif
 
 #ifdef GAME_DLL
 #define IsCommandIssuedByServerAdmin() UTIL_IsCommandIssuedByServerAdmin()
