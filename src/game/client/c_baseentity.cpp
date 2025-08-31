@@ -6688,6 +6688,25 @@ int C_BaseEntity::GetCreationTick() const
 //-----------------------------------------------------------------------------
 HSCRIPT C_BaseEntity::GetScriptInstance()
 {
+#ifdef MAPBASE_MP
+	// No clientside entity access outside of worldspawn + local player and its children
+	if ( this != C_BasePlayer::GetLocalPlayer() && !IsWorld() )
+	{
+		// See if the player is somewhere up our hierarchy
+		C_BaseEntity *pParent = GetMoveParent();
+		while ( pParent )
+		{
+			if ( pParent != C_BasePlayer::GetLocalPlayer() )
+				pParent = pParent->GetMoveParent();
+			else
+				break;
+		}
+
+		if ( !pParent )
+			return NULL;
+	}
+#endif
+
 	if (!m_hScriptInstance)
 	{
 		if (m_iszScriptId == NULL_STRING)

@@ -86,7 +86,11 @@ public:
 
 	HSCRIPT CreateByClassname( const char *className )
 	{
+#ifdef MAPBASE_MP
+		return NULL;
+#else
 		return ToHScript( CreateEntityByName( className ) );
+#endif
 	}
 
 	HSCRIPT FindByClassname( HSCRIPT hStartEntity, const char *szName )
@@ -123,34 +127,42 @@ public:
 
 	void EnableEntityListening()
 	{
+#ifndef MAPBASE_MP
 		// Start getting entity updates!
 		ClientEntityList().AddListenerEntity( this );
+#endif
 	}
 
 	void DisableEntityListening()
 	{
+#ifndef MAPBASE_MP
 		// Stop getting entity updates!
 		ClientEntityList().RemoveListenerEntity( this );
+#endif
 	}
 
 	void OnEntityCreated( CBaseEntity *pEntity )
 	{
+#ifndef MAPBASE_MP
 		if ( g_pScriptVM && GetScriptHookManager().IsEventHooked( "OnEntityCreated" ) )
 		{
 			// entity
 			ScriptVariant_t args[] = { ScriptVariant_t( pEntity->GetScriptInstance() ) };
 			g_Hook_OnEntityCreated.Call( NULL, NULL, args );
 		}
+#endif
 	};
 
 	void OnEntityDeleted( CBaseEntity *pEntity )
 	{
+#ifndef MAPBASE_MP
 		if ( g_pScriptVM && GetScriptHookManager().IsEventHooked( "OnEntityDeleted" ) )
 		{
 			// entity
 			ScriptVariant_t args[] = { ScriptVariant_t( pEntity->GetScriptInstance() ) };
 			g_Hook_OnEntityDeleted.Call( NULL, NULL, args );
 		}
+#endif
 	};
 
 private:
@@ -159,6 +171,15 @@ private:
 BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptClientEntityIterator, "CEntities", SCRIPT_SINGLETON "The global list of entities" )
 	DEFINE_SCRIPTFUNC( GetLocalPlayer, "Get local player" )
 	DEFINE_SCRIPTFUNC( First, "Begin an iteration over the list of entities" )
+#ifdef MAPBASE_MP
+	DEFINE_SCRIPTFUNC( Next, SCRIPT_HIDE )
+	DEFINE_SCRIPTFUNC( CreateByClassname, SCRIPT_HIDE )
+	DEFINE_SCRIPTFUNC( FindByClassname, SCRIPT_HIDE )
+	DEFINE_SCRIPTFUNC( FindByName, SCRIPT_HIDE )
+
+	DEFINE_SCRIPTFUNC( EnableEntityListening, SCRIPT_HIDE )
+	DEFINE_SCRIPTFUNC( DisableEntityListening, SCRIPT_HIDE )
+#else
 	DEFINE_SCRIPTFUNC( Next, "Continue an iteration over the list of entities, providing reference to a previously found entity" )
 	DEFINE_SCRIPTFUNC( CreateByClassname, "Creates an entity by classname" )
 	DEFINE_SCRIPTFUNC( FindByClassname, "Find entities by class name. Pass 'null' to start an iteration, or reference to a previously found entity to continue a search"  )
@@ -174,6 +195,7 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptClientEntityIterator, "CEntities", SCRIPT_SI
 	BEGIN_SCRIPTHOOK( g_Hook_OnEntityDeleted, "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted. Requires EnableEntityListening() to be fired beforehand." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
+#endif
 END_SCRIPTDESC();
 
 //-----------------------------------------------------------------------------
@@ -645,6 +667,15 @@ bool VScriptClientInit()
 
 	if( scriptmanager != NULL )
 	{
+#ifdef MAPBASE_VSCRIPT
+		extern ConVar sv_allowcvscript;
+		if ( !sv_allowcvscript.GetBool() )
+		{
+			g_pScriptVM = NULL;
+			return false;
+		}
+#endif
+
 		ScriptLanguage_t scriptLanguage = SL_DEFAULT;
 
 		char const *pszScriptLanguage;
