@@ -54,12 +54,117 @@ enum
 extern const char *g_aTeamNames[TF_TEAM_COUNT];
 extern color32 g_aTeamColors[TF_TEAM_COUNT];
 
+extern const char *g_aTeamNames_Localized[TF_TEAM_COUNT];
+extern const char *g_aTeamNamesShort[TF_TEAM_COUNT];
+extern const char *g_aTeamUpperNamesShort[TF_TEAM_COUNT];
+extern const char *g_aTeamLowerNames[TF_TEAM_COUNT];
+extern const char *g_aTeamUpperNames[TF_TEAM_COUNT];
+
+extern const wchar_t *g_aTeamUpperNamesShort_W[TF_TEAM_COUNT];
+
+template<typename Functor>
+void ForEachTeamName( Functor &&func, const char **pNames = g_aTeamLowerNames )
+{
+	for ( int i = FIRST_GAME_TEAM; i < TF_TEAM_COUNT; i++ )
+	{
+		func( pNames[i] );
+	}
+}
+
+inline int GetTeamSkin( int iTeam )
+{
+	switch ( iTeam )
+	{
+		default:
+		case TF_TEAM_RED:
+			return 0;
+		case TF_TEAM_BLUE:
+			return 1;
+	}
+}
+
+inline int GetPlayerTeamSkin( int iTeam )
+{
+	switch ( iTeam )
+	{
+		default:
+		case TF_TEAM_RED:
+			return 0;
+		case TF_TEAM_BLUE:
+			return 1;
+	}
+}
+
+#define TEAM_STRING( teamNum, prefix ) teamNum == TF_TEAM_BLUE ? prefix "red" : prefix "blue"
+#define TEAM_STRING_POST( teamNum, prefix, postfix ) teamNum == TF_TEAM_RED ? prefix "red" postfix : prefix "blue" postfix
+#define TEAM_STRING_SHORT( teamNum, prefix ) teamNum == TF_TEAM_RED ? prefix "red" : prefix "blu"
+#define TEAM_STRING_SHORT_POST( teamNum, prefix, postfix ) teamNum == TF_TEAM_RED ? prefix "red" postfix : prefix "blu" postfix
+
+#define DECLARE_TEAM_INPUTFUNCS( prefix, postfix ) \
+    void Input##prefix##Red##postfix( inputdata_t &inputdata ); \
+    void Input##prefix##Blue##postfix( inputdata_t &inputdata )
+
+#define DEFINE_TEAM_INPUTFUNCS( fieldType, prefix, postfix ) \
+	DEFINE_INPUTFUNC( fieldType, #prefix "Red" #postfix, Input##prefix##Red##postfix ), \
+	DEFINE_INPUTFUNC( fieldType, #prefix "Blue" #postfix, Input##prefix##Blue##postfix )
+
+#define DEFINE_TEAM_OUTPUTS( outputName, prefix, postfix ) \
+	DEFINE_OUTPUT( outputName[0], prefix "Red" postfix ), \
+	DEFINE_OUTPUT( outputName[1], prefix "Blue" postfix )
+
+#define DEFINE_TEAM_OUTPUTS_NUMBERED( outputName, prefix, postfix ) \
+	DEFINE_OUTPUT( outputName[0], prefix "1" postfix ), \
+	DEFINE_OUTPUT( outputName[1], prefix "2" postfix )
+
+#define DEFINE_TEAM_KEYFIELDS( keyfieldName, fieldType, prefix, postfix ) \
+	DEFINE_KEYFIELD( keyfieldName[0], fieldType, prefix "red" postfix ), \
+	DEFINE_KEYFIELD( keyfieldName[1], fieldType, prefix "blue" postfix )
+
+#ifdef GAME_DLL
+
+#define SendTeamProps( netvartype, prefix, postfix ) \
+	SendProp##netvartype( SENDINFO( prefix##Red##postfix ) ), \
+	SendProp##netvartype( SENDINFO( prefix##Blue##postfix ) )
+
+#define SendTeamPropsFlags( netvartype, prefix, postfix, ... ) \
+	SendProp##netvartype( SENDINFO( prefix##Red##postfix ), ##__VA_ARGS__ ), \
+	SendProp##netvartype( SENDINFO( prefix##Blue##postfix ), ##__VA_ARGS__ )
+
+#else
+
+#define RecvTeamProps( netvartype, prefix, postfix ) \
+	RecvProp##netvartype( RECVINFO( prefix##Red##postfix ) ), \
+	RecvProp##netvartype( RECVINFO( prefix##Blue##postfix ) )
+
+#define RecvTeamPropsFlags( netvartype, prefix, postfix, ... ) \
+	RecvProp##netvartype( RECVINFO( prefix##Red##postfix ), ##__VA_ARGS__ ), \
+	RecvProp##netvartype( RECVINFO( prefix##Blue##postfix ), ##__VA_ARGS__ )
+
+#endif
+
+// Flag corresponding to the specified TF team. Must be at or above FIRST_GAME_TEAM (TF_TEAM_RED). Use with CTFGameRules team activation functions
+#define TF_TEAM_F(team)	(1 << (team - FIRST_GAME_TEAM))
+#define TF_TEAM_F_DEFAULT	( TF_TEAM_F( TF_TEAM_RED ) | TF_TEAM_F( TF_TEAM_BLUE ) )
+
+inline void PrecacheTeamParticles( const char *pszFormat, const char **pNames = g_aTeamLowerNames )
+{
+	ForEachTeamName( [=]( const char *pszTeam )
+		{
+			char szParticle[128];
+			V_snprintf( szParticle, sizeof( szParticle ), pszFormat, pszTeam );
+			PrecacheParticleSystem( szParticle );
+		}, pNames );
+}
+
 #define COLOR_TF_SPECTATOR	Color( 245, 229, 196, 255 )
 #define COLOR_TF_RED		Color( 175, 73, 73, 255 )
 #define COLOR_TF_BLUE		Color( 79, 117, 143, 255 )
 
 #define CONTENTS_REDTEAM	CONTENTS_TEAM1
 #define CONTENTS_BLUETEAM	CONTENTS_TEAM2
+
+#define CONTENTS_TFTEAMS ( CONTENTS_REDTEAM | CONTENTS_BLUETEAM )
+static const int TeamContents[] = { CONTENTS_REDTEAM, CONTENTS_BLUETEAM };
 
 enum 
 {
@@ -222,7 +327,12 @@ enum ETFClass
 };
 
 inline bool IsValidTFPlayerClass( int iClass ) { return iClass >= TF_FIRST_NORMAL_CLASS && iClass < TF_LAST_NORMAL_CLASS; }
-inline bool IsValidTFTeam( int iTeam ) { return iTeam == TF_TEAM_RED || iTeam == TF_TEAM_BLUE; }
+inline bool IsValidTFTeam( int iTeam ) { return iTeam > LAST_SHARED_TEAM && iTeam < TF_TEAM_COUNT; }
+
+inline int GetContentsForTeam( int iTeam )
+{
+	return IsValidTFTeam( iTeam ) ? TeamContents[iTeam - FIRST_GAME_TEAM] : 0;
+}
 
 #define FOR_EACH_NORMAL_PLAYER_CLASS( _i ) for ( int _i = TF_FIRST_NORMAL_CLASS; _i < TF_LAST_NORMAL_CLASS; _i++ )
 

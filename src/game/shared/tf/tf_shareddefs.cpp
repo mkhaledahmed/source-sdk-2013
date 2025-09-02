@@ -23,6 +23,55 @@ const char *g_aTeamNames[TF_TEAM_COUNT] =
 	"Blue"
 };
 
+const char *g_aTeamNames_Localized[TF_TEAM_COUNT] =
+{
+	"#TF_Unassigned",
+	"#TF_Spectators",
+	"#TF_RedTeam_Name",
+	"#TF_BlueTeam_Name",
+};
+
+// These two arrays should always be used when constructing team specific names (e.g. particle names).
+const char *g_aTeamNamesShort[TF_TEAM_COUNT] =
+{
+	"unassigned",
+	"spectator",
+	"red",
+	"blu",
+};
+
+const char *g_aTeamUpperNamesShort[TF_TEAM_COUNT] =
+{
+	"UNASSIGNED",
+	"SPECTATOR",
+	"RED",
+	"BLU",
+};
+
+const wchar_t *g_aTeamUpperNamesShort_W[TF_TEAM_COUNT] =
+{
+	L"UNASSIGNED",
+	L"SPECTATOR",
+	L"RED",
+	L"BLU",
+};
+
+const char *g_aTeamLowerNames[TF_TEAM_COUNT] =
+{
+	"unassigned",
+	"spectator",
+	"red",
+	"blue",
+};
+
+const char *g_aTeamUpperNames[TF_TEAM_COUNT] =
+{
+	"UNASSIGNED",
+	"SPECTATOR",
+	"RED",
+	"BLUE",
+};
+
 color32 g_aTeamColors[TF_TEAM_COUNT] = 
 {
 	{ 0, 0, 0, 0 },
