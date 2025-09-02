@@ -158,7 +158,8 @@ CPointSpotlight::CPointSpotlight()
 //-----------------------------------------------------------------------------
 CPointSpotlight::~CPointSpotlight()
 {
-	SpotlightDestroy();
+	if ( GetEntityName() != NULL_STRING )
+		SpotlightDestroy();
 }
 #endif
 
