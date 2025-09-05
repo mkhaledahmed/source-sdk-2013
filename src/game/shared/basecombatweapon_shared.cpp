@@ -3143,7 +3143,11 @@ IMPLEMENT_NETWORKCLASS_ALIASED( BaseCombatWeapon, DT_BaseCombatWeapon )
 #define DEFINE_SCRIPTFUNC_NAMED_CL( p1, p2, p3 ) DEFINE_SCRIPTFUNC_NAMED( p1, p2, p3 )
 #endif
 
-BEGIN_ENT_SCRIPTDESC( CBaseCombatWeapon, CBaseAnimating, "The base class for all equippable weapons." )
+#ifdef CLIENT_DLL
+BEGIN_ENT_SCRIPTDESC( C_BaseCombatWeapon, C_BaseAnimating, "The base class for all equippable weapons." )
+#else
+BEGIN_ENT_SCRIPTDESC( CBaseCombatWeapon, BASECOMBATWEAPON_DERIVED_FROM, "The base class for all equippable weapons." )
+#endif
 
 	DEFINE_SCRIPTFUNC_NAMED( ScriptGetOwner, "GetOwner", "Get the weapon's owner." )
 	DEFINE_SCRIPTFUNC_NAMED_SV( ScriptSetOwner, "SetOwner", "Set the weapon's owner." )
@@ -3169,6 +3173,16 @@ BEGIN_ENT_SCRIPTDESC( CBaseCombatWeapon, CBaseAnimating, "The base class for all
 
 	DEFINE_SCRIPTFUNC( GetPrimaryAmmoType, "Get the weapon's primary ammo type." )
 	DEFINE_SCRIPTFUNC( GetSecondaryAmmoType, "Get the weapon's secondary ammo type." )
+
+	DEFINE_SCRIPTFUNC_SV( SetCustomViewModel, "Sets a custom view model for this weapon by model name" )
+	DEFINE_SCRIPTFUNC_SV( SetCustomViewModelModelIndex, "Sets a custom view model for this weapon by modelindex" )
+
+	DEFINE_SCRIPTFUNC( IsAllowedToSwitch, "Are we allowed to switch to this weapon?" )
+	DEFINE_SCRIPTFUNC( CanBeSelected, "Can this weapon be selected" )
+	DEFINE_SCRIPTFUNC( VisibleInWeaponSelection, "Is this weapon visible in weapon selection" )
+
+	DEFINE_SCRIPTFUNC( PrimaryAttack, "Force a primary attack" )
+	DEFINE_SCRIPTFUNC( SecondaryAttack, "Force a secondary attack" )
 
 	DEFINE_SCRIPTFUNC( GetSubType, "Get the weapon's subtype." )
 	DEFINE_SCRIPTFUNC_SV( SetSubType, "Set the weapon's subtype." )
