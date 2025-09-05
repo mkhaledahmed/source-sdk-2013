@@ -436,34 +436,14 @@ inline vec_t RoundInt (vec_t in)
 
 int Q_log2(int val);
 
-#define SIN_TABLE_SIZE	256
-#define FTOIBIAS		12582912.f
-extern float SinCosTable[SIN_TABLE_SIZE];
-
 inline float TableCos( float theta )
 {
-	union
-	{
-		int i;
-		float f;
-	} ftmp;
-
-	// ideally, the following should compile down to: theta * constant + constant, changing any of these constants from defines sometimes fubars this.
-	ftmp.f = theta * ( float )( SIN_TABLE_SIZE / ( 2.0f * M_PI ) ) + ( FTOIBIAS + ( SIN_TABLE_SIZE / 4 ) );
-	return SinCosTable[ ftmp.i & ( SIN_TABLE_SIZE - 1 ) ];
+	return FastCos( theta );
 }
 
 inline float TableSin( float theta )
 {
-	union
-	{
-		int i;
-		float f;
-	} ftmp;
-
-	// ideally, the following should compile down to: theta * constant + constant
-	ftmp.f = theta * ( float )( SIN_TABLE_SIZE / ( 2.0f * M_PI ) ) + FTOIBIAS;
-	return SinCosTable[ ftmp.i & ( SIN_TABLE_SIZE - 1 ) ];
+	return sinf( theta );
 }
 
 template<class T>
@@ -1282,11 +1262,17 @@ inline int Floor2Int( float a )
 {
 	int RetVal;
 #if defined( PLATFORM_INTEL )
+
+#if MAPBASE
+	RetVal = _mm_cvt_ss2si(_mm_set_ss(a + a - 0.5f)) >> 1;
+#else
 	// Convert to int and back, compare, subtract one if too big
 	__m128 a128 = _mm_set_ss(a);
 	RetVal = _mm_cvtss_si32(a128);
     __m128 rounded128 = _mm_cvt_si2ss(_mm_setzero_ps(), RetVal);
 	RetVal -= _mm_comigt_ss( rounded128, a128 );
+#endif // MAPBASE
+
 #else
 	RetVal = static_cast<int>( floor(a) );
 #endif
@@ -1339,11 +1325,17 @@ inline int Ceil2Int( float a )
 {
    int RetVal;
 #if defined( PLATFORM_INTEL )
-   // Convert to int and back, compare, add one if too small
+
+#if MAPBASE
+	RetVal = -(_mm_cvt_ss2si(_mm_set_ss(-0.5f - (a + a))) >> 1);
+#else
+     // Convert to int and back, compare, add one if too small
    __m128 a128 = _mm_load_ss(&a);
    RetVal = _mm_cvtss_si32(a128);
    __m128 rounded128 = _mm_cvt_si2ss(_mm_setzero_ps(), RetVal);
    RetVal += _mm_comilt_ss( rounded128, a128 );
+#endif // MAPBASE
+
 #else
    RetVal = static_cast<int>( ceil(a) );
 #endif

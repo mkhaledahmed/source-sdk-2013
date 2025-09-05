@@ -1333,6 +1333,20 @@ bool C_TFRagdoll::GetAttachment( int iAttachment, matrix3x4_t &attachmentToWorld
 	}
 }
 
+bool C_TFRagdoll::GetAttachmentDeferred( int iAttachment, matrix3x4_t& attachmentToWorld )
+{
+	int iHeadAttachment = LookupAttachment( "head" );
+	if ( IsDecapitation() && (iAttachment == iHeadAttachment) )
+	{
+		MatrixCopy( m_mHeadAttachment, attachmentToWorld );
+		return true;
+	}
+	else
+	{
+		return BaseClass::GetAttachmentDeferred( iAttachment, attachmentToWorld );
+	}
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 // Input  :  - 
@@ -1372,6 +1386,9 @@ bool C_TFRagdoll::IsRagdollVisible()
 #define DISSOLVE_FADE_OUT_MODEL_END_TIME	2.0f
 #define DISSOLVE_FADE_OUT_START_TIME		2.0f
 #define DISSOLVE_FADE_OUT_END_TIME			2.0f
+
+extern ConVar g_ragdoll_lvfadespeed;
+extern ConVar g_ragdoll_fadespeed;
 
 void C_TFRagdoll::ClientThink( void )
 {
@@ -1514,9 +1531,16 @@ void C_TFRagdoll::ClientThink( void )
 	if ( m_bFadingOut == true )
 	{
 		int iAlpha = GetRenderColor().a;
-		int iFadeSpeed = 600.0f;
+		int iFadeSpeed = ( g_RagdollLVManager.IsLowViolence() ) ? g_ragdoll_lvfadespeed.GetInt() : g_ragdoll_fadespeed.GetInt();
 
-		iAlpha = MAX( iAlpha - ( iFadeSpeed * gpGlobals->frametime ), 0 );
+		if (iFadeSpeed < 1)
+		{
+			iAlpha = 0;
+		}
+		else
+		{
+			iAlpha = MAX( iAlpha - ( iFadeSpeed * gpGlobals->frametime ), 0 );
+		}
 
 		SetRenderMode( kRenderTransAlpha );
 		SetRenderColorA( iAlpha );
@@ -1535,15 +1559,22 @@ void C_TFRagdoll::ClientThink( void )
 		if ( cl_ragdoll_forcefade.GetBool() )
 		{
 			m_bFadingOut = true;
-			float flDelay = cl_ragdoll_fade_time.GetFloat() * 0.33f;
-			m_fDeathTime = gpGlobals->curtime + flDelay;
-
 			RemoveAllDecals();
-		}
 
-		// Fade out after the specified delay.
-		StartFadeOut( cl_ragdoll_fade_time.GetFloat() * 0.33f );
-		return;
+			float flDelay = cl_ragdoll_fade_time.GetFloat() * 0.33f;
+			if (flDelay > 0.01f)
+			{
+				m_fDeathTime = gpGlobals->curtime + flDelay;
+				return;
+			}
+			m_fDeathTime = -1;
+		}
+		else
+		{
+			// Fade out after the specified delay.
+			StartFadeOut( cl_ragdoll_fade_time.GetFloat() * 0.33f );
+			return;
+		}
 	}
 
 	// Remove us if our death time has passed.
@@ -6867,7 +6898,7 @@ int C_TFPlayer::DrawModel( int flags )
 	// Don't draw the model at all if we're fully invisible
 	if ( GetEffectiveInvisibilityLevel() >= 1.0f )
 	{
-		if ( m_hHalloweenBombHat && ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 ) && !m_hHalloweenBombHat->IsEffectActive( EF_NODRAW ) )
+		if ( m_hHalloweenBombHat && ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 || g_pMaterialSystemHardwareConfig->PreferReducedFillrate() ) && !m_hHalloweenBombHat->IsEffectActive( EF_NODRAW ) )
 		{
 			m_hHalloweenBombHat->SetEffects( EF_NODRAW );
 		}
@@ -6875,7 +6906,7 @@ int C_TFPlayer::DrawModel( int flags )
 	}
 	else
 	{
-		if ( m_hHalloweenBombHat && ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 ) && m_hHalloweenBombHat->IsEffectActive( EF_NODRAW ) )
+		if ( m_hHalloweenBombHat && ( g_pMaterialSystemHardwareConfig->GetDXSupportLevel() < 90 || g_pMaterialSystemHardwareConfig->PreferReducedFillrate() ) && m_hHalloweenBombHat->IsEffectActive( EF_NODRAW ) )
 		{
 			m_hHalloweenBombHat->RemoveEffects( EF_NODRAW );
 		}
@@ -7526,7 +7557,7 @@ void C_TFPlayer::DropWearable( C_TFWearable *pItem, const breakablepropparams_t 
 	}
 
 	pEntity->m_nSkin = m_nSkin;
-	pEntity->StartFadeOut( 15.0f );
+	pEntity->StartFadeOut( cl_ragdoll_fade_time.GetFloat() );
 
 	IPhysicsObject *pPhysicsObject = pEntity->VPhysicsGetObject();
 	if ( !pPhysicsObject )
