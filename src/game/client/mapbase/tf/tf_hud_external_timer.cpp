@@ -277,13 +277,9 @@ void CTFHudExternalTimer::SetTeamBackground( void )
 		if ( iTeam == TEAM_ANY )
 			iTeam = GetLocalPlayerTeam();
 
-		if ( iTeam == TF_TEAM_RED )
+		if ( IsValidTFTeam( iTeam ) )
 		{
-			m_pTimerBG->SetImage( "../hud/objectives_timepanel_red_bg" );
-		}
-		else if ( iTeam == TF_TEAM_BLUE )
-		{
-			m_pTimerBG->SetImage( "../hud/objectives_timepanel_blue_bg" );
+			m_pTimerBG->SetImage( TEAM_STRING_POST( iTeam, "../hud/objectives_timepanel_", "_bg" ) );
 		}
 		else
 		{
