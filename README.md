@@ -69,6 +69,7 @@ including radial fog, rope code, and treesway)
 - https://github.com/DeathByNukes/source-sdk-2013 (VBSP manifest fixes)
 - https://github.com/entropy-zero/source-sdk-2013 (skill_changed game event)
 - https://github.com/Nbc66/source-sdk-2013-ce/tree/v142 (Base for VS2019 toolset support)
+- https://github.com/mastercomfig/tc2 (General QOL improvements for Team Fortress 2)
 
 Mapbase also contains parts of Source Engine Co-Operative Base Modification (SecobMod), mainly the multiplayer NPC support by Winston.
 - https://developer.valvesoftware.com/wiki/Co-Operative_Base_(Mod)
@@ -145,6 +146,8 @@ Direct contributions:
 - https://github.com/mapbase-source/source-sdk-2013/pull/419 (npc_helicopter removal crash fix by Wikot235)
 - https://github.com/mapbase-source/source-sdk-2013/pull/420 (sk_combine_head_dmg_multiplier cvar by Wikot235)
 - https://github.com/mapbase-source/source-sdk-2013/pull/422 (Expanded HL2 NPC custom model support by Maestra Fenix [committed by Blixibon])
+- https://github.com/mapbase-source/source-sdk-2013/pull/457 (Compressed BSP worldlight parsing fix by azzyr)
+- https://github.com/mapbase-source/source-sdk-2013/pull/468 (Ported TC2 performance improvements by mastercoms [committed by cattslmao])
 - https://github.com/mapbase-source/mapbase-game-src/pull/1 (Advanced video options duplicate field name fix by arbabf; This is asset-based and not reflected in the code)
 - https://github.com/mapbase-source/mapbase-game-src/pull/2 (gameinfo.txt typo fix by CarePackage17; This is asset-based and not reflected in the code)
 - https://github.com/mapbase-source/mapbase-game-src/pull/3 (HudMessage cutoff fix by arbabf; This is asset-based and not reflected in the code)
