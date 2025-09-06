@@ -211,15 +211,15 @@ public:
 
 #ifdef CLIENT_DLL
 		InitializeRTs();
-#endif
 
 		// Shared Mapbase scripts to avoid overwriting mod files
 		g_pVGuiLocalize->AddFile( "resource/mapbase_%language%.txt" );
-#if defined(HL2_DLL) || defined(HL2_CLIENT_DLL)
+#ifdef HL2_CLIENT_DLL
 		g_pVGuiLocalize->AddFile( "resource/mapbase_hl2_%language%.txt" );
 #endif
-#if defined(TF_DLL) || defined(TF_CLIENT_DLL)
+#ifdef TF_CLIENT_DLL
 		g_pVGuiLocalize->AddFile( "resource/mapbase_tf_%language%.txt" );
+#endif
 #endif
 
 		return true;
