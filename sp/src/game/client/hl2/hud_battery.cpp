@@ -40,10 +40,14 @@ public:
 	void OnThink( void );
 	void MsgFunc_Battery(bf_read &msg );
 	bool ShouldDraw();
+	virtual void Paint(void); //New Hud Elements
+
 	
 private:
 	int		m_iBat;	
 	int		m_iNewBat;
+	CHudTexture* m_iconSuit; // New Hud Elements
+
 };
 
 DECLARE_HUDELEMENT( CHudBattery );
@@ -66,6 +70,20 @@ void CHudBattery::Init( void )
 	Reset();
 	m_iBat		= INIT_BAT;
 	m_iNewBat   = 0;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Making the HUD look cooler
+//-----------------------------------------------------------------------------
+void CHudBattery::Paint(void)
+{
+	BaseClass::Paint();
+
+	m_iconSuit = gHUD.GetIcon("battery_label_glow");
+	m_iconSuit->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
+
+	m_iconSuit = gHUD.GetIcon("battery_label");
+	m_iconSuit->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
 }
 
 //-----------------------------------------------------------------------------

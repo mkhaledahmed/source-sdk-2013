@@ -51,11 +51,15 @@ public:
 	virtual void OnThink();
 			void MsgFunc_Damage( bf_read &msg );
 
+	virtual void Paint(void); //New HUD elements
+
 private:
 	// old variables
 	int		m_iHealth;
-	
 	int		m_bitsDamage;
+
+	CHudTexture* m_iconHealth; //New HUD elements
+	CHudTexture* m_iconHealthGlow; //New HUD elements
 };	
 
 DECLARE_HUDELEMENT( CHudHealth );
@@ -77,6 +81,21 @@ void CHudHealth::Init()
 	HOOK_HUD_MESSAGE( CHudHealth, Damage );
 	Reset();
 }
+
+//-----------------------------------------------------------------------------
+// Purpose: HUD Icons - Making it look cooler
+//-----------------------------------------------------------------------------
+void CHudHealth::Paint()
+{
+	BaseClass::Paint();
+
+	m_iconHealth = gHUD.GetIcon("health_label_glow");
+	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
+
+	m_iconHealth = gHUD.GetIcon("health_label");
+	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
+}
+
 
 //-----------------------------------------------------------------------------
 // Purpose: 

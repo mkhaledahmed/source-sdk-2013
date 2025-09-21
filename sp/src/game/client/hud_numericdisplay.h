@@ -67,6 +67,9 @@ protected:
 	CPanelAnimationVarAliasType( float, digit_ypos, "digit_ypos", "2", "proportional_float" );
 	CPanelAnimationVarAliasType( float, digit2_xpos, "digit2_xpos", "98", "proportional_float" );
 	CPanelAnimationVarAliasType( float, digit2_ypos, "digit2_ypos", "16", "proportional_float" );
+
+	CPanelAnimationVarAliasType(float, icon_xpos, "icon_xpos", "5", "proportional_float"); //HUD Elements
+	CPanelAnimationVarAliasType(float, icon_ypos, "icon_ypos", "-6", "proportional_float"); //HUD Elements
 };
 
 
