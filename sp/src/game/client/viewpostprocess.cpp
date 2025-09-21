@@ -2822,64 +2822,6 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();
 #endif
-
-	static IMaterial* pMat4 = materials->FindMaterial("HUDoverlays/Post_Vignette", TEXTURE_GROUP_OTHER);
-	if (pMat4)
-	{
-		pMat4->AddRef();
-		UpdateScreenEffectTexture();
-		pRenderContext->DrawScreenSpaceRectangle(pMat4, 0, 0, w, h,
-			0, 0, w - 1, h - 1,
-			w, h);
-	}
-
-	static IMaterial* pMat5 = materials->FindMaterial("HUDoverlays/Post_chromatic_aberration", TEXTURE_GROUP_OTHER);
-	if (pMat5)
-	{
-		pMat5->AddRef();
-		UpdateScreenEffectTexture();
-		pRenderContext->DrawScreenSpaceRectangle(pMat5, 0, 0, w, h,
-			0, 0, w - 1, h - 1,
-			w, h);
-	}
-
-	// Check if the Flashlight is on and apply the shader when it is. Need a better way to do this - checks every frame.
-	if (g_bFlashlightIsOn)
-	{
-		static IMaterial* pMat = materials->FindMaterial("HUDoverlays/post_nightvision", TEXTURE_GROUP_OTHER);
-		if (pMat)
-		{
-			pMat->AddRef();
-			UpdateScreenEffectTexture();
-			pRenderContext->DrawScreenSpaceRectangle(pMat, 0, 0, w, h,
-				0, 0, w - 1, h - 1,
-				w, h);
-		}
-
-		static IMaterial* pMat2 = materials->FindMaterial("HUDoverlays/post_cubiclens", TEXTURE_GROUP_OTHER);
-		if (pMat2)
-		{
-			pMat2->AddRef();
-			UpdateScreenEffectTexture();
-			pRenderContext->DrawScreenSpaceRectangle(pMat2, 0, 0, w, h,
-				0, 0, w - 1, h - 1,
-				w, h);
-		}
-
-		static IMaterial* pMat3 = materials->FindMaterial("HUDoverlays/Post_Vignette", TEXTURE_GROUP_OTHER);
-		if (pMat3)
-		{
-			pMat3->AddRef();
-			UpdateScreenEffectTexture();
-			pRenderContext->DrawScreenSpaceRectangle(pMat3, 0, 0, w, h,
-				0, 0, w - 1, h - 1,
-				w, h);
-		}
-	}
-	else
-	{
-		view->SetScreenOverlayMaterial(null);
-	}
 }
 
 // Motion Blur Material Proxy =========================================================================================
