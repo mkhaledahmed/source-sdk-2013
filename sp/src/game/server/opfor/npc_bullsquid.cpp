@@ -447,15 +447,15 @@ void CNPC_Bullsquid::HandleAnimEvent( animevent_t *pEvent )
 					}
 					else
 					{
-						pGrenade->SetAbsVelocity((vecToss + RandomVector(-0.035f, 0.035f)) * flVelocity);
+						pGrenade->SetAbsVelocity((vecToss + RandomVector(-0.15f, 0.15f)) * flVelocity);
 						pGrenade->SetSpitSize(random->RandomInt(SPIT_SMALL, SPIT_MEDIUM));
 					}
 
 					// Tumble through the air
 					pGrenade->SetLocalAngularVelocity(
-						QAngle(random->RandomFloat(-125, -250),
-						random->RandomFloat(-125, -250),
-						random->RandomFloat(-125, -250)));
+						QAngle(random->RandomFloat(-250, -500),
+							random->RandomFloat(-250, -500),
+							random->RandomFloat(-250, -500)));
 				}
 
 				for (int i = 0; i < 8; i++)
