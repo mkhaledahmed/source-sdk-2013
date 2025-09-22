@@ -146,5 +146,4 @@ $Project "Client (Episodic)"
 				//$File	"$SRCDIR\game\client\ShaderEditor\Grass\CGrassCluster.cpp"
 			}
 		}
-	
 }

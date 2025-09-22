@@ -1,0 +1,6 @@
+"Post_Chromatic_Aberration"
+{
+	"$nvlevel" 8 //can be whatever value you want
+	"$fbtexture" "_rt_FullFrameFB"
+}
+

@@ -1,0 +1,15 @@
+//
+// vs 3.0   ps 3.0   shaders collection
+//
+//  These shaders are forced to compile as shader model 3.0
+//  using the new compiler.
+//	    _ps30.vcs
+//	    _vs30.vcs
+//
+
+post_chromatic_aberration_ps30.fxc
+post_cubic_ps30.fxc
+post_nightvision_ps30.fxc
+post_vignette_ps30.fxc
+
+passthrough_vs30.fxc

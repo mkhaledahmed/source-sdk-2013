@@ -1,0 +1,26 @@
+//-----------------------------------------------------------------------------
+//	game_shader_dx9.vpc
+//
+//	Project Script for mods to use an an example of how to override shaders
+//-----------------------------------------------------------------------------
+
+$Macro SRCDIR		"..\.."
+$Macro GAMENAME "mod_opfor"
+$Include "$SRCDIR\materialsystem\stdshaders\game_shader_dx9_base.vpc"
+
+$Project "Shaders (OPFOR)"
+{
+	$Folder	"Source Files"
+	{
+		$File	"post_chromatic_aberration.cpp"
+		$File	"post_cubic.cpp"
+		$File	"post_nightvision.cpp"
+		$File	"post_vignette.cpp"
+	}
+	
+	$File	"buildopforshaders.bat"
+	$File	"buildsdkshaders.bat"
+	$File	"buildshaders.bat"
+
+	$Shaders	"opforshader_dx9_30.txt"
+}

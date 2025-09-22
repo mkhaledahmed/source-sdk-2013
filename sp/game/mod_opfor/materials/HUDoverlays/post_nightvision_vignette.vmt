@@ -1,0 +1,6 @@
+"Post_Vignette"
+{
+	"$inner_radius" .38
+	"$outer_radius" .6
+	"$fbtexture" "_rt_FullFrameFB"
+}

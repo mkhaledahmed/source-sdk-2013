@@ -1,0 +1,7 @@
+"Post_NightVision"
+{
+	"$nvlevel" "1" //can be whatever value you want
+	"$fbtexture" "_rt_FullFrameFB"
+	"$noiseTexture" "HUDoverlays/test_noise"
+	"$noiseScale" "20.0"
+}

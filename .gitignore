@@ -159,3 +159,10 @@ sp/src/devtools/gcc9+support.o
 /sp/src/materialsystem/stdshaders/post_vignette_ps30.fxc
 /sp/src/materialsystem/stdshaders/uniquefilestocopy.txt
 /sp/src/materialsystem/stdshaders/vcslist.txt
+/sp/game/mod_opfor/bin/game_shader_dx9.dll
+/sp/game/mod_opfor/maps/graphs/nightvision.ain
+/sp/game/mod_opfor/maps/graphs/of2_map_01.ain
+/sp/game/mod_opfor/maps/nightvision.bsp
+/sp/game/mod_opfor/maps/of2_map_01.bsp
+/sp/src/materialsystem/stdshaders/Release_dx9_mod_opfor
+/sp/src/materialsystem/stdshaders/Release_dx9_mod_opfor/game_shader_dx9.dll
