@@ -207,7 +207,7 @@ void CGrenadeFrag::CreateEffects( void )
 	{
 		m_pGlowTrail->FollowEntity( this );
 		m_pGlowTrail->SetAttachment( this, nAttachment );
-#ifdef CLIENT_DLL
+#ifdef HL2_DLL
 		m_pGlowTrail->SetTransparency( kRenderTransAdd, 255, 0, 0, 255, kRenderFxNone );
 #endif
 #ifdef OPFOR_DLL
