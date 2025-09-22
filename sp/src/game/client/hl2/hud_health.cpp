@@ -58,8 +58,11 @@ private:
 	int		m_iHealth;
 	int		m_bitsDamage;
 
+#ifdef OPFOR_DLL
 	CHudTexture* m_iconHealth; //New HUD elements
 	CHudTexture* m_iconHealthGlow; //New HUD elements
+#endif // OPFOR_DLL
+
 };	
 
 DECLARE_HUDELEMENT( CHudHealth );
@@ -88,12 +91,14 @@ void CHudHealth::Init()
 void CHudHealth::Paint()
 {
 	BaseClass::Paint();
-
+#ifdef OPFOR_DLL
 	m_iconHealth = gHUD.GetIcon("health_label_glow");
 	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
 
 	m_iconHealth = gHUD.GetIcon("health_label");
 	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
+#endif // OPFOR_DLL
+
 }
 
 

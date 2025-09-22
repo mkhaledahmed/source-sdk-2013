@@ -40,13 +40,18 @@ public:
 	void OnThink( void );
 	void MsgFunc_Battery(bf_read &msg );
 	bool ShouldDraw();
-	virtual void Paint(void); //New Hud Elements
 
+#ifdef OPFOR_DLL
+	virtual void Paint(void); //New Hud Elements
+#endif // OPFOR_DLL
 	
 private:
 	int		m_iBat;	
 	int		m_iNewBat;
+
+#ifdef OPFOR_DLL
 	CHudTexture* m_iconSuit; // New Hud Elements
+#endif // OPFOR_DLL
 
 };
 
@@ -71,7 +76,7 @@ void CHudBattery::Init( void )
 	m_iBat		= INIT_BAT;
 	m_iNewBat   = 0;
 }
-
+#ifdef OPFOR_DLL
 //-----------------------------------------------------------------------------
 // Purpose: Making the HUD look cooler
 //-----------------------------------------------------------------------------
@@ -84,7 +89,9 @@ void CHudBattery::Paint(void)
 
 	m_iconSuit = gHUD.GetIcon("battery_label");
 	m_iconSuit->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
+
 }
+#endif // OPFOR_DLL
 
 //-----------------------------------------------------------------------------
 // Purpose: 
