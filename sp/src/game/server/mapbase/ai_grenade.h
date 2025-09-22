@@ -20,10 +20,17 @@
 #include "ai_squad.h"
 #include "GlobalStrings.h"
 #include "gameweaponmanager.h"
-#include "hl2_gamerules.h"
 #include "weapon_physcannon.h"
 #include "globalstate.h"
 #include "ai_hint.h"
+
+#ifdef CLIENT_DLL
+#include "hl2_gamerules.h"
+#endif
+
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
 
 #define COMBINE_AE_GREN_TOSS		( 7 )
 
@@ -720,6 +727,7 @@ void CAI_GrenadeUser<BASE_NPC>::DropGrenadeItemsOnDeath( const CTakeDamageInfo &
 	
 	if ( IsGrenadeCapable() )
 	{
+#ifdef CLIENT_DLL
 		if ( ShouldDropGrenades() )
 		{
 			CHalfLife2 *pHL2GameRules = static_cast<CHalfLife2 *>(g_pGameRules);
@@ -731,7 +739,20 @@ void CAI_GrenadeUser<BASE_NPC>::DropGrenadeItemsOnDeath( const CTakeDamageInfo &
 				pHL2GameRules->NPC_DroppedGrenade();
 			}
 		}
+#endif
+#ifdef OPFOR_DLL
+		if (ShouldDropGrenades())
+		{
+			COpposingForce* pOPFORGameRules = static_cast<COpposingForce*>(g_pGameRules);
 
+			// Attempt to drop a grenade
+			if (pOPFORGameRules->NPC_ShouldDropGrenade(pPlayer))
+			{
+				this->DropItem("weapon_frag", this->WorldSpaceCenter() + RandomVector(-4, 4), RandomAngle(0, 360));
+				pOPFORGameRules->NPC_DroppedGrenade();
+			}
+		}
+#endif
 		// if I was killed before I could finish throwing my grenade, drop
 		// a grenade item that the player can retrieve.
 		if (this->GetActivity() == ACT_RANGE_ATTACK2 && ShouldDropInterruptedGrenades())

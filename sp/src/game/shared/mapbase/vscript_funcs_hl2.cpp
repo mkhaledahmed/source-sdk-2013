@@ -8,6 +8,11 @@
 #include "cbase.h"
 
 #include "hl2_gamerules.h"
+
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
+
 #ifndef CLIENT_DLL
 #include "eventqueue.h"
 #include "weapon_physcannon.h"
@@ -110,3 +115,20 @@ void CHalfLife2::RegisterScriptFunctions( void )
 	ScriptRegisterFunctionNamed( g_pScriptVM, ScriptPhysCannonGetHeldEntity, "PhysCannonGetHeldEntity", "Gets the specified gravity gun's currently held entity." );
 #endif
 }
+
+#ifdef OPFOR_DLL
+void COpposingForce::RegisterScriptFunctions(void)
+{
+	BaseClass::RegisterScriptFunctions();
+
+#ifndef CLIENT_DLL
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptGameOver, "GameOver", "Ends the game and reloads the last save.");
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptMegaPhyscannonActive, "MegaPhyscannonActive", "Checks if supercharged gravity gun mode is enabled.");
+
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptPickup_ForcePlayerToDropThisObject, "Pickup_ForcePlayerToDropThisObject", "If the specified entity is being carried, instantly drops it.");
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptPlayerPickupGetHeldObjectMass, "PlayerPickupGetHeldObjectMass", "Gets the mass of the specified player_pickup controller, with the second parameter the held object's physics object.");
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptGetPlayerHeldEntity, "GetPlayerHeldEntity", "Gets the specified player's currently held entity.");
+	ScriptRegisterFunctionNamed(g_pScriptVM, ScriptPhysCannonGetHeldEntity, "PhysCannonGetHeldEntity", "Gets the specified gravity gun's currently held entity.");
+#endif
+}
+#endif // MOD_OPFOR

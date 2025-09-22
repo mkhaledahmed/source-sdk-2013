@@ -21,9 +21,16 @@
 #include "Sprite.h"
 #include "soundenvelope.h"
 #include "weapon_physcannon.h"
-#include "hl2_gamerules.h"
 #include "gameweaponmanager.h"
 #include "vehicle_base.h"
+
+#ifdef CLIENT_DLL
+#include "hl2_gamerules.h"
+#endif
+
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -370,7 +377,7 @@ void CNPC_CombineS::Event_Killed( const CTakeDamageInfo &info )
 				}
 			}
 		}
-
+#ifdef CLIENT_DLL
 		CHalfLife2 *pHL2GameRules = static_cast<CHalfLife2 *>(g_pGameRules);
 
 		// Attempt to drop health
@@ -389,8 +396,29 @@ void CNPC_CombineS::Event_Killed( const CTakeDamageInfo &info )
 				pHL2GameRules->NPC_DroppedGrenade();
 			}
 		}
-	}
+#endif
 
+#ifdef OPFOR_DLL
+		COpposingForce* pOPFORGameRules = static_cast<COpposingForce*>(g_pGameRules);
+
+		// Attempt to drop health
+		if (pOPFORGameRules->NPC_ShouldDropHealth(pPlayer))
+		{
+			DropItem("item_healthvial", WorldSpaceCenter() + RandomVector(-4, 4), RandomAngle(0, 360));
+			pOPFORGameRules->NPC_DroppedHealth();
+		}
+
+		if (HasSpawnFlags(SF_COMBINE_NO_GRENADEDROP) == false)
+		{
+			// Attempt to drop a grenade
+			if (pOPFORGameRules->NPC_ShouldDropGrenade(pPlayer))
+			{
+				DropItem("weapon_frag", WorldSpaceCenter() + RandomVector(-4, 4), RandomAngle(0, 360));
+				pOPFORGameRules->NPC_DroppedGrenade();
+			}
+		}
+#endif
+	}
 	BaseClass::Event_Killed( info );
 }
 

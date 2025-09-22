@@ -27,10 +27,14 @@ $Project "Client (OPFOR)"
 		$File	"c_team_objectiveresource.cpp"
 		$File	"c_team_objectiveresource.h"
 
-		$Folder	"OF2"
+		$Folder	"OPFOR"
 		{
-		
+			$File	"$SRCDIR\game\shared\opfor\opfor_gamerules.cpp"
+			$File	"$SRCDIR\game\shared\opfor\opfor_gamerules.h"
+			$File	"$SRCDIR\game\shared\opfor\opfor_shareddefs.h"
+			$File	"$SRCDIR\game\shared\opfor\opfor_survival_gamerules.cpp"
 		}
+		
 		$Folder	"HL2 DLL"
 		{
 			$File	"$SRCDIR\game\shared\hl2\basehlcombatweapon_shared.cpp"
@@ -100,9 +104,9 @@ $Project "Client (OPFOR)"
 			$File	"hl2\fx_hl2_impacts.cpp"
 			$File	"hl2\fx_hl2_tracers.cpp"
 			$File	"hl2\hl2_clientmode.cpp"
-			$File	"$SRCDIR\game\shared\hl2\hl2_gamerules.cpp"
-			$File	"$SRCDIR\game\shared\hl2\hl2_gamerules.h"
-			$File	"$SRCDIR\game\shared\hl2\hl2_shareddefs.h"
+			//$File	"$SRCDIR\game\shared\hl2\hl2_gamerules.cpp"
+			//$File	"$SRCDIR\game\shared\hl2\hl2_gamerules.h"
+			//$File	"$SRCDIR\game\shared\hl2\hl2_shareddefs.h"
 			$File	"$SRCDIR\game\shared\hl2\hl2_usermessages.cpp"
 			$File	"$SRCDIR\game\shared\hl2\hl_gamemovement.cpp"
 			$File	"$SRCDIR\game\shared\hl2\hl_gamemovement.h"
@@ -127,7 +131,7 @@ $Project "Client (OPFOR)"
 			$File	"hl2\hud_weaponselection.cpp"
 			$File	"hl2\hud_zoom.cpp"
 			$File	"hl2\shieldproxy.cpp"
-			$File	"$SRCDIR\game\shared\hl2\survival_gamerules.cpp"
+			//$File	"$SRCDIR\game\shared\hl2\survival_gamerules.cpp"
 			$File	"hl2\vgui_rootpanel_hl2.cpp"
 			$File	"episodic\c_npc_puppet.cpp"
 		}

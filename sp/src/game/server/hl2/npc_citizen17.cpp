@@ -26,7 +26,12 @@
 #include "eventqueue.h"
 
 #ifdef MAPBASE
+#ifdef CLIENT_DLL
 #include "hl2_gamerules.h"
+#endif
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
 #include "mapbase/GlobalStrings.h"
 #include "collisionutils.h"
 #endif
@@ -695,11 +700,20 @@ void CNPC_Citizen::SelectModel()
 	if ( m_Type == CT_DEFAULT )
 	{
 #ifdef MAPBASE
+#ifdef CLIENT_DLL
 		if (HL2GameRules()->GetDefaultCitizenType() != CT_DEFAULT)
 		{
 			m_Type = static_cast<CitizenType_t>(HL2GameRules()->GetDefaultCitizenType());
 		}
 		else
+#endif 
+#ifdef OPFOR_DLL
+		if (OPFORGameRules()->GetDefaultCitizenType() != CT_DEFAULT)
+		{
+			m_Type = static_cast<CitizenType_t>(OPFORGameRules()->GetDefaultCitizenType());
+		}
+		else
+#endif
 		{
 #endif
 		struct CitizenTypeMapping

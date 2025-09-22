@@ -28,6 +28,10 @@
 #include "hl2_gamerules.h"
 #endif // HL2_DLL
 
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
+
 #include "ai_network.h"
 #include "ai_networkmanager.h"
 #include "ai_pathfinder.h"
@@ -717,9 +721,15 @@ bool CAI_BaseNPC::FriendlyFireEnabled()
 	if (m_FriendlyFireOverride != TRS_NONE)
 		return m_FriendlyFireOverride == TRS_TRUE;
 
+#ifdef CLIENT_DLL
 	if (HL2GameRules()->GlobalFriendlyFire() != TRS_NONE)
 		return HL2GameRules()->GlobalFriendlyFire() == TRS_TRUE;
+#endif
 
+#ifdef OPFOR_DLL
+	if (OPFORGameRules()->GlobalFriendlyFire() != TRS_NONE)
+		return OPFORGameRules()->GlobalFriendlyFire() == TRS_TRUE;
+#endif
 	return !(CapabilitiesGet() & bits_CAP_FRIENDLY_DMG_IMMUNE);
 }
 

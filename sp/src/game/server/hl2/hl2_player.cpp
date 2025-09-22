@@ -47,6 +47,14 @@
 #include "filters.h"
 #include "tier0/icommandline.h"
 
+#ifdef CLIENT_DLL
+#include "hl2_gamerules.h"
+#endif
+
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
+#endif
+
 #ifdef HL2_EPISODIC
 #include "npc_alyx_episodic.h"
 #endif
@@ -2071,6 +2079,7 @@ void CHL2_Player::CommanderUpdate()
 		m_CommanderUpdateTimer.Set(2.5);
 
 #ifdef MAPBASE
+#ifdef CLIENT_DLL
 		if ( pCommandRepresentative->ShouldAutoSummon() )
 		{
 			if (!HL2GameRules()->AutosummonDisabled() && player_squad_autosummon_enabled.GetBool())
@@ -2082,6 +2091,22 @@ void CHL2_Player::CommanderUpdate()
 				//m_CommanderUpdateTimer.Set(10.0);
 			}
 		}
+#endif
+
+#ifdef OPFOR_DLL
+		if (pCommandRepresentative->ShouldAutoSummon())
+		{
+			if (!OPFORGameRules()->AutosummonDisabled() && player_squad_autosummon_enabled.GetBool())
+				CommanderExecute(CC_FOLLOW);
+			else
+			{
+				// Show a hud hint if autosummoning has been disabled
+				UTIL_HudHintText(this, "#Valve_Hint_Command_recall");
+				//m_CommanderUpdateTimer.Set(10.0);
+			}
+		}
+#endif
+
 #else
 		if ( pCommandRepresentative->ShouldAutoSummon() )
 			CommanderExecute( CC_FOLLOW );
@@ -3335,6 +3360,7 @@ bool CHL2_Player::Weapon_CanUse( CBaseCombatWeapon *pWeapon )
 {
 #ifndef HL2MP	
 #ifdef MAPBASE
+#ifdef CLIENT_DLL
 	if ( pWeapon->ClassMatches( "weapon_stunstick" ) )
 	{
 		switch (HL2GameRules()->GetStunstickPickupBehavior())
@@ -3365,6 +3391,39 @@ bool CHL2_Player::Weapon_CanUse( CBaseCombatWeapon *pWeapon )
 			case 3: break;
 		}
 	}
+#endif
+#ifdef OPFOR_DLL
+	if (pWeapon->ClassMatches("weapon_stunstick"))
+	{
+		switch (OPFORGameRules()->GetStunstickPickupBehavior())
+		{
+			// Default, including 0
+		default:
+		{
+			if (ApplyBattery(0.5))
+				UTIL_Remove(pWeapon);
+			return false;
+		} break;
+
+		// Allow pickup, if already picked up just apply battery
+		case 1:
+		{
+			if (Weapon_OwnsThisType("weapon_stunstick"))
+			{
+				if (ApplyBattery(0.5))
+					UTIL_Remove(pWeapon);
+				return false;
+			}
+		} break;
+
+		// Don't pickup, don't even apply battery
+		case 2: return false;
+
+			// Just pickup, never apply battery
+		case 3: break;
+		}
+	}
+#endif
 #else
 	if ( pWeapon->ClassMatches( "weapon_stunstick" ) )
 	{

@@ -18,10 +18,18 @@
 #include "hl2_player.h"
 #include "iservervehicle.h"
 #include "items.h"
+
+#ifdef HL2_EPISODIC
 #include "hl2_gamerules.h"
+#endif
+
 #ifdef MAPBASE
 #include "grenade_frag.h"
 #include "mapbase/GlobalStrings.h"
+#endif
+
+#ifdef OPFOR_DLL
+#include "opfor_gamerules.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -3706,7 +3714,8 @@ void CNPC_MetroPolice::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pPlayer != NULL )
 	{
-		CHalfLife2 *pHL2GameRules = static_cast<CHalfLife2 *>(g_pGameRules);
+#ifdef CLIENT_DLL
+		CHalfLife2*pHL2GameRules = static_cast<CHalfLife2 *>(g_pGameRules);
 
 		// Attempt to drop health
 		if ( pHL2GameRules->NPC_ShouldDropHealth( pPlayer ) )
@@ -3714,6 +3723,18 @@ void CNPC_MetroPolice::Event_Killed( const CTakeDamageInfo &info )
 			DropItem( "item_healthvial", WorldSpaceCenter()+RandomVector(-4,4), RandomAngle(0,360) );
 			pHL2GameRules->NPC_DroppedHealth();
 		}
+#endif
+
+#ifdef OPFOR_DLL
+		COpposingForce* pOPFORGameRules = static_cast<COpposingForce*>(g_pGameRules);
+
+		// Attempt to drop health
+		if (pOPFORGameRules->NPC_ShouldDropHealth(pPlayer))
+		{
+			DropItem("item_healthvial", WorldSpaceCenter() + RandomVector(-4, 4), RandomAngle(0, 360));
+			pOPFORGameRules->NPC_DroppedHealth();
+		}
+#endif
 
 #ifdef MAPBASE
 		// Drop grenades if we should
