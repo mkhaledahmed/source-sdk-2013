@@ -155,7 +155,7 @@ void CHudNumericDisplay::PaintLabel( void )
 	surface()->DrawSetTextPos(text_xpos, text_ypos);
 	surface()->DrawUnicodeString( m_LabelText );
 }
-
+#ifdef OPFOR_DLL
 // Draw faint "000" and return the slot width (width of a single '0')
 static int PaintGhostTriplet(HFont font, int xpos, int ypos, const Color& ghostColor)
 {
@@ -206,7 +206,7 @@ static void PaintDigitsRightAlignedInSlots(HFont font, int xpos, int ypos, int v
 		surface()->DrawUnicodeString(d);
 	}
 }
-
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose: renders the vgui panel
