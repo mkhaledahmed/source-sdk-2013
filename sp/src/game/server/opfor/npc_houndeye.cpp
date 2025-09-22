@@ -511,24 +511,24 @@ Vector CNPC_Houndeye::WriteBeamColor(void)
 		{
 		case 1:
 			// solo houndeye - weakest beam
-			bRed = 188;
-			bGreen = 220;
+			bRed = 255;
+			bGreen = 225;
 			bBlue = 255;
 			break;
 		case 2:
-			bRed = 101;
-			bGreen = 133;
-			bBlue = 221;
+			bRed = 75;
+			bGreen = 255;
+			bBlue = 255;
 			break;
 		case 3:
-			bRed = 67;
-			bGreen = 85;
+			bRed = 0;
+			bGreen = 255;
 			bBlue = 255;
 			break;
 		case 4:
-			bRed = 62;
-			bGreen = 33;
-			bBlue = 211;
+			bRed = 0;
+			bGreen = 0;
+			bBlue = 255;
 			break;
 		default:
 			Msg("Unsupported Houndeye SquadSize!\n");

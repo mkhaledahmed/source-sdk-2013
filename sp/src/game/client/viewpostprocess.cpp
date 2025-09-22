@@ -2823,15 +2823,15 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 	pRenderContext->PopVertexShaderGPRAllocation();
 #endif
 
-	static IMaterial* pMat4 = materials->FindMaterial("HUDoverlays/Post_Vignette", TEXTURE_GROUP_OTHER);
-	if (pMat4)
-	{
-		pMat4->AddRef();
-		UpdateScreenEffectTexture();
-		pRenderContext->DrawScreenSpaceRectangle(pMat4, 0, 0, w, h,
-			0, 0, w - 1, h - 1,
-			w, h);
-	}
+	//static IMaterial* pMat4 = materials->FindMaterial("HUDoverlays/Post_Vignette", TEXTURE_GROUP_OTHER);
+	//if (pMat4)
+	//{
+	//	pMat4->AddRef();
+	//	UpdateScreenEffectTexture();
+	//	pRenderContext->DrawScreenSpaceRectangle(pMat4, 0, 0, w, h,
+	//		0, 0, w - 1, h - 1,
+	//		w, h);
+	//}
 
 	static IMaterial* pMat5 = materials->FindMaterial("HUDoverlays/Post_chromatic_aberration", TEXTURE_GROUP_OTHER);
 	if (pMat5)
