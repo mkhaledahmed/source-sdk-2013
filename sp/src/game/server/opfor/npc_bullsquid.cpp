@@ -430,7 +430,7 @@ void CNPC_Bullsquid::HandleAnimEvent( animevent_t *pEvent )
 				// Tell any squadmates not to fire for some portion of the time this volley will be in the air (except on hard)
 				//if (g_pGameRules->IsSkillLevel(SKILL_HARD) == false)
 					//DelaySquadAttack(flTime);
-
+				
 				for (int i = 0; i < 6; i++)
 				{
 					CGrenadeSpit *pGrenade = (CGrenadeSpit*)CreateEntityByName("grenade_spit");
