@@ -68,8 +68,10 @@ protected:
 	CPanelAnimationVarAliasType( float, digit2_xpos, "digit2_xpos", "98", "proportional_float" );
 	CPanelAnimationVarAliasType( float, digit2_ypos, "digit2_ypos", "16", "proportional_float" );
 
-	CPanelAnimationVarAliasType(float, icon_xpos, "icon_xpos", "5", "proportional_float"); //HUD Elements
+#ifdef OPFOR_DLL
+	CPanelAnimationVarAliasType(float, icon_xpos, "icon_xpos", "7", "proportional_float"); //HUD Elements
 	CPanelAnimationVarAliasType(float, icon_ypos, "icon_ypos", "-6", "proportional_float"); //HUD Elements
+#endif OPFOR_DLL
 };
 
 

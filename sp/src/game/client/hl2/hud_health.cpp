@@ -51,7 +51,9 @@ public:
 	virtual void OnThink();
 			void MsgFunc_Damage( bf_read &msg );
 
+#ifdef OPFOR_DLL
 	virtual void Paint(void); //New HUD elements
+#endif OPFOR_DLL
 
 private:
 	// old variables
@@ -85,21 +87,21 @@ void CHudHealth::Init()
 	Reset();
 }
 
+#ifdef OPFOR_DLL
 //-----------------------------------------------------------------------------
 // Purpose: HUD Icons - Making it look cooler
 //-----------------------------------------------------------------------------
 void CHudHealth::Paint()
 {
 	BaseClass::Paint();
-#ifdef OPFOR_DLL
-	m_iconHealth = gHUD.GetIcon("health_label_glow");
-	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
+	m_iconHealthGlow = gHUD.GetIcon("health_label_glow");
+	m_iconHealthGlow->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
 
 	m_iconHealth = gHUD.GetIcon("health_label");
 	m_iconHealth->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
-#endif // OPFOR_DLL
 
 }
+#endif // OPFOR_DLL
 
 
 //-----------------------------------------------------------------------------

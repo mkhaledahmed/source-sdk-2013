@@ -51,6 +51,7 @@ private:
 
 #ifdef OPFOR_DLL
 	CHudTexture* m_iconSuit; // New Hud Elements
+	CHudTexture* m_iconSuitGlow; //New HUD elements
 #endif // OPFOR_DLL
 
 };
@@ -84,12 +85,11 @@ void CHudBattery::Paint(void)
 {
 	BaseClass::Paint();
 
-	m_iconSuit = gHUD.GetIcon("battery_label_glow");
-	m_iconSuit->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
+	m_iconSuitGlow = gHUD.GetIcon("battery_label_glow");
+	m_iconSuitGlow->DrawSelf(icon_xpos, icon_ypos, Color(0, 255, 0, 48));
 
 	m_iconSuit = gHUD.GetIcon("battery_label");
 	m_iconSuit->DrawSelf(icon_xpos, icon_ypos, GetFgColor());
-
 }
 #endif // OPFOR_DLL
 

@@ -154,6 +154,10 @@ void CHudNumericDisplay::PaintLabel( void )
 	surface()->DrawSetTextColor(GetFgColor());
 	surface()->DrawSetTextPos(text_xpos, text_ypos);
 	surface()->DrawUnicodeString( m_LabelText );
+#ifdef OPFOR_DLL
+	surface()->DrawSetTextPos(icon_xpos, icon_ypos);
+#endif
+
 }
 #ifdef OPFOR_DLL
 // Draw faint "000" and return the slot width (width of a single '0')
