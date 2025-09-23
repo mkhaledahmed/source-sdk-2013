@@ -105,7 +105,12 @@ void CSatchelCharge::CreateEffects( void )
 	// Create a blinking light to show we're an active SLAM
 	m_hGlowSprite = CSprite::SpriteCreate( SLAM_SPRITE, GetAbsOrigin(), false );
 	m_hGlowSprite->SetAttachment( this, 0 );
-	m_hGlowSprite->SetTransparency( kRenderTransAdd, 255, 255, 255, 255, kRenderFxStrobeFast );
+#ifdef CLIENT_DLL
+	m_hGlowSprite->SetTransparency(kRenderTransAdd, 255, 255, 255, 255, kRenderFxStrobeFast);
+#endif
+#ifdef OPFOR_DLL
+	m_hGlowSprite->SetTransparency(kRenderTransAdd, 0, 255, 255, 255, kRenderFxStrobeFast);
+#endif
 	m_hGlowSprite->SetBrightness( 255, 1.0f );
 	m_hGlowSprite->SetScale( 0.2f, 0.5f );
 	m_hGlowSprite->TurnOn();

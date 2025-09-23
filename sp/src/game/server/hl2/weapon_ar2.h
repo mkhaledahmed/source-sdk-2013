@@ -30,14 +30,25 @@ public:
 	void	Precache( void );
 	
 	void	SecondaryAttack( void );
+
+#ifdef OPFOR_DLL
+	virtual
+#endif
+
 	void	DelayedAttack( void );
 
 	const char *GetTracerType( void ) { return "AR2Tracer"; }
 
 	void	AddViewKick( void );
 
+#ifdef OPFOR_DLL
+	virtual void	FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, bool bUseWeaponAngles);
+	virtual void	FireNPCSecondaryAttack(CBaseCombatCharacter* pOperator, bool bUseWeaponAngles);
+#else
 	void	FireNPCPrimaryAttack( CBaseCombatCharacter *pOperator, bool bUseWeaponAngles );
 	void	FireNPCSecondaryAttack( CBaseCombatCharacter *pOperator, bool bUseWeaponAngles );
+#endif
+
 	void	Operator_ForceNPCFire( CBaseCombatCharacter  *pOperator, bool bSecondary );
 	void	Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 
@@ -57,6 +68,17 @@ public:
 	virtual const Vector& GetBulletSpread( void )
 	{
 		static Vector cone;
+
+#ifdef OPFOR_DLL
+		// Bad Cop has nearly perfect accuracy with the AR2 to give players
+		// the advantage of a Combine elite
+		if (this->GetOwner() && this->GetOwner()->IsPlayer())
+		{
+			cone = VECTOR_CONE_1DEGREES;
+			return cone;
+		}
+#endif
+
 		
 		cone = VECTOR_CONE_3DEGREES;
 
@@ -78,5 +100,45 @@ public:
 	DECLARE_DATADESC();
 };
 
+#ifdef OPFOR_DLL
+
+class CWeaponOSILMG : public CWeaponAR2
+{
+public:
+	DECLARE_CLASS(CWeaponOSILMG, CWeaponAR2);
+
+	CWeaponOSILMG();
+
+	DECLARE_SERVERCLASS();
+
+	void	PrimaryAttack(void); // Breadman
+	void	SecondaryAttack(void);
+	void	DelayedAttack(void);
+
+	void	AddViewKick(void);
+
+	void	FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, bool bUseWeaponAngles);
+	void	FireNPCSecondaryAttack(CBaseCombatCharacter* pOperator, bool bUseWeaponAngles);
+
+	int		GetMinBurst(void) { return 5; }
+	int		GetMaxBurst(void) { return 10; }
+	float	GetFireRate(void) { return 0.12f; } // Breadman - lowered for prototype
+
+	virtual const Vector& GetBulletSpread(void)
+	{
+		static Vector cone;
+
+		cone = VECTOR_CONE_10DEGREES;
+
+		return cone;
+	}
+
+protected:
+
+	int m_nBurstMax;
+
+	DECLARE_DATADESC();
+};
+#endif
 
 #endif	//WEAPONAR2_H

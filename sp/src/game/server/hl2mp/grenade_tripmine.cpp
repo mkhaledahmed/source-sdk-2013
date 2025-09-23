@@ -217,12 +217,22 @@ void CTripmineGrenade::MakeBeam( void )
 
 	Vector vecTmpEnd = GetLocalOrigin() + m_vecDir * 2048 * drawLength;
 
+#ifdef CLIENT_DLL
 	m_pBeam = CBeam::BeamCreate( g_pModelNameLaser, 0.35 );
 	m_pBeam->PointEntInit( vecTmpEnd, this );
 	m_pBeam->SetColor( 255, 55, 52 );
 	m_pBeam->SetScrollRate( 25.6 );
 	m_pBeam->SetBrightness( 64 );
+#endif
 	
+#ifdef OPFOR_DLL
+	m_pBeam = CBeam::BeamCreate(g_pModelNameLaser, 0.70);
+	m_pBeam->PointEntInit(vecTmpEnd, this);
+	m_pBeam->SetColor(0, 255, 255);
+	m_pBeam->SetScrollRate(25.6);
+	m_pBeam->SetBrightness(128);
+#endif
+
 	int beamAttach = LookupAttachment("beam_attach");
 	m_pBeam->SetEndAttachment( beamAttach );
 }
