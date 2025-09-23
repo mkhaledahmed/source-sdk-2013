@@ -50,6 +50,9 @@ $Project "Server (OPFOR)"
 		
 		$Folder "OPFOR"
 		{
+			//$File	"episodic\weapon_hopwire.cpp"
+			//$File	"episodic\grenade_hopwire.cpp"
+			//$File	"episodic\grenade_hopwire.h"
 			$File "opfor\npc_bullsquid.cpp"
 			$File "opfor\npc_bullsquid.h"
 			$File "opfor\npc_houndeye.cpp"

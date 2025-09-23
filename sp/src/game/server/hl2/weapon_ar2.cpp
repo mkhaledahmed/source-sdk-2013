@@ -736,12 +736,68 @@ void CWeaponOSILMG::PrimaryAttack(void)
 
 		AddViewKick();
 
+		// --- Knockback (push player backward) ---
+		{
+			// Don’t push in noclip/ladder/water
+			if (pPlayer->GetMoveType() == MOVETYPE_WALK && !pPlayer->GetGroundEntity() /* optional: stronger when airborne */)
+			{
+				// Aim direction -> backward impulse
+				Vector forward;
+				AngleVectors(pPlayer->EyeAngles(), &forward);
+				forward.z = 0.0f;               // keep it mostly horizontal; remove this if you want vertical kick too
+				VectorNormalize(forward);
+
+				// Tune these to taste
+				const float baseForce = 120.0f;   // overall push strength per shot
+				const float airMultiplier = 1.0f;    // scale when airborne
+				const float groundMultiplier = 0.35f;// gentler when on ground
+
+				const bool bOnGround = (pPlayer->GetGroundEntity() != nullptr);
+				const float force = baseForce * (bOnGround ? groundMultiplier : airMultiplier);
+
+				Vector impulse = -forward * force;
+
+				// Optional: limit max horizontal speed increase from knockback
+				const float maxAddedSpeed = 120.0f;
+				Vector vel = pPlayer->GetAbsVelocity();
+				Vector newVel = vel + impulse;
+
+				Vector horiz = newVel; horiz.z = 0.0f;
+				float horizLen = horiz.Length();
+				if (horizLen > maxAddedSpeed)
+				{
+					float scale = (maxAddedSpeed) / horizLen;
+					newVel.x *= scale;
+					newVel.y *= scale;
+					// keep vertical as-is
+				}
+
+				// Apply the change (impulse-style)
+				pPlayer->SetAbsVelocity(newVel);
+				// Or, if available in your branch: pPlayer->ApplyAbsVelocityImpulse( impulse );
+			}
+			else if (pPlayer->GetMoveType() == MOVETYPE_WALK)
+			{
+				// Grounded version (gentler)
+				Vector forward;
+				AngleVectors(pPlayer->EyeAngles(), &forward);
+				forward.z = 0.0f;
+				VectorNormalize(forward);
+
+				const float force = 120.0f * 0.35f; // same numbers as above, combined
+				Vector impulse = -forward * force;
+
+				pPlayer->SetAbsVelocity(pPlayer->GetAbsVelocity() + impulse);
+				// Or: pPlayer->ApplyAbsVelocityImpulse( impulse );
+			}
+		}
+
 		BaseClass::ItemPostFrame();
 	}
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: BURST FIRE THREE MINI-PELLETS 
+// Purpose: BURST FIRE TWO MINI-PELLETS 
 // At the moment the first shot fired consumes x2 ammo for some freakin' reason. - old comment
 // BUT NOW It's working as it should wat tha fack. DON'T QUESTION IT. SMILE. KEEP WORKING. 
 //-----------------------------------------------------------------------------
@@ -786,7 +842,7 @@ void CWeaponOSILMG::DelayedAttack(void)
 	Vector impactPoint = vecSrc + (vecAiming * MAX_TRACE_LENGTH);
 
 	// Fire the bullets
-	Vector vecVelocity = vecAiming * 1500.0f; // Breadman was 1000
+	Vector vecVelocity = vecAiming * 1000.0f; // Breadman was 1000
 
 	// Fire the combine ball
 	CreateCombineBall(vecSrc,
@@ -797,8 +853,8 @@ void CWeaponOSILMG::DelayedAttack(void)
 		pOwner);
 
 	// View effects
-	color32 white = { 255, 255, 255, 64 };
-	UTIL_ScreenFade(pOwner, white, 0.1, 0, FFADE_IN);
+	color32 green = { 255, 255, 255, 64 };
+	UTIL_ScreenFade(pOwner, green, 0.1, 0, FFADE_IN);
 
 	//Disorient the player
 	QAngle angles = pOwner->GetLocalAngles();
@@ -917,10 +973,10 @@ void CWeaponOSILMG::FireNPCPrimaryAttack(CBaseCombatCharacter* pOperator, bool b
 void CWeaponOSILMG::FireNPCSecondaryAttack(CBaseCombatCharacter* pOperator, bool bUseWeaponAngles)
 {
 	// Clamp
-	if (m_nBurstMax > 3) { m_nBurstMax = 3; };
+	if (m_nBurstMax > 2) { m_nBurstMax = 2; };
 
 	// If we've reached our burst limit, stop firing.
-	if (m_nBurstMax == 3)
+	if (m_nBurstMax == 2)
 	{
 		// Reset our burst and return to sender.
 		m_nBurstMax = 0;
