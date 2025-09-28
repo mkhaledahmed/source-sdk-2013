@@ -105,22 +105,22 @@
 		}
 		"health_label"
 		{
-				"font"		"OF2HudIcons"
+				"font"		"HudIcons"
 				"character"	"b"
 		}
 		"health_label_glow"
 		{
-				"font"		"OF2HudIconsGlow"
+				"font"		"HudIconsGlow"
 				"character"	"b"
 		}
 		"battery_label"
 		{
-				"font"		"OF2HudIcons"
+				"font"		"HudIcons"
 				"character"	"a"
 		}
 		"battery_label_glow"
 		{
-				"font"		"OF2HudIconsGlow"
+				"font"		"HudIconsGlow"
 				"character"	"a"
 		}
 	}	

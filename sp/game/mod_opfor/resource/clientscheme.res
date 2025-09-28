@@ -122,7 +122,7 @@ Scheme
 			}
 			"1"	[$WIN32]
 			{
-				"name"		"FromtheStarsW01-Regular"
+				"name"		"Eurostile"
 				"tall"		"9"
 				"weight"	"700"
 				"antialias" "1"
@@ -351,7 +351,7 @@ Scheme
 				"custom"	"1" [!$OSX]
 			}
 		}
-		OF2HudIcons
+		HudIcons
 		{
 			"1"
 			{
@@ -364,7 +364,7 @@ Scheme
 				"custom"	"1"
 			}
 		}
-		OF2HudIconsGlow
+		HudIconsGlow
 		{
 			"1"
 			{
@@ -393,7 +393,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Let's go Digital"
+				"name"		"Let's go digital"
 				"tall"		"32"	[$WIN32]
 				"tall"		"38"	[$X360]
 				"weight"	"0"
@@ -406,7 +406,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Let's go Digital"
+				"name"		"Let's go digital"
 				"tall"		"32"	[$WIN32]
 				"tall"		"38"	[$X360]
 				"weight"	"0"
@@ -421,8 +421,8 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Let's go Digital" [!$OSX]
-				"name"		"Let's go Digital" [$OSX]
+				"name"		"Let's go digital" [!$OSX]
+				"name"		"Let's go digital" [$OSX]
 				"tall"		"16"	[$WIN32]
 				"tall"		"22"	[$X360]
 				"weight"	"1000"
@@ -435,7 +435,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Eurostile"
+				"name"		"Digital-7"
 				"tall"		"11"
 				"weight"	"700"
 				"antialias" "1"
@@ -485,7 +485,7 @@ Scheme
 		{
 			"1"
 			{
-				"name"		"Eurostile"
+				"name"		"Let's go digital"
 				"tall"		"8"
 				"weight"	"700"
 				"antialias" "1"
@@ -493,7 +493,7 @@ Scheme
 			}
 			"2"
 			{
-				"name"		"Eurostile"
+				"name"		"Let's go digital"
 				"tall"		"10"
 				"weight"	"700"
 				"antialias" "1"
@@ -501,7 +501,7 @@ Scheme
 			}
 			"3"
 			{
-				"name"		"Eurostile"
+				"name"		"Let's go digital"
 				"tall"		"12"
 				"weight"	"900"
 				"antialias" "1"
@@ -509,7 +509,7 @@ Scheme
 			}
 			"4"
 			{
-				"name"		"Eurostile"
+				"name"		"Let's go digital"
 				"tall"		"16"
 				"weight"	"900"
 				"antialias" "1"
@@ -517,7 +517,7 @@ Scheme
 			}
 			"5"
 			{
-				"name"		"Eurostile"
+				"name"		"Let's go digital"
 				"tall"		"17"
 				"weight"	"1000"
 				"antialias" "1"
@@ -824,7 +824,10 @@ Scheme
 		"4"		"resource/fonts/Cstrike.ttf"	
 		"5"     "resource/fonts/Eurosti.ttf"
 		"6"		"resource/fonts/FacileSans.ttf"
-		"7"		"resource/fonts/Let's go Digital Regular.ttf"
+		"7"		"resource/fonts/Digital-7.ttf"
+		"8"		"resource/fonts/digital-7 (italic).ttf"
+		"9"		"resource/fonts/Let's go Digital Regular.ttf"
+
 	}
 
 }

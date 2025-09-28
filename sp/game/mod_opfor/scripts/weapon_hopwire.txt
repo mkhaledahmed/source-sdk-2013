@@ -5,7 +5,7 @@ WeaponData
 	"viewmodel"				"models/weapons/v_grenade.mdl"
 	"playermodel"			"models/items/grenadeAmmo.mdl"
 	"anim_prefix"			"Grenade"
-	"bucket"				"4"
+	"bucket"				"5"
 	"bucket_position"		"2"
 
 	"clip_size"				"-1"

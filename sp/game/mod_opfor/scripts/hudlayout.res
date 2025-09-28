@@ -5,7 +5,7 @@
 		"fieldName"		"HudHealth"
 		"xpos"	"16"
 		"ypos"	"430"
-		"wide"	"100"
+		"wide"	"102"
 		"tall"  "40"
 		"visible" "1"
 		"enabled" "1"
@@ -13,9 +13,11 @@
 		"PaintBackgroundType"	"2"
 		
 		"text_xpos" "40"
-		"text_ypos" "32"
-		"digit_xpos" "30"
-		"digit_ypos" "0"
+		"text_ypos" "28"
+		"digit_xpos" "39"
+		"digit_ypos" "1"
+		"icon_xpos" "14" //New Hud Elements
+		"icon_ypos" "-7" //New Hud Elements
 	}
 	HudHealth [$X360]
 	{
@@ -30,17 +32,18 @@
 		"PaintBackgroundType"	"2"
 		
 		"text_xpos" "8"
-		"text_ypos" "18"
+		"text_ypos" "14"
 		"digit_xpos" "60"
-		"digit_ypos" "-1"
+		"digit_ypos" "0"
+
 	}
 	
 	HudSuit [$WIN32]
 	{
 		"fieldName"		"HudSuit"
-		"xpos"	"132"
+		"xpos"	"121"
 		"ypos"	"430"
-		"wide"	"100"
+		"wide"	"102"
 		"tall"  "40"
 		"visible" "1"
 		"enabled" "1"
@@ -48,9 +51,11 @@
 		"PaintBackgroundType"	"2"
 
 		"text_xpos" "40"
-		"text_ypos" "32"
-		"digit_xpos" "30"
-		"digit_ypos" "0"
+		"text_ypos" "28"
+		"digit_xpos" "39"
+		"digit_ypos" "1"
+		"icon_xpos" "14" //New Hud Elements
+		"icon_ypos" "-7" //New Hud Elements
 	}
 	HudSuit [$X360]
 	{
@@ -68,6 +73,7 @@
 		"text_ypos" "18"
 		"digit_xpos" "50"
 		"digit_ypos" "-1"
+
 	}
 
 	HudAmmo	[$WIN32]
@@ -75,15 +81,15 @@
 		"fieldName" "HudAmmo"
 		"xpos"	"r150"
 		"ypos"	"432"
-		"wide"	"136"
+		"wide"	"132"
 		"tall"  "36"
 		"visible" "1"
 		"enabled" "1"
 
 		"PaintBackgroundType"	"2"
 
-		"text_xpos" "8"
-		"text_ypos" "20"
+		"text_xpos" "10"
+		"text_ypos" "22"
 		"digit_xpos" "44"
 		"digit_ypos" "2"
 		"digit2_xpos" "98"
@@ -112,18 +118,18 @@
 	HudAmmoSecondary	[$WIN32]
 	{
 		"fieldName" "HudAmmoSecondary"
-		"xpos"	"r76"
+		"xpos"	"r88"
 		"ypos"	"432"
-		"wide"	"60"
+		"wide"	"84"
 		"tall"  "36"
 		"visible" "1"
 		"enabled" "1"
 
 		"PaintBackgroundType"	"2"
 
-		"text_xpos" "8"
+		"text_xpos" "10"
 		"text_ypos" "22"
-		"digit_xpos" "36"
+		"digit_xpos" "28"
 		"digit_ypos" "2"
 	}
 	HudAmmoSecondary	[$X360]
@@ -235,8 +241,8 @@
 		"fieldName" "HudFlashlight"
 		"visible" "1"
 		"PaintBackgroundType"	"2"
-		"xpos"	"270"		[$WIN32]
-		"ypos"	"444"		[$WIN32]
+		"xpos"	"16"		[$WIN32]
+		"ypos"	"22"		[$WIN32]
 		"xpos_hidef"	"293"		[$X360]		// aligned to left
 		"xpos_lodef"	"c-18"		[$X360]		// centered in screen
 		"ypos"	"428"		[$X360]				
