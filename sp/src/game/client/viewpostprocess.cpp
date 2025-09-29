@@ -2847,34 +2847,25 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 	if (g_bFlashlightIsOn)
 	{
 		static IMaterial* pMat = materials->FindMaterial("HUDoverlays/post_nightvision", TEXTURE_GROUP_OTHER);
-		if (pMat)
-		{
 			pMat->AddRef();
 			UpdateScreenEffectTexture();
 			pRenderContext->DrawScreenSpaceRectangle(pMat, 0, 0, w, h,
 				0, 0, w - 1, h - 1,
 				w, h);
-		}
 
 		static IMaterial* pMat2 = materials->FindMaterial("HUDoverlays/post_cubiclens", TEXTURE_GROUP_OTHER);
-		if (pMat2)
-		{
 			pMat2->AddRef();
 			UpdateScreenEffectTexture();
 			pRenderContext->DrawScreenSpaceRectangle(pMat2, 0, 0, w, h,
 				0, 0, w - 1, h - 1,
 				w, h);
-		}
 
 		static IMaterial* pMat3 = materials->FindMaterial("HUDoverlays/Post_Vignette", TEXTURE_GROUP_OTHER);
-		if (pMat3)
-		{
 			pMat3->AddRef();
 			UpdateScreenEffectTexture();
 			pRenderContext->DrawScreenSpaceRectangle(pMat3, 0, 0, w, h,
 				0, 0, w - 1, h - 1,
 				w, h);
-		}
 	}
 	else
 	{

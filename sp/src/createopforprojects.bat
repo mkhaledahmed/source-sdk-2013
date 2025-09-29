@@ -1,3 +1,3 @@
-devtools\bin\vpc.exe /opfor +opforprojects /mksln opforprojects.sln
+devtools\bin\vpc.exe +opfor /mksln opforprojects.sln
 
 pause
