@@ -88,3 +88,15 @@ $Group "maptools"
 	"vscript"
 }
 
+$Group "opfor"
+{
+	"client"
+	"server"
+	"game_shader_dx9"
+	"mathlib"
+	"raytrace"
+	"tier1"
+	"vgui_controls"
+	"vscript"
+	"responserules"
+}
