@@ -2,4 +2,5 @@ fxctmp9_tmp\post_chromatic_aberration_ps30.inc
 fxctmp9_tmp\post_cubic_ps30.inc
 fxctmp9_tmp\post_nightvision_ps30.inc
 fxctmp9_tmp\post_vignette_ps30.inc
+fxctmp9_tmp\post_fisheye_ps30.inc
 fxctmp9_tmp\passthrough_vs30.inc

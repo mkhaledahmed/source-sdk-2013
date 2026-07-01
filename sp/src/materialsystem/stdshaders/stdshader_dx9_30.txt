@@ -49,5 +49,6 @@ post_chromatic_aberration_ps30.fxc
 post_cubic_ps30.fxc
 post_nightvision_ps30.fxc
 post_vignette_ps30.fxc
+post_fisheye_ps30.fxc
 
 passthrough_vs30.fxc
