@@ -19,6 +19,10 @@
 #include "ai_basenpc.h"
 #include "weapon_crowbar.h"
 
+#ifdef OPFOR_DLL
+#include "weapon_wrench.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
