@@ -43,6 +43,9 @@ public:
 	virtual int WeaponMeleeAttack1Condition(float flDot, float flDist);
 	void		SecondaryAttack(void) { return; }
 
+	// mouse2 hold-charge / mouse3 fixup stand-in
+	virtual void ItemPostFrame(void);
+
 	// Animation event
 	virtual void Operator_HandleAnimEvent(animevent_t* pEvent, CBaseCombatCharacter* pOperator);
 
@@ -57,6 +60,16 @@ private:
 
 	// Animation event handlers
 	void HandleAnimEventMeleeHit(animevent_t* pEvent, CBaseCombatCharacter* pOperator);
+
+	// mouse2 charge attack
+	void	StartChargeAttack(void);
+	void	ReleaseChargeAttack(void);
+	bool	m_bChargingAttack;
+	float	m_flChargeStartTime;
+	float	m_flAccumulatedChargeDamage;
+
+	// mouse3 fixup stand-in
+	void	FixupAttack(void);
 };
 
 #endif // WEAPON_WRENCH_H

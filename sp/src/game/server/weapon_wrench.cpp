@@ -11,6 +11,7 @@
 #include "npcevent.h"
 #include "ai_basenpc.h"
 #include "weapon_wrench.h"
+#include "fixable_entity.h"
 
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -18,6 +19,14 @@
 
 ConVar    sk_plr_dmg_wrench("sk_plr_dmg_wrench", "0");
 ConVar    sk_npc_dmg_wrench("sk_npc_dmg_wrench", "0");
+
+// Charge attack (mouse2, hold-and-release)
+ConVar    sk_wrench_charge_rate("sk_wrench_charge_rate", "25.0");			// bonus damage per second held
+ConVar    sk_wrench_charge_damage_max("sk_wrench_charge_damage_max", "50.0");	// cap on bonus damage
+ConVar    sk_wrench_charge_min_time("sk_wrench_charge_min_time", "0.2");		// below this, release counts as a whiff
+
+ConVar    wrench_debug("wrench_debug", "0", FCVAR_NONE, "1 = print charge/fixup debug info to console");
+ConVar    sk_wrench_fixup_range("sk_wrench_fixup_range", "100.0");	// how far the mouse3 fixup trace reaches
 
 //-----------------------------------------------------------------------------
 // CWeaponWrench
@@ -68,6 +77,9 @@ IMPLEMENT_ACTTABLE(CWeaponWrench);
 //-----------------------------------------------------------------------------
 CWeaponWrench::CWeaponWrench(void)
 {
+	m_bChargingAttack = false;
+	m_flChargeStartTime = 0.0f;
+	m_flAccumulatedChargeDamage = 0.0f;
 }
 
 //-----------------------------------------------------------------------------
@@ -195,7 +207,7 @@ void CWeaponWrench::HandleAnimEventMeleeHit(animevent_t* pEvent, CBaseCombatChar
 	}
 	else
 	{
-		WeaponSound(MELEE_MISS); 
+		WeaponSound(MELEE_MISS);
 	}
 }
 
@@ -213,5 +225,194 @@ void CWeaponWrench::Operator_HandleAnimEvent(animevent_t* pEvent, CBaseCombatCha
 	default:
 		BaseClass::Operator_HandleAnimEvent(pEvent, pOperator);
 		break;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Drives the mouse2 charge attack and mouse3 fixup stand-in.
+//
+// NOTE: mouse3 is not bound to anything by default in Source -- whoever
+// plays this needs "bind mouse3 +attack3" (or an equivalent default bind
+// added client-side) for IN_ATTACK3 to ever actually fire.
+//-----------------------------------------------------------------------------
+void CWeaponWrench::ItemPostFrame(void)
+{
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+	if (!pOwner)
+	{
+		BaseClass::ItemPostFrame();
+		return;
+	}
+
+	// ---- mouse3: fixup stand-in (fires once per press, not held) ----
+	if (pOwner->m_afButtonPressed & IN_ATTACK3)
+	{
+		if (wrench_debug.GetBool())
+		{
+			Msg("[wrench] mouse3 fixup triggered (no accumulated value -- single-press action)\n");
+		}
+		FixupAttack();
+	}
+
+	// ---- mouse2: hold to charge, release to swing ----
+	bool bAttack2Held = (pOwner->m_nButtons & IN_ATTACK2) != 0;
+
+	if (bAttack2Held && !m_bChargingAttack)
+	{
+		StartChargeAttack();
+	}
+	else if (!bAttack2Held && m_bChargingAttack)
+	{
+		ReleaseChargeAttack();
+	}
+	else if (bAttack2Held && m_bChargingAttack)
+	{
+		float flChargeTime = gpGlobals->curtime - m_flChargeStartTime;
+		m_flAccumulatedChargeDamage = MIN(flChargeTime * sk_wrench_charge_rate.GetFloat(),
+			sk_wrench_charge_damage_max.GetFloat());
+
+		if (wrench_debug.GetBool())
+		{
+			Msg("[wrench] charging: held %.2fs, accumulated bonus damage = %.1f / %.1f\n",
+				flChargeTime, m_flAccumulatedChargeDamage, sk_wrench_charge_damage_max.GetFloat());
+		}
+	}
+
+	// While charging, don't let the base class also process a normal
+	// primary swing this frame -- holding mouse2 should just hold the
+	// wind-up pose until release, not also let mouse1 interrupt it.
+	if (m_bChargingAttack)
+	{
+		WeaponIdle();
+		return;
+	}
+
+	BaseClass::ItemPostFrame();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Begin the mouse2 hold -- play the wind-up/held-back animation
+// and start the charge timer.
+//-----------------------------------------------------------------------------
+void CWeaponWrench::StartChargeAttack(void)
+{
+	m_bChargingAttack = true;
+	m_flChargeStartTime = gpGlobals->curtime;
+	m_flAccumulatedChargeDamage = 0.0f;
+
+	SendWeaponAnim(ACT_VM_PULLBACK);
+
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+	if (pOwner)
+	{
+		pOwner->SetAnimation(PLAYER_ATTACK1);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: mouse2 released -- swing with the accumulated bonus damage from
+// however long it was held, or whiff if released too quickly to count.
+//-----------------------------------------------------------------------------
+void CWeaponWrench::ReleaseChargeAttack(void)
+{
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+
+	float flChargeTime = gpGlobals->curtime - m_flChargeStartTime;
+	float flBonusDamage = m_flAccumulatedChargeDamage;
+
+	m_bChargingAttack = false;
+	m_flAccumulatedChargeDamage = 0.0f;
+
+	if (!pOwner)
+		return;
+
+	if (flChargeTime < sk_wrench_charge_min_time.GetFloat())
+	{
+		if (wrench_debug.GetBool())
+		{
+			Msg("[wrench] released after %.2fs -- below min charge time (%.2fs), whiff\n",
+				flChargeTime, sk_wrench_charge_min_time.GetFloat());
+		}
+
+		// released too fast to count as a real charged swing
+		WeaponSound(MELEE_MISS);
+		SendWeaponAnim(ACT_VM_MISSCENTER);
+		return;
+	}
+
+	if (wrench_debug.GetBool())
+	{
+		Msg("[wrench] released after %.2fs -- final bonus damage = %.1f\n", flChargeTime, flBonusDamage);
+	}
+
+	Vector vecSrc = pOwner->Weapon_ShootPosition();
+	Vector vecAiming;
+	pOwner->EyeVectors(&vecAiming);
+
+	Vector vecEnd;
+	VectorMA(vecSrc, 50, vecAiming, vecEnd);
+
+	CBaseEntity* pHurt = pOwner->CheckTraceHullAttack(vecSrc, vecEnd, Vector(-16, -16, -16), Vector(36, 36, 36),
+		sk_plr_dmg_wrench.GetFloat() + flBonusDamage, DMG_CLUB, 0.75);
+
+	if (pHurt)
+	{
+		WeaponSound(MELEE_HIT);
+		SendWeaponAnim(ACT_VM_HITCENTER);
+
+		trace_t traceHit;
+		UTIL_TraceLine(vecSrc, pHurt->GetAbsOrigin(), MASK_SHOT_HULL, pOwner, COLLISION_GROUP_NONE, &traceHit);
+		ImpactEffect(traceHit);
+
+		AddViewKick();
+	}
+	else
+	{
+		WeaponSound(MELEE_MISS);
+		SendWeaponAnim(ACT_VM_MISSCENTER);
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: mouse3 -- traces forward and, if the player is looking directly
+// at a fixable_entity within range, turns it on. Still plays the
+// draw animation as the visual for the interaction; the actual gameplay
+// effect now happens via the trace below instead of being a pure stand-in.
+//-----------------------------------------------------------------------------
+void CWeaponWrench::FixupAttack(void)
+{
+	SendWeaponAnim(ACT_VM_DRAW);
+
+	CBasePlayer* pOwner = ToBasePlayer(GetOwner());
+	if (!pOwner)
+		return;
+
+	Vector vecSrc = pOwner->Weapon_ShootPosition();
+	Vector vecAiming;
+	pOwner->EyeVectors(&vecAiming);
+
+	Vector vecEnd;
+	VectorMA(vecSrc, sk_wrench_fixup_range.GetFloat(), vecAiming, vecEnd);
+
+	trace_t tr;
+	UTIL_TraceLine(vecSrc, vecEnd, MASK_SOLID, pOwner, COLLISION_GROUP_NONE, &tr);
+
+	if (wrench_debug.GetBool())
+	{
+		Msg("[wrench] fixup trace hit: %s\n", tr.m_pEnt ? tr.m_pEnt->GetClassname() : "(nothing)");
+	}
+
+	if (!tr.m_pEnt)
+		return;
+
+	CFixableEntity* pFixable = dynamic_cast<CFixableEntity*>(tr.m_pEnt);
+	if (!pFixable)
+		return;	// hit something, but not a fixable_entity -- no interaction
+
+	bool bIsOnNow = pFixable->ToggleFixed(pOwner);
+
+	if (wrench_debug.GetBool())
+	{
+		Msg("[wrench] fixable_entity toggled %s\n", bIsOnNow ? "ON" : "OFF");
 	}
 }
