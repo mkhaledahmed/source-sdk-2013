@@ -33,6 +33,7 @@ public:
 	void	Precache( void );
 	void	KnifeTouch( CBaseEntity *pOther );
 	void	KnifeThink( void );
+	void	KnifeStuckThink( void );	// NEW: think while stuck to parent
 	unsigned int PhysicsSolidMaskForEntity( void ) const;
 
 	static CThrownKnife *Create( const Vector &vecOrigin, const Vector &vecVelocity, CBasePlayer *pOwner, CWeaponKnife *pWeapon );
@@ -50,6 +51,7 @@ private:
 	float					m_flThrowTime;		// for the recovery delay
 	bool					m_bStuck;
 	CHandle<CWeaponKnife>	m_hSourceWeapon;
+	CHandle<CBaseEntity>	m_hStuckParent;		// NEW: track what we're stuck to
 };
 
 //-----------------------------------------------------------------------------
@@ -77,6 +79,10 @@ public:
 
 	// Called by the thrown knife when the original owner touches it again.
 	void		NotifyKnifeRecovered( void );
+	void		NotifyKnifeRecovered( CBasePlayer *pOwner );	// NEW: Overload that takes owner
+
+	// NEW: Store the owner reference for recovery
+	void		SetOriginalOwner( CBasePlayer *pOwner ) { m_hOriginalOwner = pOwner; }
 
 private:
 	void		UpdateBodygroups( void );
@@ -89,6 +95,7 @@ private:
 	bool		m_bCharging;
 	float		m_flChargeStartTime;
 	bool		m_bThrown;	// true from the moment it's thrown until NotifyKnifeRecovered() fires
+	CHandle<CBasePlayer>	m_hOriginalOwner;	// NEW: Track the owner for recovery
 };
 
 #endif // WEAPON_KNIFE_H

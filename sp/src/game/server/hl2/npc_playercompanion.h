@@ -137,6 +137,50 @@ public:
 	virtual void	PredictPlayerPush();
 	void			BuildScheduleTestBits();
 
+#ifdef OPFOR_DLL
+	//---------------------------------
+	// Squad "send to point" command -- generic version of what
+	// npc_citizen17.cpp implements for itself (CNPC_Citizen overrides
+	// these with its own richer version: speech, formation, auto-summon).
+	// Any other CNPC_PlayerCompanion-derived ally gets this plain version
+	// for free: IsCommandable() lets it respond to the player's squad
+	// "send to point" key at all, and UpdateFollowCommandPoint() is what
+	// actually walks it there, by retargeting its existing follow
+	// behavior at a shared point entity instead of the player.
+	//---------------------------------
+	void			PrescheduleThink();
+	virtual bool	IsCommandable( void );
+	virtual bool	HaveCommandGoal( void ) const;
+	virtual bool	IsFollowingCommandPoint( void );
+	virtual void	UpdateFollowCommandPoint( void );
+
+	// Recall ("follow me" -- double-tap the squad command key): the base
+	// CAI_BaseNPC::TargetOrder() is a no-op, so without this override a
+	// generic companion commanded to a point would never actually come
+	// back -- its follow target/command goal just stay pointed at the
+	// command point forever.
+	bool			TargetOrder( CBaseEntity *pTarget, CAI_BaseNPC **Allies, int numAllies );
+
+	// Forces an outstanding player order (move-to-point or recall) to take
+	// priority over everything else -- assault, act-busy work, a melee
+	// opportunity, standoff positioning -- which is what was letting some
+	// squad members just never respond to being commanded/recalled at
+	// all. Set true the instant an order comes in (MoveOrder/TargetOrder),
+	// cleared once we've actually arrived.
+	void			OnMoveOrder( void );
+	bool			m_bCommandPriority;
+
+	// CAI_FollowBehavior::m_bTargetUnreachable latches true the first time
+	// a route-update fails and never retries once the target stops moving
+	// -- the actual root cause of some squaddies just never moving again
+	// once commanded, regardless of distance. This is when
+	// UpdateFollowCommandPoint() is next allowed to force a fresh
+	// SetFollowTarget() to clear that latch.
+	float			m_flNextFollowTargetRefresh;
+
+	void			DebugDrawSquadFollow( void );
+#endif // OPFOR_DLL
+
 	CSound			*GetBestSound( int validTypes = ALL_SOUNDS );
 	bool			QueryHearSound( CSound *pSound );
 	bool			QuerySeeEntity( CBaseEntity *pEntity, bool bOnlyHateOrFearIfNPC = false );

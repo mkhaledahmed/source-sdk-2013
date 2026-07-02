@@ -84,6 +84,8 @@ private:
 	float	m_flNextRechargeTick;
 	float	m_flRechargeDelayEndsAt;	// recharge is gated until curtime passes this, reset on every shot fired
 
+	bool	m_bDepleted;			// true when clip hit 0 -- locked out until fully recharged to max
+
 	int		m_nBurstShotsRemaining;	// >0 while a primary burst is playing out over successive frames
 	float	m_flNextBurstShotTime;
 };
@@ -105,6 +107,7 @@ DEFINE_FIELD(m_bCharging, FIELD_BOOLEAN),
 DEFINE_FIELD(m_flChargeStartTime, FIELD_TIME),
 DEFINE_FIELD(m_flNextRechargeTick, FIELD_TIME),
 DEFINE_FIELD(m_flRechargeDelayEndsAt, FIELD_TIME),
+DEFINE_FIELD(m_bDepleted, FIELD_BOOLEAN),
 DEFINE_FIELD(m_nBurstShotsRemaining, FIELD_INTEGER),
 DEFINE_FIELD(m_flNextBurstShotTime, FIELD_TIME),
 END_DATADESC()
@@ -121,6 +124,8 @@ CWeaponProtoGauss::CWeaponProtoGauss(void)
 	m_flChargeStartTime = 0.0f;
 	m_flNextRechargeTick = 0.0f;
 	m_flRechargeDelayEndsAt = 0.0f;
+
+	m_bDepleted = false;
 
 	m_nBurstShotsRemaining = 0;
 	m_flNextBurstShotTime = 0.0f;
@@ -149,6 +154,7 @@ void CWeaponProtoGauss::Recharge(void)
 	if (m_iClip1 >= nMaxCharge)
 	{
 		m_iClip1 = nMaxCharge;	// clamp in case the convar was lowered mid-game
+		m_bDepleted = false;	// fully recharged -- firing unlocked
 		return;
 	}
 
@@ -187,11 +193,10 @@ void CWeaponProtoGauss::PrimaryAttack(void)
 	if (m_nBurstShotsRemaining > 0)
 		return;
 
-	if (m_iClip1 <= 0)
+	if (m_bDepleted || m_iClip1 <= 0)
 	{
-		// Truly nothing left -- only refuse outright when there's
-		// literally zero charge to fire with.
-		WeaponSound(EMPTY);
+		if (!m_bDepleted)
+			WeaponSound(EMPTY);
 		m_flNextPrimaryAttack = gpGlobals->curtime + 0.2f;
 		return;
 	}
@@ -229,6 +234,9 @@ void CWeaponProtoGauss::FireNextBurstShot(void)
 
 	m_iClip1--;
 
+	if (m_iClip1 <= 0)
+		m_bDepleted = true;
+
 	// Reset the recharge delay on every individual shot, same as before.
 	m_flRechargeDelayEndsAt = gpGlobals->curtime + sk_protogauss_recharge_delay.GetFloat();
 
@@ -263,11 +271,10 @@ void CWeaponProtoGauss::FireNextBurstShot(void)
 //-----------------------------------------------------------------------------
 void CWeaponProtoGauss::StartCharge(void)
 {
-	if (m_iClip1 <= 0)
+	if (m_bDepleted || m_iClip1 <= 0)
 	{
-		// Truly nothing left -- only refuse outright when there's
-		// literally zero charge available to start charging with.
-		WeaponSound(EMPTY);
+		if (!m_bDepleted)
+			WeaponSound(EMPTY);
 		m_flNextSecondaryAttack = gpGlobals->curtime + 0.3f;
 		return;
 	}
@@ -331,6 +338,9 @@ void CWeaponProtoGauss::FireChargedBurst(void)
 	int nBulletsToFire = MIN(nBurstCount, nAvailable);
 
 	m_iClip1 -= nActualCost;
+
+	if (m_iClip1 <= 0)
+		m_bDepleted = true;
 
 	// Same recharge-delay reset as the primary burst -- either attack
 	// resets the 3-second (default) window before regen resumes.

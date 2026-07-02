@@ -52,6 +52,7 @@
 #include "gamestringpool.h"
 #include "c_user_message_register.h"
 #include "IGameUIFuncs.h"
+#include "opfor/opfor_mainmenu.h"
 #include "saverestoretypes.h"
 #include "saverestore.h"
 #include "physics_saverestore.h"
@@ -1178,6 +1179,8 @@ bool CHLClient::ReplayPostInit()
 void CHLClient::PostInit()
 {
 	IGameSystem::PostInitAllSystems();
+
+	InstallOpforMainMenu();
 
 #ifdef SIXENSE
 	// allow sixnese input to perform post-init operations

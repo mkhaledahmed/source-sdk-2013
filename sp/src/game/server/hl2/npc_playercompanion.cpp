@@ -195,6 +195,10 @@ CNPC_PlayerCompanion::CNPC_PlayerCompanion()
 		m_iGrenadeDropCapabilities = (eGrenadeDropCapabilities)(GRENDROPCAP_GRENADE | GRENDROPCAP_ALTFIRE | GRENDROPCAP_INTERRUPTED);
 	}
 #endif
+#ifdef OPFOR_DLL
+	m_bCommandPriority = false;
+	m_flNextFollowTargetRefresh = 0.f;
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -748,6 +752,209 @@ void CNPC_PlayerCompanion::BuildScheduleTestBits()
 	}
 }
 
+#ifdef OPFOR_DLL
+// Same shared point entity npc_citizen17.cpp's command-point system already
+// relies on (LINK_ENTITY_TO_CLASS'd there as CCommandPoint) -- reused here
+// rather than duplicated so both versions target the same entity.
+#define PC_COMMAND_POINT_CLASSNAME "info_target_command_point"
+
+ConVar opfor_debug_squad_follow( "opfor_debug_squad_follow", "0", FCVAR_CHEAT, "Draw debug overlays for CNPC_PlayerCompanion squad-follow/command state (follow-target line, command point, efficiency state)." );
+
+//-----------------------------------------------------------------------------
+// Purpose: Lets this companion respond to the player's squad "send to
+// point" command (the "C" key / impulse 50) at all. CNPC_Citizen
+// overrides this itself with an extra spawnflag check; this plain
+// version is for everyone else built on CNPC_PlayerCompanion.
+//-----------------------------------------------------------------------------
+bool CNPC_PlayerCompanion::IsCommandable( void )
+{
+	return IsInPlayerSquad();
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+bool CNPC_PlayerCompanion::HaveCommandGoal( void ) const
+{
+	return GetCommandGoal() != vec3_invalid;
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+bool CNPC_PlayerCompanion::IsFollowingCommandPoint( void )
+{
+	CBaseEntity *pFollowTarget = GetFollowBehavior().GetFollowTarget();
+	return ( pFollowTarget && FClassnameIs( pFollowTarget, PC_COMMAND_POINT_CLASSNAME ) );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: The actual "walk there" mechanism -- retargets this companion's
+// existing follow behavior at a shared point entity placed at the command
+// goal, instead of the player. Whether the point is *reachable* was
+// already decided upstream (CHL2_Player::CommanderFindGoal() cancels the
+// whole command via FindNearestValidGoalPos() before any order is ever
+// issued), so by the time this runs the goal is known-good.
+//-----------------------------------------------------------------------------
+void CNPC_PlayerCompanion::UpdateFollowCommandPoint( void )
+{
+	if ( !AI_IsSinglePlayer() )
+		return;
+
+	if ( !IsInPlayerSquad() )
+	{
+		if ( IsFollowingCommandPoint() )
+			GetFollowBehavior().SetFollowTarget( NULL );
+		return;
+	}
+
+	CBaseEntity *pDesiredTarget;
+	AI_Formations_t desiredFormation;
+
+	if ( HaveCommandGoal() )
+	{
+		CBaseEntity *pCommandPoint = gEntList.FindEntityByClassname( NULL, PC_COMMAND_POINT_CLASSNAME );
+		if ( !pCommandPoint )
+			pCommandPoint = CreateEntityByName( PC_COMMAND_POINT_CLASSNAME );
+
+		if ( ( pCommandPoint->GetAbsOrigin() - GetCommandGoal() ).LengthSqr() > 0.01 )
+			UTIL_SetOrigin( pCommandPoint, GetCommandGoal(), false );
+
+		pDesiredTarget = pCommandPoint;
+		desiredFormation = AIF_COMMANDER;
+	}
+	else
+	{
+		pDesiredTarget = UTIL_GetLocalPlayer();
+		desiredFormation = AIF_SIMPLE;
+	}
+
+	if ( !pDesiredTarget )
+		return;
+
+	bool bNeedsRetarget = ( GetFollowBehavior().GetFollowTarget() != pDesiredTarget );
+
+	// CAI_FollowBehavior::m_bTargetUnreachable latches true the first time
+	// a route-update fails (a moving prop, a temporary obstruction, a
+	// route the pathfinder briefly can't solve) and never retries once the
+	// target stops moving -- that, not raw distance, is what was causing
+	// some squaddies to just never move again once commanded/recalled.
+	// SetFollowTarget() is a no-op if called with the entity that's
+	// already the current target, so periodically detargeting-then-
+	// retargeting is the only way (short of reaching into
+	// CAI_FollowBehavior's protected internals) to force that latch to
+	// clear and get a fresh pathfind attempt.
+	if ( bNeedsRetarget || gpGlobals->curtime >= m_flNextFollowTargetRefresh )
+	{
+		// Also wipe the navigator's own goal, not just the follow target.
+		// Without this, CAI_FollowBehavior's task code sees an existing
+		// (if stale/blocked) path and just calls UpdateGoalPos() -- an
+		// *incremental* patch to that existing route -- instead of a
+		// fresh BuildRoute(). Clearing the goal outright forces the next
+		// pass to re-path from scratch, which is far more likely to
+		// actually find a way around whatever caused the original
+		// failure.
+		GetNavigator()->ClearGoal();
+		GetFollowBehavior().SetFollowTarget( NULL );
+		GetFollowBehavior().SetFollowTarget( pDesiredTarget );
+		GetFollowBehavior().SetParameters( desiredFormation );
+		m_flNextFollowTargetRefresh = gpGlobals->curtime + 2.0f;
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Recall -- if the player is the order's target, drop whatever
+// command goal/command-point we were following and go back to following
+// the player directly. Without this, the base no-op TargetOrder() left
+// generic companions stuck on their last command point forever, since
+// nothing ever cleared it.
+//-----------------------------------------------------------------------------
+bool CNPC_PlayerCompanion::TargetOrder( CBaseEntity *pTarget, CAI_BaseNPC **Allies, int numAllies )
+{
+	if ( pTarget->IsPlayer() )
+	{
+		SetCommandGoal( vec3_invalid );
+		GetFollowBehavior().SetFollowTarget( pTarget );
+		GetFollowBehavior().SetParameters( AIF_SIMPLE );
+		m_bCommandPriority = true;
+		OnTargetOrder();
+		return true;
+	}
+
+	return BaseClass::TargetOrder( pTarget, Allies, numAllies );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Fires the instant a move-to-point order comes in (base
+// CAI_BaseNPC::MoveOrder() calls this after setting the command goal).
+//-----------------------------------------------------------------------------
+void CNPC_PlayerCompanion::OnMoveOrder( void )
+{
+	m_bCommandPriority = true;
+
+	BaseClass::OnMoveOrder();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: opfor_debug_squad_follow 1 -- draws the current follow target
+// (line), the command point (box) if any, and a status line over the
+// NPC's head with its commandable/goal/efficiency state, for visually
+// verifying the squad-follow system.
+//-----------------------------------------------------------------------------
+void CNPC_PlayerCompanion::DebugDrawSquadFollow( void )
+{
+	if ( !opfor_debug_squad_follow.GetBool() )
+		return;
+
+	CBaseEntity *pFollowTarget = GetFollowBehavior().GetFollowTarget();
+	bool bFollowingCommandPoint = IsFollowingCommandPoint();
+
+	if ( pFollowTarget )
+	{
+		int r = bFollowingCommandPoint ? 255 : 0;
+		int g = bFollowingCommandPoint ? 128 : 255;
+		NDebugOverlay::Line( WorldSpaceCenter(), pFollowTarget->WorldSpaceCenter(), r, g, 0, false, 0.1f );
+	}
+
+	if ( HaveCommandGoal() )
+	{
+		NDebugOverlay::Box( GetCommandGoal(), Vector( -8, -8, -8 ), Vector( 8, 8, 8 ), 255, 128, 0, 64, 0.1f );
+	}
+
+	const char *pszEfficiency = "NORMAL";
+	switch ( GetEfficiency() )
+	{
+		case AIE_EFFICIENT:	pszEfficiency = "EFFICIENT";	break;
+		case AIE_DORMANT:	pszEfficiency = "DORMANT";		break;
+		default:			pszEfficiency = "NORMAL";		break;
+	}
+
+	NDebugOverlay::Text( WorldSpaceCenter() + Vector( 0, 0, 16 ),
+		CFmtStr( "Commandable: %s  Goal: %s  Eff: %s  Priority: %s",
+			IsCommandable() ? "yes" : "no",
+			HaveCommandGoal() ? "yes" : "no",
+			pszEfficiency,
+			m_bCommandPriority ? "FORCED" : "normal" ),
+		false, 0.1f );
+}
+
+//-----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+void CNPC_PlayerCompanion::PrescheduleThink()
+{
+	BaseClass::PrescheduleThink();
+
+	UpdateFollowCommandPoint();
+
+	// Once we've actually arrived, stop forcing top priority and let
+	// normal behavior precedence resume.
+	if ( m_bCommandPriority && GetFollowBehavior().CanSelectSchedule() && !GetFollowBehavior().FarFromFollowTarget() )
+	{
+		m_bCommandPriority = false;
+	}
+
+	DebugDrawSquadFollow();
+}
+#endif // OPFOR_DLL
+
 //-----------------------------------------------------------------------------
 //-----------------------------------------------------------------------------
 CSound *CNPC_PlayerCompanion::GetBestSound( int validTypes )
@@ -1136,9 +1343,23 @@ bool CNPC_PlayerCompanion::CanReload( void )
 //-----------------------------------------------------------------------------
 bool CNPC_PlayerCompanion::ShouldDeferToFollowBehavior()
 {
+#ifdef OPFOR_DLL
+	// Follow (which includes squad move/recall orders) always wins, full
+	// stop, unconditionally -- this is what "some squaddies don't move
+	// when commanded" traced back to: everything below this point can
+	// veto the follow behavior's turn entirely (mid-assault, mid-actbusy,
+	// a melee opportunity, standoff positioning), so a squaddie caught
+	// doing any of that would just never respond to being ordered around.
+	// NOTE: this also means a squad member will prioritize following/
+	// moving-to-command-point over fighting back if it has an enemy --
+	// that's the tradeoff of "always", not just "while under orders".
+	if ( GetFollowBehavior().CanSelectSchedule() )
+		return true;
+#endif // OPFOR_DLL
+
 	if ( !GetFollowBehavior().CanSelectSchedule() || !GetFollowBehavior().FarFromFollowTarget() )
 		return false;
-		
+
 	if ( m_StandoffBehavior.CanSelectSchedule() && !m_StandoffBehavior.IsBehindBattleLines( GetFollowBehavior().GetFollowTarget()->GetAbsOrigin() ) )
 		return false;
 
@@ -4033,6 +4254,20 @@ void CNPC_PlayerCompanion::UpdateEfficiency( bool bInPVS )
 			return;
 		}
 	}
+
+#ifdef OPFOR_DLL
+	// Squad members shouldn't be throttled by the normal distance/PVS-based
+	// AI efficiency system -- otherwise a follow/move-to-point order can
+	// stall out or lag badly once the player gets far enough away that
+	// this NPC leaves their PVS. There are only ever a handful of squad
+	// members at once, so always simulating them at full rate is cheap.
+	if ( IsInPlayerSquad() )
+	{
+		SetEfficiency( AIE_NORMAL );
+		SetMoveEfficiency( AIME_NORMAL );
+		return;
+	}
+#endif // OPFOR_DLL
 
 	// Do the default behavior
 	BaseClass::UpdateEfficiency( bInPVS );

@@ -1,0 +1,32 @@
+// Opposing Force: Rebellion — custom entity definitions
+// Include this alongside halflife2.fgd in Hammer's game configurations.
+
+//-------------------------------------------------------------------------
+// Barnacle Grapple weapon entities
+//-------------------------------------------------------------------------
+
+@PointClass
+	iconsprite("editor/env_emitter.vmt")
+	color(200 140 80)
+= env_barnacle_anchor :
+	"Barnacle tongue grapple target. The player is pulled toward this entity " +
+	"when hit with weapon_barnacle. Momentum is preserved on release. " +
+	"Assign any .mdl to the 'model' key to customise its appearance."
+[
+	model(studio) : "Model" : "models/editor/cone.mdl" : "Model to display in-world. Default is the editor cone (always in HL2 content). Replace with any .mdl."
+]
+
+//-------------------------------------------------------------------------
+// Barnacle Grapple weapon pickup
+//-------------------------------------------------------------------------
+
+@PointClass
+	base(Weapon)
+	studio("models/weapons/w_Physics.mdl")
+= weapon_barnacle :
+	"Barnacle Grapple. Primary fire extends a tongue that grabs enemies and " +
+	"pulls them toward you (headcrabs, metrocops) or pulls you toward them " +
+	"(all other NPCs). Hits env_barnacle_anchor nodes to pull the player " +
+	"toward them with preserved momentum."
+[
+]

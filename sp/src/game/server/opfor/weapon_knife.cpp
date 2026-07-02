@@ -30,8 +30,8 @@ ConVar sk_knife_range("sk_knife_range", "48");
 ConVar sk_knife_backstab_dot("sk_knife_backstab_dot", "0.5");	// how far into the target's "back cone" you need to be
 
 ConVar sk_knife_charge_max_time("sk_knife_charge_max_time", "1.5");		// time held to reach max throw power
-ConVar sk_knife_inaccurate_time("sk_knife_inaccurate_time", "1.0");		// holding past this starts adding random deviation
-ConVar sk_knife_inaccuracy_per_sec("sk_knife_inaccuracy_per_sec", "15.0");	// degrees of deviation per second held past the above
+ConVar sk_knife_inaccurate_time("sk_knife_inaccurate_time", "2.5");		// holding past this starts adding random deviation
+ConVar sk_knife_inaccuracy_per_sec("sk_knife_inaccuracy_per_sec", "2.0");	// degrees of deviation per second held past the above
 ConVar sk_knife_throw_speed_min("sk_knife_throw_speed_min", "600");
 ConVar sk_knife_throw_speed_max("sk_knife_throw_speed_max", "2200");
 ConVar sk_knife_damage_falloff_scale("sk_knife_damage_falloff_scale", "250");	// distance scale for the 1/sqrt() falloff
@@ -42,7 +42,7 @@ ConVar sk_knife_shake_amplitude("sk_knife_shake_amplitude", "0.3");	// degrees -
 ConVar sk_knife_recovery_delay("sk_knife_recovery_delay", "1.0");	// seconds after being thrown before it can be picked back up
 ConVar sk_knife_recovery_radius("sk_knife_recovery_radius", "48");	// how close the owner needs to be to recover it
 
-ConVar sk_knife_spin_rate("sk_knife_spin_rate", "720");	// degrees/sec while flying -- purely cosmetic, doesn't affect trajectory
+ConVar sk_knife_spin_rate("sk_knife_spin_rate", "1440");	// degrees/sec while flying -- purely cosmetic, doesn't affect trajectory
 
 ConVar knife_debug("knife_debug", "0", FCVAR_NONE, "1 = print knife charge/backstab/throw debug info to console");
 
@@ -58,9 +58,11 @@ DEFINE_FIELD(m_flThrowTime, FIELD_TIME),
 DEFINE_FIELD(m_bStuck, FIELD_BOOLEAN),
 DEFINE_FIELD(m_hOriginalOwner, FIELD_EHANDLE),
 DEFINE_FIELD(m_hSourceWeapon, FIELD_EHANDLE),
+DEFINE_FIELD(m_hStuckParent, FIELD_EHANDLE),	// NEW
 
 DEFINE_ENTITYFUNC(KnifeTouch),
 DEFINE_THINKFUNC(KnifeThink),
+DEFINE_THINKFUNC(KnifeStuckThink),	// NEW
 END_DATADESC()
 
 // Networked so the client-side C_ThrownKnife (c_thrown_knife.cpp) can tell
@@ -111,6 +113,17 @@ void CThrownKnife::Spawn(void)
 	// (pitch here) gives a clean tumbling-blade look rather than a wobble.
 	SetLocalAngularVelocity(QAngle(sk_knife_spin_rate.GetFloat(), 0, 0));
 
+	// NEW: Reduce bounciness by disabling vphysics bouncing
+	IPhysicsObject *pPhysObj = VPhysicsGetObject();
+	if (pPhysObj)
+	{
+		pPhysObj->SetMaterialIndex(physprops->GetSurfaceIndex("metal_smooth"));
+		// Reduce elasticity (bounce)
+		float damping = 0.2f;
+		float rotdamping = 0.2f;
+		pPhysObj->SetDamping(&damping, &rotdamping);
+	}
+
 	SetThink(&CThrownKnife::KnifeThink);
 	SetNextThink(gpGlobals->curtime + 0.1f);
 }
@@ -148,6 +161,18 @@ void CThrownKnife::KnifeThink(void)
 		{
 			float flDist = (pOwner->GetAbsOrigin() - GetAbsOrigin()).Length();
 
+			switch (knife_debug.GetInt())
+			{
+				case 1:
+					Msg("[knife] original owner position %.0f, %.0f, %.0f\n", pOwner->GetAbsOrigin().x, pOwner->GetAbsOrigin().y, pOwner->GetAbsOrigin().z);
+					Msg("[knife] thrown knife position %.0f, %.0f, %.0f\n", GetAbsOrigin().x, GetAbsOrigin().y, GetAbsOrigin().z);
+					break;
+
+				case 2:
+					Msg("[knife] recovery check: original owner %.0f units away\n", flDist);
+					break;
+			}
+
 			if (flDist <= sk_knife_recovery_radius.GetFloat())
 			{
 				if (knife_debug.GetBool())
@@ -155,9 +180,9 @@ void CThrownKnife::KnifeThink(void)
 					Msg("[knife] recovered by original owner (proximity, %.0f units away)\n", flDist);
 				}
 
-				if (m_hSourceWeapon)
+				if (m_hSourceWeapon && pOwner)
 				{
-					m_hSourceWeapon->NotifyKnifeRecovered();
+					m_hSourceWeapon->NotifyKnifeRecovered(pOwner);
 				}
 
 				UTIL_Remove(this);
@@ -185,6 +210,14 @@ void CThrownKnife::KnifeTouch(CBaseEntity* pOther)
 
 	if (bHitEntity)
 	{
+		// NEW: Only stick to NPCs, not players or other entities
+		if (!pOther->IsNPC())
+		{
+			// Hit something that's not an NPC (player, prop, etc.)
+			// Don't stick - let it bounce/stick to surfaces instead
+			return;
+		}
+
 		float flDistTraveled = (GetAbsOrigin() - m_vecThrowOrigin).Length();
 
 		float flFalloff = 1.0f / sqrt(1.0f + (flDistTraveled / sk_knife_damage_falloff_scale.GetFloat()));
@@ -201,33 +234,50 @@ void CThrownKnife::KnifeTouch(CBaseEntity* pOther)
 
 		EmitSound("Weapon_Knife.ThrowHitBody");
 
-
-		// Stick into NPC/ragdoll
+		// Stick into NPC
 		m_bStuck = true;
 
 		SetAbsVelocity(vec3_origin);
 		SetLocalAngularVelocity(vec3_angle);
 		SetMoveType(MOVETYPE_NONE);
 
+		// Store impact position in world space before reparenting
+		Vector worldImpactPos = GetAbsOrigin();
+		QAngle worldImpactAngle = GetAbsAngles();
 
-		// Keep the knife attached to the victim
+		// Keep the knife attached to the NPC
 		SetParent(pOther);
+		m_hStuckParent = pOther;
 
-
-		// Preserve the impact position/orientation
+		// Convert world impact position to local space relative to parent
 		Vector vecForward;
-		AngleVectors(GetAbsAngles(), &vecForward);
+		AngleVectors(worldImpactAngle, &vecForward);
 
-		SetLocalOrigin(Vector(0, 0, 0));
+		// Calculate local position relative to parent
+		Vector localPos = worldImpactPos - pOther->GetAbsOrigin();
+		
+		// If parent has rotation, transform to local space
+		matrix3x4_t parentMatrix;
+		AngleMatrix(pOther->GetAbsAngles(), pOther->GetAbsOrigin(), parentMatrix);
+		matrix3x4_t parentInvMatrix;
+		MatrixInvert(parentMatrix, parentInvMatrix);
+		
+		Vector localImpactPos;
+		VectorTransform(worldImpactPos, parentInvMatrix, localImpactPos);
+
+		SetLocalOrigin(localImpactPos);
 
 		QAngle angKnife;
 		VectorAngles(-vecVelDir, angKnife);
 		SetLocalAngles(angKnife);
 
+		// Switch to stuck-think to monitor parent state
+		SetThink(&CThrownKnife::KnifeStuckThink);
+		SetNextThink(gpGlobals->curtime + 0.1f);
 
 		if (knife_debug.GetBool())
 		{
-			Msg("[knife] embedded into %s\n", pOther->GetClassname());
+			Msg("[knife] embedded into NPC %s\n", pOther->GetClassname());
 		}
 
 		return;
@@ -256,7 +306,8 @@ void CThrownKnife::KnifeTouch(CBaseEntity* pOther)
 			VectorAngles(vecReflect, angReflect);
 			SetAbsAngles(angReflect);
 
-			SetAbsVelocity(vecReflect * flSpeed * 0.75f);
+			// NEW: Reduce reflection speed from 0.75f to 0.4f (less bouncy)
+			SetAbsVelocity(vecReflect * flSpeed * 0.4f);
 
 			if (knife_debug.GetBool())
 			{
@@ -621,7 +672,10 @@ void CWeaponKnife::ReleaseThrow(void)
 		}
 	}
 
-	Vector vecVelocity = vecAiming * flThrowSpeed;
+	// Inherit the thrower's own momentum -- thrown while running forward it
+	// flies faster than the base charge speed suggests, thrown while
+	// backpedaling it's held back, same as hurling anything mid-stride.
+	Vector vecVelocity = vecAiming * flThrowSpeed + pOwner->GetAbsVelocity();
 
 	CThrownKnife::Create(vecSrc, vecVelocity, pOwner, this);
 
@@ -637,10 +691,65 @@ void CWeaponKnife::ReleaseThrow(void)
 	// away automatically, same as other weapons do when they run dry.
 	pOwner->SwitchToNextBestWeapon(this);
 
+	// NEW: Drop the weapon from inventory but keep it alive for recovery
+	pOwner->Weapon_Detach(this);
+
 	if (knife_debug.GetBool())
 	{
 		Msg("[knife] thrown: charge %.2fs, power %.2f, speed %.0f\n", flChargeTime, flPowerFrac, flThrowSpeed);
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Called by CThrownKnife when the original owner recovers it.
+// NEW: Use GiveNamedItem to give the player a new knife
+//-----------------------------------------------------------------------------
+void CWeaponKnife::NotifyKnifeRecovered(void)
+{
+	// The thrown knife has a reference to the source weapon (this)
+	// We need to get the owner from the thrown knife's original owner
+	// Since this function is called from CThrownKnife::KnifeStuckThink, 
+	// we need to pass the owner through the call
+	
+	if (knife_debug.GetBool())
+	{
+		Msg("[knife] NotifyKnifeRecovered called\n");
+	}
+}
+
+// NEW: Add this overload that takes the owner directly
+void CWeaponKnife::NotifyKnifeRecovered(CBasePlayer* pOwner)
+{
+	if (pOwner)
+	{
+		// Use GiveNamedItem to properly create and equip a new knife
+		CBaseEntity* pNewKnifeEnt = pOwner->GiveNamedItem("weapon_knife");
+		
+		if (pNewKnifeEnt)
+		{
+			CWeaponKnife* pNewKnife = dynamic_cast<CWeaponKnife*>(pNewKnifeEnt);
+			if (pNewKnife)
+			{
+				pOwner->Weapon_Switch(pNewKnife);
+				
+				if (knife_debug.GetBool())
+				{
+					Msg("[knife] recovered -- gave new knife to player\n");
+				}
+			}
+		}
+		else if (knife_debug.GetBool())
+		{
+			Msg("[knife] recovered but GiveNamedItem failed\n");
+		}
+	}
+	else if (knife_debug.GetBool())
+	{
+		Msg("[knife] recovered but no owner found\n");
+	}
+
+	// Remove the old thrown knife weapon
+	UTIL_Remove(this);
 }
 
 //-----------------------------------------------------------------------------
@@ -729,22 +838,71 @@ void CWeaponKnife::UpdateBodygroups(void)
 		}
 		else if (knife_debug.GetBool())
 		{
-			Msg("[knife] UpdateBodygroups: owner has no viewmodel right now\n");
+			Msg("[knife] UpdateBodygroups: owner has no viewmodel right now\n");			
 		}
 	}
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Called by CThrownKnife when the original owner recovers it.
+// Purpose: Monitor parent entity state while knife is stuck
+// If parent becomes a ragdoll or dies, drop the knife
+// Also checks if the owner recovers the knife by proximity
 //-----------------------------------------------------------------------------
-void CWeaponKnife::NotifyKnifeRecovered(void)
+void CThrownKnife::KnifeStuckThink(void)
 {
-	m_bThrown = false;
-
-	UpdateBodygroups();
-
-	if (knife_debug.GetBool())
+	CBaseEntity* pParent = m_hStuckParent.Get();
+	CBasePlayer* pOwner = ToBasePlayer(m_hOriginalOwner.Get());
+	
+	// Check if we should detach due to parent death
+	if (!pParent || pParent->GetHealth() <= 0)
 	{
-		Msg("[knife] recovered -- ready to use again\n");
+		// Detach from parent and let it fall
+		SetParent(NULL);
+		m_bStuck = false;
+		
+		// Apply slight velocity to make it fall naturally
+		SetMoveType(MOVETYPE_FLYGRAVITY);
+		SetAbsVelocity(Vector(0, 0, -100));
+		
+		// Resume normal physics/touch behavior
+		SetTouch(&CThrownKnife::KnifeTouch);
+		SetThink(&CThrownKnife::KnifeThink);
+		SetNextThink(gpGlobals->curtime + 0.1f);
+
+		if (knife_debug.GetBool())
+		{
+			Msg("[knife] parent died/ragdolled -- knife dropping\n");
+		}
+		
+		return;
 	}
+
+	// NEW: Check if owner is within recovery radius to pick up the knife
+	if (pOwner)
+	{
+		float flTimeSinceThrown = gpGlobals->curtime - m_flThrowTime;
+
+		if (flTimeSinceThrown >= sk_knife_recovery_delay.GetFloat())
+		{
+			float flDist = (pOwner->GetAbsOrigin() - GetAbsOrigin()).Length();
+
+			if (flDist <= sk_knife_recovery_radius.GetFloat())
+			{
+				if (knife_debug.GetBool())
+				{
+					Msg("[knife] recovered by original owner (proximity, %.0f units away)\n", flDist);
+				}
+
+				if (m_hSourceWeapon && pOwner)
+				{
+					m_hSourceWeapon->NotifyKnifeRecovered(pOwner);
+				}
+
+				UTIL_Remove(this);
+				return;
+			}
+		}
+	}
+
+	SetNextThink(gpGlobals->curtime + 0.1f);
 }

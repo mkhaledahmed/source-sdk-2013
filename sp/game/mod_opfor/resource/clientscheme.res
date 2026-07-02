@@ -88,6 +88,33 @@ Scheme
 	{
 		// fonts are used in order that they are listed
 		// fonts are used in order that they are listed
+		"MenuButtonFont"
+		{
+			"1"
+			{
+				"name"		"Eurostile"
+				"tall"		"13"
+				"weight"	"700"
+				"antialias"	"1"
+				"yres"		"1 767"
+			}
+			"2"
+			{
+				"name"		"Eurostile"
+				"tall"		"15"
+				"weight"	"700"
+				"antialias"	"1"
+				"yres"		"768 1023"
+			}
+			"3"
+			{
+				"name"		"Eurostile"
+				"tall"		"18"
+				"weight"	"700"
+				"antialias"	"1"
+				"yres"		"1024 10000"
+			}
+		}
 		"DebugFixed"
 		{
 			"1"

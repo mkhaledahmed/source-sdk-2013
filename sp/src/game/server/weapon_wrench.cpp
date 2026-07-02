@@ -25,6 +25,10 @@ ConVar    sk_wrench_charge_rate("sk_wrench_charge_rate", "25.0");			// bonus dam
 ConVar    sk_wrench_charge_damage_max("sk_wrench_charge_damage_max", "50.0");	// cap on bonus damage
 ConVar    sk_wrench_charge_min_time("sk_wrench_charge_min_time", "0.2");		// below this, release counts as a whiff
 
+// NEW: Shake effect ConVars
+ConVar    sk_wrench_shake_speed("sk_wrench_shake_speed", "50.0");			// oscillation speed of the max-charge screen shake -- fast
+ConVar    sk_wrench_shake_amplitude("sk_wrench_shake_amplitude", "0.3");	// degrees -- tiny
+
 ConVar    wrench_debug("wrench_debug", "0", FCVAR_NONE, "1 = print charge/fixup debug info to console");
 ConVar    sk_wrench_fixup_range("sk_wrench_fixup_range", "100.0");	// how far the mouse3 fixup trace reaches
 
@@ -271,7 +275,19 @@ void CWeaponWrench::ItemPostFrame(void)
 		m_flAccumulatedChargeDamage = MIN(flChargeTime * sk_wrench_charge_rate.GetFloat(),
 			sk_wrench_charge_damage_max.GetFloat());
 
-		if (wrench_debug.GetBool())
+		// NEW: Apply screen shake when at maximum charge
+		if (m_flAccumulatedChargeDamage >= sk_wrench_charge_damage_max.GetFloat())
+		{
+			float flPhase = flChargeTime * sk_wrench_shake_speed.GetFloat();
+			float flRoll = sk_wrench_shake_amplitude.GetFloat() * sin(flPhase);
+			pOwner->ViewPunch(QAngle(0, 0, flRoll));
+
+			if (wrench_debug.GetBool())
+			{
+				Msg("[wrench] MAX CHARGE -- shake roll %.3f\n", flRoll);
+			}
+		}
+		else if (wrench_debug.GetBool())
 		{
 			Msg("[wrench] charging: held %.2fs, accumulated bonus damage = %.1f / %.1f\n",
 				flChargeTime, m_flAccumulatedChargeDamage, sk_wrench_charge_damage_max.GetFloat());
@@ -414,5 +430,32 @@ void CWeaponWrench::FixupAttack(void)
 	if (wrench_debug.GetBool())
 	{
 		Msg("[wrench] fixable_entity toggled %s\n", bIsOnNow ? "ON" : "OFF");
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Runs every frame while charging. Handles the max-charge screen
+// shake -- interpreted as a continuous sine-wave roll oscillation between
+// +amplitude and -amplitude degrees, applied every frame via ViewPunch() until release.
+//-----------------------------------------------------------------------------
+void CWeaponWrench::UpdateChargeEffects(CBasePlayer* pOwner)
+{
+	float flChargeTime = gpGlobals->curtime - m_flChargeStartTime;
+
+	if (flChargeTime >= sk_wrench_charge_min_time.GetFloat())
+	{
+		float flPhase = flChargeTime * sk_wrench_shake_speed.GetFloat();
+		float flRoll = sk_wrench_shake_amplitude.GetFloat() * sin(flPhase);
+
+		pOwner->ViewPunch(QAngle(0, 0, flRoll));
+
+		if (wrench_debug.GetBool())
+		{
+			Msg("[wrench] MAX CHARGE -- shake roll %.3f\n", flRoll);
+		}
+	}
+	else if (wrench_debug.GetBool())
+	{
+		Msg("[wrench] charging: held %.2fs / %.2fs\n", flChargeTime, sk_wrench_charge_min_time.GetFloat());
 	}
 }

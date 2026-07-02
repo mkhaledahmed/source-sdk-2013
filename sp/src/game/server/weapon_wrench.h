@@ -70,6 +70,9 @@ private:
 
 	// mouse3 fixup stand-in
 	void	FixupAttack(void);
+
+	// NEW: Shake effect during max charge
+	void UpdateChargeEffects(CBasePlayer* pOwner);
 };
 
 #endif // WEAPON_WRENCH_H

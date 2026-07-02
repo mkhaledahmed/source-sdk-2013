@@ -8,6 +8,7 @@
 	supportsvr	0
 
 	GameData	"bin/halflife2.fgd"
+	GameData	"opfor.fgd"
 
 	icon		"resource/icon1"
 	

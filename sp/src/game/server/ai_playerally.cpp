@@ -543,6 +543,28 @@ void CAI_PlayerAlly::PrescheduleThink( void )
 {
 	BaseClass::PrescheduleThink();
 
+#ifdef GLOWS_ENABLE
+	// White, soft outline on anyone actually in the player's squad right
+	// now -- reusing CBaseCombatCharacter's existing networked glow state,
+	// the same system weapon_knife.cpp's thrown knife uses for its own
+	// owner-only outline. Drops the instant they leave the squad
+	// (IsInPlayerSquad() goes false) or die (Event_Killed tears the whole
+	// entity down into a ragdoll, which never had the glow flag set).
+	bool bShouldGlow = IsInPlayerSquad() && IsAlive();
+	if ( bShouldGlow != IsGlowEffectActive() )
+	{
+		if ( bShouldGlow )
+		{
+			AddGlowEffect();
+			SetGlowColor( 1.0f, 1.0f, 1.0f, 0.5f );
+		}
+		else
+		{
+			RemoveGlowEffect();
+		}
+	}
+#endif // GLOWS_ENABLE
+
 #ifdef HL2_DLL
 	// Vital allies regenerate
 	if( GetHealth() >= GetMaxHealth() )

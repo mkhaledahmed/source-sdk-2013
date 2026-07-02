@@ -243,7 +243,61 @@ Border.Bright					"GoldSrcGreen"	// the lit side of a control
 		// fonts listed later in the order will only be used if they fulfill a range not already filled
 		// if a font fails to load then the subsequent fonts will replace
 		// fonts are used in order that they are listed
-		"DebugFixed"
+		"MenuButtonFont"
+		{
+			"1"
+			{
+				"name"		"FacileSans"
+				"tall"		"13"
+				"weight"	"400"
+				"antialias"	"1"
+				"yres"		"1 767"
+			}
+			"2"
+			{
+				"name"		"FacileSans"
+				"tall"		"15"
+				"weight"	"400"
+				"antialias"	"1"
+				"yres"		"768 1023"
+			}
+			"3"
+			{
+				"name"		"FacileSans"
+				"tall"		"18"
+				"weight"	"400"
+				"antialias"	"1"
+				"yres"		"1024 10000"
+			}
+		}
+		"MenuTitleFont"
+		{
+			"1"
+			{
+				"name"		"Arial"
+				"tall"		"48"
+				"weight"	"900"
+				"antialias"	"1"
+				"yres"		"1 767"
+			}
+			"2"
+			{
+				"name"		"Arial"
+				"tall"		"62"
+				"weight"	"900"
+				"antialias"	"1"
+				"yres"		"768 1079"
+			}
+			"3"
+			{
+				"name"		"Arial"
+				"tall"		"78"
+				"weight"	"900"
+				"antialias"	"1"
+				"yres"		"1080 10000"
+			}
+		}
+"DebugFixed"
 		{
 			"1"
 			{

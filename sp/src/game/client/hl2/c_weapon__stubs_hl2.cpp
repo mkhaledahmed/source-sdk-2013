@@ -42,13 +42,13 @@ STUB_WEAPON_CLASS( weapon_hopwire, WeaponHopwire, C_BaseHLCombatWeapon );
 //STUB_WEAPON_CLASS( weapon_proto1, WeaponProto1, C_BaseHLCombatWeapon );
 
 #ifdef OPFOR_DLL
-STUB_WEAPON_CLASS(weapon_osilmg, WeaponOSILMG, C_HLMachineGun);
 STUB_WEAPON_CLASS(weapon_wrench, WeaponWrench, C_BaseHLBludgeonWeapon);
 STUB_WEAPON_CLASS(weapon_knife, WeaponKnife, C_BaseHLBludgeonWeapon);
 STUB_WEAPON_CLASS(weapon_deagle, WeaponDeagle, C_BaseHLCombatWeapon);
 STUB_WEAPON_CLASS(weapon_sniper, WeaponSniperRifle, C_BaseHLCombatWeapon);
-STUB_WEAPON_CLASS(weapon_protogauss, WeaponProtoGauss, C_BaseHLCombatWeapon)
-
+STUB_WEAPON_CLASS(weapon_osilmg, WeaponOSILMG, C_HLMachineGun);
+STUB_WEAPON_CLASS(weapon_protogauss, WeaponProtoGauss, C_BaseHLCombatWeapon);
+STUB_WEAPON_CLASS(weapon_barnacle, WeaponBarnacle, C_BaseHLCombatWeapon);
 #endif
 
 #endif
