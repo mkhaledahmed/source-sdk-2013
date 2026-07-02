@@ -80,10 +80,11 @@ void C_ThrownKnife::UpdateGlowState(void)
 
 	if (bShouldGlow && !m_pGlowEffect)
 	{
-		// TODO: tune color/alpha to taste. bRenderWhenOccluded = true
-		// means it outlines through walls too, which is the point --
-		// makes a thrown knife findable even out of direct line of sight.
-		m_pGlowEffect = new CGlowObject(this, Vector(1.0f, 0.9f, 0.2f), 1.0f, true, true);
+		// Soft white outline, same as the squad companions/friendly
+		// scanner. bRenderWhenOccluded = true means it outlines through
+		// walls too, which is the point -- makes a thrown knife findable
+		// even out of direct line of sight.
+		m_pGlowEffect = new CGlowObject(this, Vector(1.0f, 1.0f, 1.0f), 0.5f, true, true);
 	}
 	else if (!bShouldGlow && m_pGlowEffect)
 	{

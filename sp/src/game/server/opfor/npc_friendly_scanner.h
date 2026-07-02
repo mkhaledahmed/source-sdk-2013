@@ -33,6 +33,11 @@ public:
 	virtual int			SelectSchedule( void );
 	virtual void		PrescheduleThink( void );
 
+	// Turns its own light on/off based on the real ambient light level at
+	// its position (read from the nav mesh's precomputed lighting data --
+	// see UpdateTorch()'s comment for why).
+	void				UpdateTorch( void );
+
 	// Immune to the player's own bullets/explosions specifically -- still
 	// killable by everything else (Combine, scripted damage, etc).
 	virtual int			OnTakeDamage_Alive( const CTakeDamageInfo &info );
@@ -41,6 +46,7 @@ public:
 
 private:
 	float				m_flNextAttackTime;
+	float				m_flNextPathRefresh;
 
 	DECLARE_DATADESC();
 };

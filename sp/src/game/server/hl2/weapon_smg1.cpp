@@ -21,7 +21,7 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-extern ConVar    sk_plr_dmg_smg1_grenade;	
+extern ConVar    sk_plr_dmg_smg1_grenade;
 #ifdef MAPBASE
 extern ConVar    sk_npc_dmg_smg1_grenade;
 #endif

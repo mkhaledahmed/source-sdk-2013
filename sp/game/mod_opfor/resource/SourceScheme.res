@@ -247,7 +247,7 @@ Border.Bright					"GoldSrcGreen"	// the lit side of a control
 		{
 			"1"
 			{
-				"name"		"FacileSans"
+				"name"		"GorDIN"
 				"tall"		"13"
 				"weight"	"400"
 				"antialias"	"1"
@@ -255,7 +255,7 @@ Border.Bright					"GoldSrcGreen"	// the lit side of a control
 			}
 			"2"
 			{
-				"name"		"FacileSans"
+				"name"		"GorDIN"
 				"tall"		"15"
 				"weight"	"400"
 				"antialias"	"1"
@@ -263,7 +263,7 @@ Border.Bright					"GoldSrcGreen"	// the lit side of a control
 			}
 			"3"
 			{
-				"name"		"FacileSans"
+				"name"		"GorDIN"
 				"tall"		"18"
 				"weight"	"400"
 				"antialias"	"1"

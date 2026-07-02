@@ -35,13 +35,17 @@ static IGameUI *g_pGameUI = NULL;
 //-----------------------------------------------------------------------------
 // Colors
 //-----------------------------------------------------------------------------
-static const Color ACCENT      ( 180, 240,   0, 255 );
+// ACCENT and BAR_BG are pulled from the "GreenD"/"GoldSrcGreen" entries in
+// resource/SourceScheme.res (see ApplySchemeSettings()) -- these literals
+// are just the fallback if that lookup ever fails.
+static Color       ACCENT      ( 180, 240,   0, 100 );
 static const Color TEXT_IDLE   ( 200, 200, 200, 180 );
 static const Color TEXT_HOVER  ( 255, 255, 255, 255 );
 static const Color TEXT_PRESS  ( 180, 240,   0, 255 );
 static const Color BG_CLEAR    (   0,   0,   0,   0 );
 static const Color BG_HOVER    (   0,   0,   0,  55 );
-static const Color BAR_BG      (   0,   0,   0, 255 );
+static Color       BAR_BG      ( 180, 240,   0, 100 );
+static Color       BAR_BG_END  (  62,  70,  55, 120 );
 static const Color SAVE_INFO_C ( 200, 200, 200, 220 );
 static const Color DATETIME_C  ( 160, 160, 160, 200 );
 
@@ -128,6 +132,7 @@ public:
 	             vgui::Panel *target, const char *cmd, bool bInvertHover = false )
 		: BaseClass( parent, name, text, target, cmd )
 		, m_bInvertHover( bInvertHover )
+		, m_HoverLineColor( 62, 70, 55, 140 )
 	{
 		SetContentAlignment( vgui::Label::a_center );
 	}
@@ -137,6 +142,12 @@ public:
 		BaseClass::ApplySchemeSettings( pScheme );
 		vgui::HFont h = pScheme->GetFont( "MenuButtonFont", false );
 		if ( h != vgui::INVALID_FONT ) SetFont( h );
+
+		// Darker/translucent than the bar's own accent -- "DullGoldSrcGreen"
+		// from the mod palette, at reduced alpha so it doesn't sit fully
+		// opaque like a flat block.
+		Color dull = pScheme->GetColor( "DullGoldSrcGreen", Color( 62, 70, 55, 255 ) );
+		m_HoverLineColor = Color( dull.r(), dull.g(), dull.b(), 140 );
 
 		if ( m_bInvertHover )
 		{
@@ -172,13 +183,14 @@ public:
 		{
 			vgui::surface()->DrawSetColor( BG_HOVER );
 			vgui::surface()->DrawFilledRect( 0, 0, w, h );
-			vgui::surface()->DrawSetColor( ACCENT );
+			vgui::surface()->DrawSetColor( m_HoverLineColor );
 			vgui::surface()->DrawFilledRect( 0, 0, w, ACCENT_LINE );
 		}
 	}
 
 private:
-	bool m_bInvertHover;
+	bool  m_bInvertHover;
+	Color m_HoverLineColor;
 };
 
 //-----------------------------------------------------------------------------
@@ -254,6 +266,19 @@ public:
 		BaseClass::ApplySchemeSettings( pScheme );
 		SetBgColor( BG_CLEAR );
 		SetBorder( NULL );
+
+		// Pull the bar's colors from the mod's own palette (SourceScheme.res)
+		// instead of hardcoded literals, so retheming just means editing
+		// that file. Keeps each color's own alpha -- the fade calls in
+		// PaintBackground() override alpha explicitly regardless.
+		ACCENT = pScheme->GetColor( "GreenD", ACCENT );
+		BAR_BG = pScheme->GetColor( "GoldSrcGreen", BAR_BG );
+
+		// Right-hand end of the bar's crossfade -- DullGoldSrcGreen, kept
+		// translucent (not fully opaque, not fully transparent) instead of
+		// just fading BAR_BG down to nothing.
+		Color dullEnd = pScheme->GetColor( "DullGoldSrcGreen", Color( 62, 70, 55, 255 ) );
+		BAR_BG_END = Color( dullEnd.r(), dullEnd.g(), dullEnd.b(), 120 );
 
 		auto StyleLabel = [&]( vgui::Label *l, Color col )
 		{
@@ -377,24 +402,34 @@ public:
 
 		// Top bar
 		vgui::surface()->DrawSetColor( BAR_BG );
-		vgui::surface()->DrawFilledRectFade( 0, 0, sw, TOP_BAR_H, 255, 80, true );
+		vgui::surface()->DrawFilledRectFade( 0, 0, sw, TOP_BAR_H, 100, 0, true );
+
+		// Crossfade into DullGoldSrcGreen (translucent) toward the right,
+		// instead of just fading BAR_BG down to nothing.
+		vgui::surface()->DrawSetColor( BAR_BG_END );
+		vgui::surface()->DrawFilledRectFade( 0, 0, sw, TOP_BAR_H, 0, 120, true );
 
 		vgui::surface()->DrawSetColor( ACCENT );
-		vgui::surface()->DrawFilledRectFade( 0, 0, sw, TOP_BAR_H, 90, 30, true );
+		vgui::surface()->DrawFilledRectFade( 0, 0, sw, TOP_BAR_H, 90, 0, true );
 
 		vgui::surface()->DrawSetColor( ACCENT );
-		vgui::surface()->DrawFilledRectFade( 0, TOP_BAR_H - ACCENT_LINE, sw, TOP_BAR_H, 255, 80, true );
+		vgui::surface()->DrawFilledRectFade( 0, TOP_BAR_H - ACCENT_LINE, sw, TOP_BAR_H, 255, 0, true );
 
 		// Bottom bar
 		vgui::surface()->DrawSetColor( BAR_BG );
-		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw, sh, 255, 80, true );
+		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw, sh, 100, 0, true );
+
+		// Crossfade into DullGoldSrcGreen (translucent) toward the right,
+		// instead of just fading BAR_BG down to nothing.
+		vgui::surface()->DrawSetColor( BAR_BG_END );
+		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw, sh, 0, 120, true );
 
 		vgui::surface()->DrawSetColor( ACCENT );
-		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw, sh, 90, 30, true );
+		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw, sh, 90, 0, true );
 
 		vgui::surface()->DrawSetColor( ACCENT );
 		vgui::surface()->DrawFilledRectFade( 0, sh - BOT_BAR_H, sw,
-		                                     sh - BOT_BAR_H + ACCENT_LINE, 255, 80, true );
+		                                     sh - BOT_BAR_H + ACCENT_LINE, 255, 0, true );
 	}
 
 	virtual void OnCommand( const char *cmd )
