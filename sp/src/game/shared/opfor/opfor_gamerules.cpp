@@ -1160,7 +1160,7 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_COMBINE_HUNTER,	D_HT, 0);
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_CONSCRIPT,		D_NU, 0);
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_FLARE,			D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_CRAB_SYNTH,			D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_CRAB_SYNTH,			D_HT, 0);
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_HOUNDEYE,			D_HT, 0);
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_MANHACK,			D_HT, 0);
 		CBaseCombatCharacter::SetDefaultRelationship(CLASS_PLAYER,			CLASS_METROPOLICE,		D_HT, 0);
@@ -1470,34 +1470,34 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 		// ------------------------------------------------------------
 		//	> CLASS_CRAB_SYNTH
 		// ------------------------------------------------------------
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_NONE, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_ANTLION, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_BARNACLE, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,	 CLASS_BULLSEYE, D_NU, 0);
-		////CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,			CLASS_BULLSQUID,		D_FR, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CITIZEN_PASSIVE, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CITIZEN_REBEL, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE_GUNSHIP, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE_HUNTER, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CONSCRIPT, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_FLARE, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CRAB_SYNTH, D_NU, 0);
-		////CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,			CLASS_HOUNDEYE,			D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MANHACK, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_METROPOLICE, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MILITARY, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MISSILE, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_SCANNER, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_STALKER, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_VORTIGAUNT, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_ZOMBIE, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PROTOSNIPER, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_EARTH_FAUNA, D_NU, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER_ALLY, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER_ALLY_VITAL, D_HT, 0);
-		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_HACKED_ROLLERMINE, D_FR, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_NONE, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_ANTLION, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_BARNACLE, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_BULLSEYE, D_NU, 0);
+		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,			CLASS_BULLSQUID,		D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CITIZEN_PASSIVE, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CITIZEN_REBEL, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE_GUNSHIP, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_COMBINE_HUNTER, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CONSCRIPT, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_FLARE, D_NU, 0);
+		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,			CLASS_CRAB_SYNTH,			D_HT, 0);
+		//CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH,			CLASS_HOUNDEYE,			D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MANHACK, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_METROPOLICE, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MILITARY, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_MISSILE, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_SCANNER, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_STALKER, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_VORTIGAUNT, D_LI, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_ZOMBIE, D_HT, 1);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PROTOSNIPER, D_NU, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_EARTH_FAUNA, D_HT, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER_ALLY, D_LI, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_PLAYER_ALLY_VITAL, D_LI, 0);
+		CBaseCombatCharacter::SetDefaultRelationship(CLASS_CRAB_SYNTH, CLASS_CRAB_SYNTH, D_LI, 0);
 	}
 
 	//------------------------------------------------------------------------------
@@ -1525,7 +1525,7 @@ ConVar  alyx_darkness_force( "alyx_darkness_force", "0", FCVAR_CHEAT | FCVAR_REP
 			case CLASS_COMBINE_GUNSHIP:	return "CLASS_COMBINE_GUNSHIP";
 			case CLASS_COMBINE_HUNTER:	return "CLASS_COMBINE_HUNTER";
 			case CLASS_CONSCRIPT:		return "CLASS_CONSCRIPT";
-			//case CLASS_CRAB_SYNTH:		return "CLASS_CRAB_SYNTH";
+			case CLASS_CRAB_SYNTH:		return "CLASS_CRAB_SYNTH";
 			//case CLASS_HOUNDEYE:		return "CLASS_HOUNDEYE";
 			case CLASS_MANHACK:			return "CLASS_MANHACK";
 			case CLASS_METROPOLICE:		return "CLASS_METROPOLICE";
