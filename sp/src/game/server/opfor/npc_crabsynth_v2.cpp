@@ -1375,16 +1375,21 @@ int CNPC_CrabSynth::TranslateSchedule(int scheduleType)
 Activity CNPC_CrabSynth::NPC_TranslateActivity(Activity baseAct)
 {
 #ifdef MAPBASE
-	// Needed for VScript NPC_TranslateActiviy hook
 	baseAct = BaseClass::NPC_TranslateActivity(baseAct);
 #endif
 
-	//See which run to use
 	if ((baseAct == ACT_RUN) && IsCurSchedule(SCHED_CRABSYNTH_CHARGE))
 		return (Activity)ACT_CRABSYNTH_CHARGE_RUN;
 
 	if ((baseAct == ACT_RUN) && (m_iHealth <= (m_iMaxHealth / 4)))
 		return (Activity)ACT_CRABSYNTH_RUN_HURT;
+
+	// Stopgap: no distinct run animation exists on this model yet --
+	// reuse the walk cycle so the NPC actually moves during chase
+	// schedules, instead of requesting an activity with zero matching
+	// sequences. Remove this once a real ACT_RUN sequence is authored.
+	if (baseAct == ACT_RUN)
+		return ACT_WALK;
 
 	return baseAct;
 }
