@@ -5,6 +5,7 @@
 #include "ai_blended_movement.h"
 
 #define	CRABSYNTH_MELEE1_CONE		0.7f
+#define	CRABSYNTH_MELEE1_REACH		100.0f		// max distance to allow a melee attack -- tune to match the model's actual swing reach
 
 #define	CRABSYNTH_MODEL	"models/synth.mdl"
 #define	CRABSYNTH_FOV_NORMAL			-0.4f
@@ -16,8 +17,11 @@
 ConVar	sk_crabsynth_health("sk_crabsynth_health", "500");
 ConVar	sk_crabsynth_dmg_shove("sk_crabsynth_dmg_shove", "0");
 ConVar	sk_crabsynth_dmg_charge("sk_crabsynth_dmg_charge", "0");
+ConVar	sk_crabsynth_dmg_melee("sk_crabsynth_dmg_melee", "0");
 
 ConVar	g_debug_crabsynth("g_debug_crabsynth", "0");
+
+ConVar	sk_crabsynth_charge_ready_time("sk_crabsynth_charge_ready_time", "0.");	// seconds to hold the "ready" telegraph pose before charging
 
 //==================================================
 // AntlionGuardSchedules
@@ -42,10 +46,13 @@ enum
 
 int AE_CRABSYNTH_CHARGE_HIT;
 int AE_CRABSYNTH_CHARGE_START;
+int AE_CRABSYNTH_MELEE_HIT;
+int AE_CRABSYNTH_SHOOT;
 
 enum
 {
 	TASK_CRABSYNTH_CHARGE = LAST_SHARED_TASK,
+	TASK_CRABSYNTH_CHARGE_READY,
 	TASK_CRABSYNTH_GET_PATH_TO_CHARGE_POSITION,
 	TASK_CRABSYNTH_GET_PATH_TO_NEAREST_NODE,
 	TASK_CRABSYNTH_GET_CHASE_PATH_ENEMY_TOLERANCE
@@ -58,6 +65,7 @@ Activity ACT_CRABSYNTH_CHARGE_STOP;
 Activity ACT_CRABSYNTH_CHARGE_CRASH;
 Activity ACT_CRABSYNTH_CHARGE_HIT;
 Activity ACT_CRABSYNTH_CHARGE_ANTICIPATION;
+Activity ACT_CRABSYNTH_CHARGE_READY;
 Activity ACT_CRABSYNTH_RUN_HURT;
 
 class CNPC_CrabSynth : public CAI_BlendedNPC
@@ -135,7 +143,8 @@ private:
 	float		m_CflNextMelee2AttackTime;
 	float		m_CflNextRoarTime;
 	float		m_CflChargeTime;
+	float		m_CflChargeReadyEndTime;	// when the "ready" telegraph pose stops holding and the charge begins
+	int			m_miniGunAmmo;
 };
 
 #endif // NPC_CRABSYNTH_H
-

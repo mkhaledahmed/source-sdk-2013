@@ -16,6 +16,7 @@
 #include "ai_moveprobe.h"
 #include "ai_squad.h"
 #include "npc_crabsynth_v2.h"
+#include "ammodef.h"
 
 //-----------------------------------------------------------------------------
 // Purpose: Calculate & apply damage & force for a charge to a target.
@@ -124,7 +125,11 @@ void CNPC_CrabSynth::UpdateOnRemove(void)
 //-----------------------------------------------------------------------------
 void CNPC_CrabSynth::Precache(void)
 {
+	// Fetch the Strider's minigun ammo definition
+	m_miniGunAmmo = GetAmmoDef()->Index("StriderMinigun");
+
 	PrecacheModel(DefaultOrCustomModel(CRABSYNTH_MODEL));;
+	PrecacheScriptSound("NPC_Strider.FireMinigun");
 
 	BaseClass::Precache();
 }
@@ -276,6 +281,12 @@ int CNPC_CrabSynth::MeleeAttack1Conditions(float flDot, float flDist)
 	// While charging, we can't melee attack
 	if (IsCurSchedule(SCHED_CRABSYNTH_CHARGE))
 		return 0;
+
+	// Must actually be in reach -- this was missing entirely before,
+	// which let the hull trace below grant a melee attack from any
+	// distance if it happened to clip terrain/geometry along the way.
+	if (flDist > CRABSYNTH_MELEE1_REACH)
+		return COND_TOO_FAR_TO_ATTACK;
 
 	// Must be within a viable cone
 	if (flDot < CRABSYNTH_MELEE1_CONE)
@@ -638,6 +649,55 @@ void CNPC_CrabSynth::HandleAnimEvent(animevent_t* pEvent)
 		return;
 	}
 
+	if (pEvent->event == AE_CRABSYNTH_SHOOT)
+	{
+		if (GetEnemy())
+		{
+			// Calculate the gun position relative to the CrabSynth's current facing direction
+			Vector forward, right, up;
+			GetVectors(&forward, &right, &up);
+			Vector vecShootOrigin = GetAbsOrigin() + (forward * m_HackedGunPos.x) + (right * m_HackedGunPos.y) + (up * m_HackedGunPos.z);
+
+			// Calculate the direction to the enemy
+			Vector vecShootDir = GetEnemy()->BodyTarget(vecShootOrigin) - vecShootOrigin;
+			VectorNormalize(vecShootDir);
+
+			// Fire the Strider's hitscan bullet
+			// (1 bullet, starting pos, direction, spread, 8192 range, ammo type, tracer frequency)
+			FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, 8192, m_miniGunAmmo, 1);
+
+			// Play the Strider's minigun sound
+			EmitSound("NPC_Strider.FireMinigun");
+		}
+		return;
+	}
+
+	if (pEvent->event == AE_CRABSYNTH_MELEE_HIT)
+	{
+		CBaseEntity* pHit = CheckTraceHullAttack(
+			CRABSYNTH_MELEE1_REACH,
+			Vector(-32, -32, -32),
+			Vector(32, 32, 32),
+			sk_crabsynth_dmg_melee.GetFloat(),
+			DMG_CLUB
+		);
+
+		if (pHit)
+		{
+			Vector forward;
+			AngleVectors(GetAbsAngles(), &forward);
+
+			pHit->ApplyAbsVelocityImpulse(forward * 300 + Vector(0, 0, 120));
+
+			if (pHit->IsPlayer())
+			{
+				ToBasePlayer(pHit)->ViewPunch(QAngle(-12, RandomFloat(-5, 5), 0));
+			}
+		}
+
+		return;
+	}
+
 	if (pEvent->event == AE_CRABSYNTH_CHARGE_HIT)
 	{
 		UTIL_ScreenShake(GetAbsOrigin(), 32.0f, 4.0f, 1.0f, 512, SHAKE_START);
@@ -757,6 +817,19 @@ void CNPC_CrabSynth::StartTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
+	case TASK_CRABSYNTH_CHARGE_READY:
+	{
+		// Stop moving and play the "ready" telegraph pose -- signals to the
+		// player that a charge is coming before the lunge actually starts.
+		GetMotor()->MoveStop();
+
+		SetIdealActivity(ACT_CRABSYNTH_CHARGE_READY);
+
+		// Record when the fixed-duration hold ends (see RunTask).
+		m_CflChargeReadyEndTime = gpGlobals->curtime + sk_crabsynth_charge_ready_time.GetFloat();
+	}
+	break;
+
 	case TASK_CRABSYNTH_CHARGE:
 	{
 		// HACK: Because the guard stops running his normal blended movement 
@@ -1123,6 +1196,23 @@ void CNPC_CrabSynth::RunTask(const Task_t* pTask)
 {
 	switch (pTask->iTask)
 	{
+	case TASK_CRABSYNTH_CHARGE_READY:
+	{
+		// Keep facing the enemy while telegraphing.
+		if (GetEnemy())
+		{
+			GetMotor()->SetIdealYawToTargetAndUpdate(GetEnemy()->GetAbsOrigin());
+		}
+
+		// Hold the ready pose for the fixed telegraph duration, then move on
+		// to the actual charge.
+		if (gpGlobals->curtime >= m_CflChargeReadyEndTime)
+		{
+			TaskComplete();
+		}
+	}
+	break;
+
 	case TASK_CRABSYNTH_CHARGE:
 	{
 		Activity eActivity = GetActivity();
@@ -1207,7 +1297,18 @@ void CNPC_CrabSynth::RunTask(const Task_t* pTask)
 		// Let our animations simply move us forward. Keep the result
 		// of the movement so we know whether we've hit our target.
 		AIMoveTrace_t moveTrace;
-		if (AutoMovement(GetEnemy(), &moveTrace) == false)
+
+		Vector vChargeDebugBefore = GetAbsOrigin();
+		bool bChargeMoved = AutoMovement(GetEnemy(), &moveTrace);
+
+		if (g_debug_crabsynth.GetInt() == 2)
+		{
+			float flActualMove = (GetAbsOrigin() - vChargeDebugBefore).Length();
+			Msg("[crabsynth] charge: activity=%d  AutoMovement=%s  movedThisFrame=%.2f  traceDist=%.2f\n",
+				(int)eActivity, bChargeMoved ? "TRUE" : "FALSE", flActualMove, moveTrace.flTotalDist);
+		}
+
+		if (bChargeMoved == false)
 		{
 			// Only stop if we hit the world
 			if (HandleChargeImpact(moveTrace.vEndPosition, moveTrace.pObstruction))
@@ -1375,21 +1476,16 @@ int CNPC_CrabSynth::TranslateSchedule(int scheduleType)
 Activity CNPC_CrabSynth::NPC_TranslateActivity(Activity baseAct)
 {
 #ifdef MAPBASE
+	// Needed for VScript NPC_TranslateActiviy hook
 	baseAct = BaseClass::NPC_TranslateActivity(baseAct);
 #endif
 
+	//See which run to use
 	if ((baseAct == ACT_RUN) && IsCurSchedule(SCHED_CRABSYNTH_CHARGE))
 		return (Activity)ACT_CRABSYNTH_CHARGE_RUN;
 
 	if ((baseAct == ACT_RUN) && (m_iHealth <= (m_iMaxHealth / 4)))
 		return (Activity)ACT_CRABSYNTH_RUN_HURT;
-
-	// Stopgap: no distinct run animation exists on this model yet --
-	// reuse the walk cycle so the NPC actually moves during chase
-	// schedules, instead of requesting an activity with zero matching
-	// sequences. Remove this once a real ACT_RUN sequence is authored.
-	if (baseAct == ACT_RUN)
-		return ACT_WALK;
 
 	return baseAct;
 }
@@ -1402,8 +1498,10 @@ Activity CNPC_CrabSynth::NPC_TranslateActivity(Activity baseAct)
 
 AI_BEGIN_CUSTOM_NPC(npc_crabsynth, CNPC_CrabSynth)
 
+
 //Tasks
 DECLARE_TASK(TASK_CRABSYNTH_CHARGE)
+DECLARE_TASK(TASK_CRABSYNTH_CHARGE_READY)
 DECLARE_TASK(TASK_CRABSYNTH_GET_PATH_TO_CHARGE_POSITION)
 DECLARE_TASK(TASK_CRABSYNTH_GET_PATH_TO_NEAREST_NODE)
 DECLARE_TASK(TASK_CRABSYNTH_GET_CHASE_PATH_ENEMY_TOLERANCE)
@@ -1411,6 +1509,7 @@ DECLARE_TASK(TASK_CRABSYNTH_GET_CHASE_PATH_ENEMY_TOLERANCE)
 
 //Activities
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_START)
+DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_READY)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_RUN)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_STOP)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_CRASH)
@@ -1421,6 +1520,8 @@ DECLARE_ACTIVITY(ACT_CRABSYNTH_RUN_HURT)
 //Adrian: events go here
 DECLARE_ANIMEVENT(AE_CRABSYNTH_CHARGE_HIT)
 DECLARE_ANIMEVENT(AE_CRABSYNTH_CHARGE_START)
+DECLARE_ANIMEVENT(AE_CRABSYNTH_MELEE_HIT)
+DECLARE_ANIMEVENT(AE_CRABSYNTH_SHOOT)
 
 DECLARE_CONDITION(COND_CRABSYNTH_HAS_CHARGE_TARGET)
 DECLARE_CONDITION(COND_CRABSYNTH_CAN_CHARGE)
@@ -1437,6 +1538,7 @@ DEFINE_SCHEDULE
 	"		TASK_STOP_MOVING					0"
 	"		TASK_SET_FAIL_SCHEDULE				SCHEDULE:SCHED_CRABSYNTH_CHASE_ENEMY"
 	"		TASK_FACE_ENEMY						0"
+	"		TASK_CRABSYNTH_CHARGE_READY		0"
 	"		TASK_CRABSYNTH_CHARGE			0"
 	""
 	"	Interrupts"
@@ -1461,6 +1563,7 @@ DEFINE_SCHEDULE
 	"	Tasks"
 	"		TASK_STOP_MOVING					0"
 	"		TASK_FACE_ENEMY						0"
+	"		TASK_CRABSYNTH_CHARGE_READY		0"
 	"		TASK_CRABSYNTH_CHARGE			0"
 	""
 	"	Interrupts"
