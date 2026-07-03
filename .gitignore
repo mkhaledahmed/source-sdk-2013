@@ -166,3 +166,5 @@ sp/src/devtools/gcc9+support.o
 /sp/game/mod_opfor/maps/of2_map_01.bsp
 /sp/src/materialsystem/stdshaders/Release_dx9_mod_opfor
 /sp/src/materialsystem/stdshaders/Release_dx9_mod_opfor/game_shader_dx9.dll
+/sp/src/game/server/opfor/npc_crabsynth.h
+/sp/src/game/server/opfor/npc_crabsynth.cpp
