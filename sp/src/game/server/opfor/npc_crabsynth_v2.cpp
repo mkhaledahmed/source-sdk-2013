@@ -47,6 +47,8 @@ DEFINE_FIELD(m_CnextCharge, FIELD_BOOLEAN),
 DEFINE_FIELD(m_CflNextRangeAttackTime, FIELD_TIME),
 DEFINE_FIELD(m_CflNextMelee2AttackTime, FIELD_TIME),
 DEFINE_FIELD(m_CflNextRoarTime, FIELD_TIME),
+DEFINE_FIELD(m_flNextSideStepTime, FIELD_TIME),
+DEFINE_FIELD(m_bWasInGreenZone, FIELD_BOOLEAN), // Tracking variable for the green zone
 
 END_DATADESC()
 
@@ -106,7 +108,13 @@ const impactdamagetable_t& CNPC_CrabSynth::GetPhysicsImpactDamageTable(void)
 //==================================================
 CNPC_CrabSynth::CNPC_CrabSynth(void)
 {
-
+	m_bIsFiring = false;
+	m_flNextGunTime = 0.0f;
+	m_flGunBurstEnd = 0.0f;
+	m_flNextSideStepTime = 0.0f;
+	m_nStandFirePhase = CRABSYNTH_STANDFIRE_WINDUP;
+	m_flStandFireUntil = 0.0f;
+	m_bWasInGreenZone = false; // Initialize the zone memory
 }
 
 LINK_ENTITY_TO_CLASS(npc_crabsynth, CNPC_CrabSynth);
@@ -118,6 +126,43 @@ void CNPC_CrabSynth::UpdateOnRemove(void)
 {
 	// Chain to the base class
 	BaseClass::UpdateOnRemove();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Catch think to handle continuous burst firing
+//-----------------------------------------------------------------------------
+void CNPC_CrabSynth::NPCThink(void)
+{
+	BaseClass::NPCThink();
+
+	if (m_bIsFiring)
+	{
+		// Stop firing if the burst time is up, or the enemy is gone/dead
+		if (gpGlobals->curtime > m_flGunBurstEnd || !GetEnemy() || !GetEnemy()->IsAlive())
+		{
+			m_bIsFiring = false;
+		}
+		else if (gpGlobals->curtime >= m_flNextGunTime)
+		{
+			// Calculate the gun position relative to the CrabSynth's current facing direction
+			Vector forward, right, up;
+			GetVectors(&forward, &right, &up);
+			Vector vecShootOrigin = GetAbsOrigin() + (forward * m_HackedGunPos.x) + (right * m_HackedGunPos.y) + (up * m_HackedGunPos.z);
+
+			// Calculate the direction to the enemy
+			Vector vecShootDir = GetEnemy()->BodyTarget(vecShootOrigin) - vecShootOrigin;
+			VectorNormalize(vecShootDir);
+
+			// Fire the hitscan bullet with a 5-degree cone for a Strider-like spread
+			FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_5DEGREES, 8192, m_miniGunAmmo, 1);
+
+			// Play the Strider's minigun sound
+			EmitSound("NPC_Strider.FireMinigun");
+
+			// Schedule the next bullet in the burst
+			m_flNextGunTime = gpGlobals->curtime + 0.1f;
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -154,6 +199,8 @@ void CNPC_CrabSynth::Spawn(void)
 	SetNavType(NAV_GROUND);
 	SetBloodColor(BLOOD_COLOR_YELLOW);
 
+	SetCollisionGroup(COLLISION_GROUP_NPC);
+
 	m_iHealth = sk_crabsynth_health.GetFloat();
 	m_iMaxHealth = m_iHealth;
 	m_flFieldOfView = CRABSYNTH_FOV_NORMAL;
@@ -183,10 +230,46 @@ void CNPC_CrabSynth::Spawn(void)
 	GetEnemies()->SetFreeKnowledgeDuration(60.0f);
 
 	// We need to bloat the absbox to encompass all the hitboxes
-	Vector absMin = -Vector(100, 100, 0);
-	Vector absMax = Vector(100, 100, 128);
+	Vector absMin = Vector(-140, -140, 0);
+	Vector absMax = Vector(140, 140, 160);
 
 	CollisionProp()->SetSurroundingBoundsType(USE_SPECIFIED_BOUNDS, &absMin, &absMax);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+bool CNPC_CrabSynth::IsEnemyAboveAndUnreachable(void)
+{
+	CBaseEntity* pEnemy = GetEnemy();
+	if (!pEnemy)
+		return false;
+
+	// Must be meaningfully above us.
+	float flZDiff = pEnemy->GetAbsOrigin().z - GetAbsOrigin().z;
+	if (flZDiff < sk_crabsynth_above_height.GetFloat())
+		return false;
+
+	// ...and something we can't currently walk to. RememberUnreachable() (called
+	// when a chase path fails) feeds this, so a player who hops onto a ledge the
+	// crab can't climb naturally trips it after the first failed approach.
+	return IsUnreachable(pEnemy) || HasCondition(COND_ENEMY_UNREACHABLE);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Reachability, regardless of direction. Unlike IsEnemyAboveAndUnreachable
+//			this doesn't care whether he's above, below, or across a gap -- only
+//			whether we can currently path to him. Populated the same way (a failed
+//			chase path calls RememberUnreachable / sets COND_ENEMY_UNREACHABLE),
+//			with a built-in timeout so we periodically re-test and resume closing.
+//-----------------------------------------------------------------------------
+bool CNPC_CrabSynth::IsEnemyUnreachable(void)
+{
+	CBaseEntity* pEnemy = GetEnemy();
+	if (!pEnemy)
+		return false;
+
+	return IsUnreachable(pEnemy) || HasCondition(COND_ENEMY_UNREACHABLE);
 }
 
 //-----------------------------------------------------------------------------
@@ -196,16 +279,92 @@ void CNPC_CrabSynth::GatherConditions(void)
 {
 	BaseClass::GatherConditions();
 
-	// See if we can charge the target
+	// Re-evaluate our range-band conditions from scratch each think.
+	ClearCondition(COND_CRABSYNTH_CAN_CHARGE);
+	ClearCondition(COND_CRABSYNTH_CAN_STAND_GUN);
+	ClearCondition(COND_CRABSYNTH_CAN_RANGE_WALK);
+	ClearCondition(COND_CRABSYNTH_ENEMY_ABOVE_UNREACHABLE);
+
 	if (GetEnemy())
 	{
-		if (ShouldCharge(GetAbsOrigin(), GetEnemy()->GetAbsOrigin(), true, false))
+		const float flMeleeRange = sk_crabsynth_melee_range.GetFloat();
+		const float flStandGunRange = sk_crabsynth_standgun_range.GetFloat();
+		const float flChargeRange = sk_crabsynth_charge_range.GetFloat();
+
+		if (g_debug_crabsynth.GetInt() > 0)
+		{
+			int segments = 32;
+			float flStep = (2.0f * 3.14159f) / segments;
+			Vector vecPos = GetAbsOrigin();
+			vecPos.z += 10.0f; // Offset slightly above ground to avoid z-fighting
+
+			for (int i = 0; i < segments; i++)
+			{
+				float theta1 = i * flStep;
+				float theta2 = (i + 1) * flStep;
+
+				Vector p1(cos(theta1), sin(theta1), 0);
+				Vector p2(cos(theta2), sin(theta2), 0);
+
+				// Melee range (Red)
+				NDebugOverlay::Line(vecPos + p1 * flMeleeRange, vecPos + p2 * flMeleeRange, 255, 0, 0, true, 0.1f);
+				// Stand and Gun range (Yellow)
+				NDebugOverlay::Line(vecPos + p1 * flStandGunRange, vecPos + p2 * flStandGunRange, 255, 255, 0, true, 0.1f);
+				// Charge range (Green)
+				NDebugOverlay::Line(vecPos + p1 * flChargeRange, vecPos + p2 * flChargeRange, 0, 255, 0, true, 0.1f);
+			}
+		}
+
+		float flDist = (GetEnemy()->GetAbsOrigin() - GetAbsOrigin()).Length2D();
+		bool  bCanSee = HasCondition(COND_SEE_ENEMY);
+
+		// Visible but we can't path to him (perched on a ledge, across a gap, or
+		// behind geometry the nav can't route around -- any direction, not just
+		// above): plant and deploy the minigun and suppress, rather than trying
+		// to walk in and spamming failed GetPathToEnemy. He periodically re-tests
+		// reachability (the unreachable memory times out) and resumes closing.
+		if (bCanSee && IsEnemyUnreachable())
+		{
+			SetCondition(COND_CRABSYNTH_ENEMY_ABOVE_UNREACHABLE);
+		}
+
+		// Determine the player's current zone based purely on the numerical boundaries
+		// Yellow Zone: Between 400 and 800
+		bool bInYellowZone = (flDist >= flMeleeRange && flDist < flStandGunRange);
+		// Green Zone: Between 800 and 1400
+		bool bInGreenZone = (flDist >= flStandGunRange && flDist <= flChargeRange);
+
+		// Track if the player has been in the green zone
+		if (bInGreenZone)
+		{
+			m_bWasInGreenZone = true;
+		}
+		else if (flDist > flChargeRange || flDist < flMeleeRange)
+		{
+			// Reset the memory if the player escapes beyond the 1400 range or enters melee under 400
+			m_bWasInGreenZone = false;
+		}
+
+		// CHARGE: Only trigger if the player is currently in the yellow zone (400-800)
+		// AND previously in the green zone (800-1400)
+		if (bInYellowZone && m_bWasInGreenZone &&
+			ShouldCharge(GetAbsOrigin(), GetEnemy()->GetAbsOrigin(), true, false))
 		{
 			SetCondition(COND_CRABSYNTH_CAN_CHARGE);
 		}
-		else
+
+		// YELLOW ZONE: Plant and deploy the minigun (stand-and-gun burst).
+		// Only do this if we haven't decided to charge based on the memory logic above.
+		if (bCanSee && bInYellowZone && !HasCondition(COND_CRABSYNTH_CAN_CHARGE))
 		{
-			ClearCondition(COND_CRABSYNTH_CAN_CHARGE);
+			SetCondition(COND_CRABSYNTH_CAN_STAND_GUN);
+		}
+
+		// GREEN ZONE: Advance while firing to close (walk-and-gun).
+		// Crab fires WHILST walking exclusively in the Green zone (800-1400).
+		if (bCanSee && bInGreenZone)
+		{
+			SetCondition(COND_CRABSYNTH_CAN_RANGE_WALK);
 		}
 	}
 }
@@ -217,17 +376,64 @@ int CNPC_CrabSynth::SelectCombatSchedule(void)
 {
 	ClearHintGroup();
 
-	// Attack if we can
+	// Highest priority: if he's already in melee reach, swing.
 	if (HasCondition(COND_CAN_MELEE_ATTACK1))
 		return SCHED_MELEE_ATTACK1;
 
-	// Charging
-	if (HasCondition(COND_CRABSYNTH_CAN_CHARGE))
+	if (!GetEnemy())
+		return BaseClass::SelectSchedule();
+
+	// Enemy is perched above us where we can't path to him (e.g. on a ledge).
+	// Plant and lay down suppressing fire rather than uselessly trying to close.
+	if (HasCondition(COND_CRABSYNTH_ENEMY_ABOVE_UNREACHABLE))
+		return SCHED_CRABSYNTH_STANDGROUND_FIRE;
+
+	// Hunter-style: when we take a heavy hit, jink sideways instead of standing
+	// there and eating the follow-up. Cooldown-gated so it doesn't spam.
+	if (HasCondition(COND_HEAVY_DAMAGE) && gpGlobals->curtime > m_flNextSideStepTime)
 	{
-		return SCHED_CRABSYNTH_CHARGE;
+		m_flNextSideStepTime = gpGlobals->curtime + RandomFloat(1.5f, 3.0f);
+		return SCHED_CRABSYNTH_SIDESTEP;
 	}
 
-	return BaseClass::SelectSchedule();
+	const float flDist = (GetEnemy()->GetAbsOrigin() - GetAbsOrigin()).Length2D();
+	const float flMeleeRange = sk_crabsynth_melee_range.GetFloat();
+
+	// CLOSE (but not yet in reach): run him down to land the melee.
+	if (flDist < flMeleeRange)
+		return SCHED_CRABSYNTH_CHASE_ENEMY;
+
+	// CHARGE whenever a viable lane exists. Evaluated strictly by our GatheringConditions.
+	if (HasCondition(COND_CRABSYNTH_CAN_CHARGE))
+		return SCHED_CRABSYNTH_CHARGE;
+
+	// He can't charge right now (blocked lane, uneven ground, or on cooldown).
+	if (HasCondition(COND_SEE_ENEMY))
+	{
+		// YELLOW ZONE: plant and unload the deployed minigun -- or, Hunter-style,
+		// strafe to a fresh spot first (facing you, so the side/back blends play)
+		// rather than rooting every time.
+		if (HasCondition(COND_CRABSYNTH_CAN_STAND_GUN))
+		{
+			if (RandomInt(1, 100) <= sk_crabsynth_reposition_pct.GetInt())
+				return SCHED_CRABSYNTH_CHANGE_POSITION;
+
+			return SCHED_CRABSYNTH_STAND_AND_GUN;
+		}
+
+		// GREEN ZONE: advance while firing to close (walk-and-gun). 
+		// If it still fails he degrades to firing in place (RANGE_WALK's fail schedule).
+		if (HasCondition(COND_CRABSYNTH_CAN_RANGE_WALK))
+			return SCHED_CRABSYNTH_RANGE_WALK;
+
+		// BEYOND GREEN ZONE (>= 1400): fire in place. The deployed minigun only needs line of
+		// sight, not a nav path, so he engages from range like a Combine soldier.
+		return SCHED_CRABSYNTH_STAND_AND_GUN;
+	}
+
+	// No line of sight: reposition (facing the enemy) to re-establish one or to
+	// stumble into a charge lane, instead of standing there blind.
+	return SCHED_CRABSYNTH_CHANGE_POSITION;
 }
 
 //-----------------------------------------------------------------------------
@@ -241,18 +447,22 @@ int CNPC_CrabSynth::SelectSchedule(void)
 		ClearCondition(COND_CRABSYNTH_HAS_CHARGE_TARGET);
 		ClearHintGroup();
 
-		if (m_hChargeTarget->IsAlive() == false)
+		if (!m_hChargeTarget->IsAlive())
 		{
 			m_hChargeTarget = NULL;
 			m_hChargeTargetPosition = NULL;
-			SetEnemy(m_hOldTarget);
 
-			if (m_hOldTarget == NULL)
+			// ONLY restore enemy if valid
+			if (m_hOldTarget && m_hOldTarget->IsAlive())
 			{
-				m_NPCState = NPC_STATE_ALERT;
+				SetEnemy(m_hOldTarget);
 			}
+
+			return SCHED_CRABSYNTH_CHASE_ENEMY;
 		}
-		else
+
+		// DO NOT override enemy during active chase schedule
+		if (!IsCurSchedule(SCHED_CRABSYNTH_CHASE_ENEMY))
 		{
 			m_hOldTarget = GetEnemy();
 			SetEnemy(m_hChargeTarget);
@@ -311,54 +521,30 @@ int CNPC_CrabSynth::MeleeAttack1Conditions(float flDot, float flDist)
 //-----------------------------------------------------------------------------
 float CNPC_CrabSynth::MaxYawSpeed(void)
 {
-	Activity eActivity = GetActivity();
-
-	// Stay still
-	if ((eActivity == ACT_MELEE_ATTACK1))
-		return 0.0f;
-
+	Activity act = GetActivity();
 	CBaseEntity* pEnemy = GetEnemy();
 
-	if (pEnemy != NULL && pEnemy->IsPlayer() == false)
-		return 16.0f;
+	// MELEE = locked in place
+	if (act == ACT_MELEE_ATTACK1)
+		return 0.0f;
 
-	// Turn slowly when you're charging
-	if (eActivity == ACT_CRABSYNTH_CHARGE_START)
-		return 4.0f;
+	// CHARGE START = fast acquisition
+	if (act == ACT_CRABSYNTH_CHARGE_START)
+		return 25.0f;
 
-	// Turn more slowly as we close in on our target
-	if (eActivity == ACT_CRABSYNTH_CHARGE_RUN)
-	{
-		if (pEnemy == NULL)
-			return 2.0f;
+	// CHARGE RUN = full aggression tracking
+	if (act == ACT_CRABSYNTH_CHARGE_RUN)
+		return 35.0f;
 
-		float dist = UTIL_DistApprox2D(GetEnemy()->WorldSpaceCenter(), WorldSpaceCenter());
-
-		if (dist > 512)
-			return 16.0f;
-
-		//FIXME: Alter by skill level
-		float yawSpeed = RemapVal(dist, 0, 512, 1.0f, 2.0f);
-		yawSpeed = clamp(yawSpeed, 1.0f, 2.0f);
-
-		return yawSpeed;
-	}
-
-	if (eActivity == ACT_CRABSYNTH_CHARGE_STOP)
-		return 8.0f;
-
-	switch (eActivity)
-	{
-	case ACT_TURN_LEFT:
-	case ACT_TURN_RIGHT:
-		return 40.0f;
-		break;
-
-	case ACT_RUN:
-	default:
+	// CHARGE STOP = still responsive
+	if (act == ACT_CRABSYNTH_CHARGE_STOP)
 		return 20.0f;
-		break;
-	}
+
+	// Default behaviour
+	if (pEnemy && !pEnemy->IsPlayer())
+		return 20.0f;
+
+	return 20.0f;
 }
 
 //-----------------------------------------------------------------------------
@@ -462,7 +648,8 @@ bool CNPC_CrabSynth::ShouldCharge(const Vector& startPos, const Vector& endPos, 
 	// Only update this if we've requested it
 	if (useTime)
 	{
-		m_CflChargeTime = gpGlobals->curtime + 4.0f;
+		// INCREASED FROM 4.0 TO 8.0 TO MAKE THE NPC GENERALLY LESS EAGER TO CHARGE
+		m_CflChargeTime = gpGlobals->curtime + 8.0f;
 	}
 
 	return true;
@@ -653,21 +840,10 @@ void CNPC_CrabSynth::HandleAnimEvent(animevent_t* pEvent)
 	{
 		if (GetEnemy())
 		{
-			// Calculate the gun position relative to the CrabSynth's current facing direction
-			Vector forward, right, up;
-			GetVectors(&forward, &right, &up);
-			Vector vecShootOrigin = GetAbsOrigin() + (forward * m_HackedGunPos.x) + (right * m_HackedGunPos.y) + (up * m_HackedGunPos.z);
-
-			// Calculate the direction to the enemy
-			Vector vecShootDir = GetEnemy()->BodyTarget(vecShootOrigin) - vecShootOrigin;
-			VectorNormalize(vecShootDir);
-
-			// Fire the Strider's hitscan bullet
-			// (1 bullet, starting pos, direction, spread, 8192 range, ammo type, tracer frequency)
-			FireBullets(1, vecShootOrigin, vecShootDir, VECTOR_CONE_PRECALCULATED, 8192, m_miniGunAmmo, 1);
-
-			// Play the Strider's minigun sound
-			EmitSound("NPC_Strider.FireMinigun");
+			// Start a rapid-fire burst lasting 1.5 seconds
+			m_bIsFiring = true;
+			m_flGunBurstEnd = gpGlobals->curtime + 1.5f;
+			m_flNextGunTime = gpGlobals->curtime;
 		}
 		return;
 	}
@@ -920,6 +1096,80 @@ void CNPC_CrabSynth::StartTask(const Task_t* pTask)
 	}
 	break;
 
+	case TASK_CRABSYNTH_STAND_AND_GUN:
+	{
+		if (!GetEnemy())
+		{
+			TaskFail(FAIL_NO_ENEMY);
+			break;
+		}
+
+		// Plant and begin the spin-up telegraph. NO bullets fly until the
+		// wind-up finishes (handled in RunTask); firing then lasts for
+		// sk_crabsynth_standgun_duration before the barrels spin back down.
+		GetMotor()->MoveStop();
+		m_bIsFiring = false;
+		m_nStandFirePhase = CRABSYNTH_STANDFIRE_WINDUP;
+		SetIdealActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_START);
+	}
+	break;
+
+	case TASK_CRABSYNTH_WAIT_FOR_MOVEMENT_FACING_ENEMY:
+	{
+		// Same as a normal "wait for movement", but OverrideMoveFacing + the
+		// facing target added in RunTask keep us strafing toward the enemy.
+		ChainStartTask(TASK_WAIT_FOR_MOVEMENT, pTask->flTaskData);
+	}
+	break;
+
+	case TASK_CRABSYNTH_FIND_SIDESTEP_POSITION:
+	{
+		if (GetEnemy() == NULL)
+		{
+			TaskFail(FAIL_NO_ENEMY);
+			break;
+		}
+
+		Vector vecUp;
+		GetVectors(NULL, NULL, &vecUp);
+
+		// Perpendicular to the enemy direction = straight left/right of us.
+		Vector vecEnemyDir = GetEnemy()->GetAbsOrigin() - GetAbsOrigin();
+		Vector vecDir = CrossProduct(vecEnemyDir, vecUp);
+		VectorNormalize(vecDir);
+
+		// Dodge left or right at random.
+		if (RandomInt(0, 1) == 0)
+			vecDir *= -1.0f;
+
+		// Start high and trace down so it works on uneven ground.
+		Vector vecPos = GetAbsOrigin() + Vector(0, 0, 64) + RandomFloat(150, 260) * vecDir;
+
+		trace_t tr;
+		UTIL_TraceLine(vecPos, vecPos + Vector(0, 0, -128), MASK_NPCSOLID, this, COLLISION_GROUP_NONE, &tr);
+		if (tr.fraction < 1.0f)
+		{
+			m_vSavePosition = tr.endpos;
+			TaskComplete();
+		}
+		else
+		{
+			TaskFail("Couldn't find sidestep position\n");
+		}
+	}
+	break;
+
+	case TASK_CRABSYNTH_STANDGROUND_FIRE:
+	{
+		// Plant and play the spin-up telegraph. RunTask advances the phase
+		// machine: WINDUP (start) -> FIRING (loop) -> WINDDOWN (end).
+		GetMotor()->MoveStop();
+		m_bIsFiring = false;
+		m_nStandFirePhase = CRABSYNTH_STANDFIRE_WINDUP;
+		SetIdealActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_START);
+	}
+	break;
+
 	default:
 		BaseClass::StartTask(pTask);
 		break;
@@ -1105,86 +1355,41 @@ void CNPC_CrabSynth::ChargeLookAhead(void)
 //-----------------------------------------------------------------------------
 float CNPC_CrabSynth::ChargeSteer(void)
 {
-	trace_t	tr;
-	Vector	testPos, steer, forward, right;
-	QAngle	angles;
-	const float	testLength = m_flGroundSpeed * 0.15f;
-
-	//Get our facing
+	Vector forward, right;
 	GetVectors(&forward, &right, NULL);
 
-	steer = forward;
+	const float testLength = m_flGroundSpeed * 0.2f;
 
-	const float faceYaw = UTIL_VecToYaw(forward);
+	Vector steer = forward;
 
-	//Offset right
-	VectorAngles(forward, angles);
-	angles[YAW] += 45.0f;
-	AngleVectors(angles, &forward);
+	// RIGHT PROBE
+	Vector testPos = GetAbsOrigin() + (forward + right * 0.6f) * testLength;
 
-	//Probe out
-	testPos = GetAbsOrigin() + (forward * testLength);
+	Vector mins = GetHullMins();
+	mins.z += StepHeight() * 2;
 
-	//Offset by step height
-	Vector testHullMins = GetHullMins();
-	testHullMins.z += (StepHeight() * 2);
+	trace_t trRight;
+	TraceHull_SkipPhysics(GetAbsOrigin(), testPos, mins, GetHullMaxs(),
+		MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE,
+		&trRight, VPhysicsGetObject()->GetMass() * 0.5f);
 
-	//Probe
-	TraceHull_SkipPhysics(GetAbsOrigin(), testPos, testHullMins, GetHullMaxs(), MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE, &tr, VPhysicsGetObject()->GetMass() * 0.5f);
+	steer += right * (1.0f - trRight.fraction);
 
-	//Debug info
-	if (g_debug_crabsynth.GetInt() == 1)
-	{
-		if (tr.fraction == 1.0f)
-		{
-			NDebugOverlay::BoxDirection(GetAbsOrigin(), testHullMins, GetHullMaxs() + Vector(testLength, 0, 0), forward, 0, 255, 0, 8, 0.1f);
-		}
-		else
-		{
-			NDebugOverlay::BoxDirection(GetAbsOrigin(), testHullMins, GetHullMaxs() + Vector(testLength, 0, 0), forward, 255, 0, 0, 8, 0.1f);
-		}
-	}
+	// LEFT PROBE
+	testPos = GetAbsOrigin() + (forward - right * 0.6f) * testLength;
 
-	//Add in this component
-	steer += (right * 0.5f) * (1.0f - tr.fraction);
+	trace_t trLeft;
+	TraceHull_SkipPhysics(GetAbsOrigin(), testPos, mins, GetHullMaxs(),
+		MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE,
+		&trLeft, VPhysicsGetObject()->GetMass() * 0.5f);
 
-	//Offset left
-	angles[YAW] -= 90.0f;
-	AngleVectors(angles, &forward);
+	steer -= right * (1.0f - trLeft.fraction);
 
-	//Probe out
-	testPos = GetAbsOrigin() + (forward * testLength);
+	// Convert to yaw difference
+	float desiredYaw = UTIL_VecToYaw(steer);
+	float currentYaw = UTIL_VecToYaw(forward);
 
-	// Probe
-	TraceHull_SkipPhysics(GetAbsOrigin(), testPos, testHullMins, GetHullMaxs(), MASK_SOLID_BRUSHONLY, this, COLLISION_GROUP_NONE, &tr, VPhysicsGetObject()->GetMass() * 0.5f);
-
-	//Debug
-	if (g_debug_crabsynth.GetInt() == 1)
-	{
-		if (tr.fraction == 1.0f)
-		{
-			NDebugOverlay::BoxDirection(GetAbsOrigin(), testHullMins, GetHullMaxs() + Vector(testLength, 0, 0), forward, 0, 255, 0, 8, 0.1f);
-		}
-		else
-		{
-			NDebugOverlay::BoxDirection(GetAbsOrigin(), testHullMins, GetHullMaxs() + Vector(testLength, 0, 0), forward, 255, 0, 0, 8, 0.1f);
-		}
-	}
-
-	//Add in this component
-	steer -= (right * 0.5f) * (1.0f - tr.fraction);
-
-	//Debug
-	if (g_debug_crabsynth.GetInt() == 1)
-	{
-		NDebugOverlay::Line(GetAbsOrigin(), GetAbsOrigin() + (steer * 512.0f), 255, 255, 0, true, 0.1f);
-		NDebugOverlay::Cross3D(GetAbsOrigin() + (steer * 512.0f), Vector(2, 2, 2), -Vector(2, 2, 2), 255, 255, 0, true, 0.1f);
-
-		NDebugOverlay::Line(GetAbsOrigin(), GetAbsOrigin() + (BodyDirection3D() * 256.0f), 255, 0, 255, true, 0.1f);
-		NDebugOverlay::Cross3D(GetAbsOrigin() + (BodyDirection3D() * 256.0f), Vector(2, 2, 2), -Vector(2, 2, 2), 255, 0, 255, true, 0.1f);
-	}
-
-	return UTIL_AngleDiff(UTIL_VecToYaw(steer), faceYaw);
+	return AngleDiff(desiredYaw, currentYaw);
 }
 
 
@@ -1252,7 +1457,7 @@ void CNPC_CrabSynth::RunTask(const Task_t* pTask)
 					Vector	goalDir = (GetEnemy()->GetAbsOrigin() - GetAbsOrigin());
 					VectorNormalize(goalDir);
 
-					if (DotProduct(BodyDirection2D(), goalDir) < 0.25f)
+					if (DotProduct(BodyDirection2D(), goalDir) < 0.5f)
 					{
 						if (!m_CbDecidedNotToStop)
 						{
@@ -1353,6 +1558,139 @@ void CNPC_CrabSynth::RunTask(const Task_t* pTask)
 				}
 			}
 		}
+	}
+	break;
+
+	case TASK_CRABSYNTH_STAND_AND_GUN:
+	{
+		if (!GetEnemy())
+		{
+			m_bIsFiring = false;
+			TaskComplete();
+			return;
+		}
+
+		// Keep the minigun trained on the enemy while we hold ground.
+		GetMotor()->SetIdealYawToTargetAndUpdate(GetEnemy()->GetAbsOrigin());
+
+		switch (m_nStandFirePhase)
+		{
+		case CRABSYNTH_STANDFIRE_WINDUP:
+			// Hold the spin-up telegraph. Not a single bullet until it finishes.
+			if (GetActivity() == ACT_SYNTH_STANDGROUND_RANGEATTACK_START && IsActivityFinished())
+			{
+				m_nStandFirePhase = CRABSYNTH_STANDFIRE_FIRING;
+				SetActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_FIRE);
+				m_bIsFiring = true;
+				m_flNextGunTime = gpGlobals->curtime;
+				m_flStandFireUntil = gpGlobals->curtime + sk_crabsynth_standgun_duration.GetFloat();
+			}
+			break;
+
+		case CRABSYNTH_STANDFIRE_FIRING:
+			// Sustain fire (only while we have a shot). NPCThink() spits the
+			// bullets as long as m_bIsFiring is set and the window is open.
+			m_bIsFiring = HasCondition(COND_SEE_ENEMY);
+			if (m_bIsFiring)
+				m_flGunBurstEnd = gpGlobals->curtime + 0.5f;
+
+			// Re-latch the loop if the fire01_loop $sequence isn't flagged "loop".
+			if (IsActivityFinished())
+			{
+				SetCycle(0.0f);
+				ResetSequenceInfo();
+			}
+
+			// Fired long enough -> spin the barrels down before finishing.
+			if (gpGlobals->curtime >= m_flStandFireUntil)
+			{
+				m_bIsFiring = false;
+				m_nStandFirePhase = CRABSYNTH_STANDFIRE_WINDDOWN;
+				SetActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_END);
+			}
+			break;
+
+		case CRABSYNTH_STANDFIRE_WINDDOWN:
+			// Let the spin-down play out, THEN hand control back so
+			// SelectCombatSchedule() can re-check the range band.
+			m_bIsFiring = false;
+			if (IsActivityFinished())
+				TaskComplete();
+			break;
+		}
+	}
+	break;
+
+	case TASK_CRABSYNTH_STANDGROUND_FIRE:
+	{
+		if (!GetEnemy())
+		{
+			m_bIsFiring = false;
+			TaskComplete();
+			return;
+		}
+
+		// Always keep the minigun trained on the target.
+		GetMotor()->SetIdealYawToTargetAndUpdate(GetEnemy()->GetAbsOrigin());
+
+		switch (m_nStandFirePhase)
+		{
+		case CRABSYNTH_STANDFIRE_WINDUP:
+			// Hold the spin-up telegraph until it finishes -- no firing yet.
+			if (GetActivity() == ACT_SYNTH_STANDGROUND_RANGEATTACK_START && IsActivityFinished())
+			{
+				m_nStandFirePhase = CRABSYNTH_STANDFIRE_FIRING;
+				SetActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_FIRE);
+				m_flNextGunTime = gpGlobals->curtime;
+			}
+			break;
+
+		case CRABSYNTH_STANDFIRE_FIRING:
+			// Sustain fire while we can see him. NPCThink() does the shooting as
+			// long as m_bIsFiring is set and the window is open.
+			m_bIsFiring = HasCondition(COND_SEE_ENEMY);
+			if (m_bIsFiring)
+				m_flGunBurstEnd = gpGlobals->curtime + 0.5f;
+
+			// Re-latch the loop if fire01_loop isn't flagged "loop" in the QC.
+			if (IsActivityFinished())
+			{
+				SetCycle(0.0f);
+				ResetSequenceInfo();
+			}
+
+			// Enemy is reachable again (came down off the ledge, we got a path
+			// around, or the unreachable memory timed out) -> spin the barrels
+			// down before doing anything else; the transition after the spin-down
+			// is decided on completion (chase / walk-gun / charge on reselect).
+			if (!IsEnemyUnreachable())
+			{
+				m_bIsFiring = false;
+				m_nStandFirePhase = CRABSYNTH_STANDFIRE_WINDDOWN;
+				SetActivity(ACT_SYNTH_STANDGROUND_RANGEATTACK_END);
+			}
+			break;
+
+		case CRABSYNTH_STANDFIRE_WINDDOWN:
+			// Let the spin-down finish, then complete. Reselect routes to a
+			// chase if he's close, or walk-and-gun if he's farther out.
+			m_bIsFiring = false;
+			if (IsActivityFinished())
+				TaskComplete();
+			break;
+		}
+	}
+	break;
+
+	case TASK_CRABSYNTH_WAIT_FOR_MOVEMENT_FACING_ENEMY:
+	{
+		// Keep pulling our facing toward the enemy for the whole move so the
+		// directional walk/run blends stay engaged (side/back strafing).
+		if (GetEnemy())
+		{
+			AddFacingTarget(GetEnemy(), GetEnemyLKP(), 1.0f, 0.8f);
+		}
+		ChainRunTask(TASK_WAIT_FOR_MOVEMENT, pTask->flTaskData);
 	}
 	break;
 
@@ -1469,6 +1807,45 @@ int CNPC_CrabSynth::TranslateSchedule(int scheduleType)
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: While moving with an enemy nearby, keep the body trained on him.
+//			This is the Hunter's trick: the navigator moves the feet along the
+//			path while the move_yaw pose parameter blends in the correct
+//			directional cycle, so he side- and back-strafes (using the
+//			walk_blended / run_blended sequences) instead of always running
+//			face-first.
+//-----------------------------------------------------------------------------
+bool CNPC_CrabSynth::OverrideMoveFacing(const AILocalMoveGoal_t& move, float flInterval)
+{
+	// Don't fight the charge steering or the melee lock.
+	if (IsCurSchedule(SCHED_CRABSYNTH_CHARGE) ||
+		IsCurSchedule(SCHED_CRABSYNTH_CHARGE_TARGET) ||
+		GetActivity() == ACT_MELEE_ATTACK1)
+	{
+		return BaseClass::OverrideMoveFacing(move, flInterval);
+	}
+
+	bool bSideStepping = IsCurSchedule(SCHED_CRABSYNTH_SIDESTEP);
+
+	Activity moveActivity = GetNavigator()->GetMovementActivity();
+
+	if (GetEnemy() &&
+		(bSideStepping || moveActivity == ACT_RUN || moveActivity == ACT_WALK))
+	{
+		Vector vecEnemyLKP = GetEnemyLKP();
+
+		// Face the enemy while sidestepping, or whenever he's close enough that
+		// strafing reads better than just charging straight at him.
+		if (bSideStepping ||
+			UTIL_DistApprox(vecEnemyLKP, GetAbsOrigin()) < sk_crabsynth_face_enemy_dist.GetFloat())
+		{
+			AddFacingTarget(GetEnemy(), vecEnemyLKP, 1.0f, 0.2f);
+		}
+	}
+
+	return BaseClass::OverrideMoveFacing(move, flInterval);
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: 
 // Input  : baseAct - 
 // Output : Activity
@@ -1483,6 +1860,11 @@ Activity CNPC_CrabSynth::NPC_TranslateActivity(Activity baseAct)
 	//See which run to use
 	if ((baseAct == ACT_RUN) && IsCurSchedule(SCHED_CRABSYNTH_CHARGE))
 		return (Activity)ACT_CRABSYNTH_CHARGE_RUN;
+
+	// While advancing on a distant enemy, use the gundown walk cycle so the
+	// baked-in minigun shoot events fire as he closes the distance.
+	if ((baseAct == ACT_WALK) && IsCurSchedule(SCHED_CRABSYNTH_RANGE_WALK))
+		return (Activity)ACT_CRABSYNTH_WALK_FIRE;
 
 	if ((baseAct == ACT_RUN) && (m_iHealth <= (m_iMaxHealth / 4)))
 		return (Activity)ACT_CRABSYNTH_RUN_HURT;
@@ -1505,6 +1887,10 @@ DECLARE_TASK(TASK_CRABSYNTH_CHARGE_READY)
 DECLARE_TASK(TASK_CRABSYNTH_GET_PATH_TO_CHARGE_POSITION)
 DECLARE_TASK(TASK_CRABSYNTH_GET_PATH_TO_NEAREST_NODE)
 DECLARE_TASK(TASK_CRABSYNTH_GET_CHASE_PATH_ENEMY_TOLERANCE)
+DECLARE_TASK(TASK_CRABSYNTH_STAND_AND_GUN)
+DECLARE_TASK(TASK_CRABSYNTH_WAIT_FOR_MOVEMENT_FACING_ENEMY)
+DECLARE_TASK(TASK_CRABSYNTH_FIND_SIDESTEP_POSITION)
+DECLARE_TASK(TASK_CRABSYNTH_STANDGROUND_FIRE)
 
 
 //Activities
@@ -1515,6 +1901,10 @@ DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_STOP)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_CRASH)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_CHARGE_ANTICIPATION)
 DECLARE_ACTIVITY(ACT_CRABSYNTH_RUN_HURT)
+DECLARE_ACTIVITY(ACT_CRABSYNTH_WALK_FIRE)
+DECLARE_ACTIVITY(ACT_SYNTH_STANDGROUND_RANGEATTACK_START)
+DECLARE_ACTIVITY(ACT_SYNTH_STANDGROUND_RANGEATTACK_FIRE)
+DECLARE_ACTIVITY(ACT_SYNTH_STANDGROUND_RANGEATTACK_END)
 
 
 //Adrian: events go here
@@ -1525,6 +1915,9 @@ DECLARE_ANIMEVENT(AE_CRABSYNTH_SHOOT)
 
 DECLARE_CONDITION(COND_CRABSYNTH_HAS_CHARGE_TARGET)
 DECLARE_CONDITION(COND_CRABSYNTH_CAN_CHARGE)
+DECLARE_CONDITION(COND_CRABSYNTH_CAN_RANGE_WALK)
+DECLARE_CONDITION(COND_CRABSYNTH_CAN_STAND_GUN)
+DECLARE_CONDITION(COND_CRABSYNTH_ENEMY_ABOVE_UNREACHABLE)
 
 //==================================================
 // SCHED_ANTLIONGUARD_CHARGE
@@ -1580,8 +1973,13 @@ DEFINE_SCHEDULE
 	SCHED_CRABSYNTH_CHASE_ENEMY,
 
 	"	Tasks"
+	// Path failure here (e.g. the big hull can't finish the route the small
+	// player walked) drops to firing in place rather than a dead stall.
+	"		TASK_SET_FAIL_SCHEDULE			SCHEDULE:SCHED_CRABSYNTH_STAND_AND_GUN"
 	"		TASK_STOP_MOVING				0"
-	"		TASK_GET_CHASE_PATH_TO_ENEMY	300"
+	// Tolerance tightened to melee reach so he actually closes the final gap
+	// instead of stopping short and re-deciding.
+	"		TASK_GET_CHASE_PATH_TO_ENEMY	64"
 	"		TASK_RUN_PATH					0"
 	"		TASK_WAIT_FOR_MOVEMENT			0"
 	"		TASK_FACE_ENEMY			0"
@@ -1590,15 +1988,187 @@ DEFINE_SCHEDULE
 	"		COND_NEW_ENEMY"
 	"		COND_ENEMY_DEAD"
 	"		COND_ENEMY_UNREACHABLE"
-	"		COND_CAN_RANGE_ATTACK1"
-	// "		COND_CAN_MELEE_ATTACK1"
-	"		COND_CAN_RANGE_ATTACK2"
+	// Break the instant he's in reach so the close-range melee actually lands.
+	"		COND_CAN_MELEE_ATTACK1"
 	"		COND_CAN_MELEE_ATTACK2"
 	"		COND_TOO_CLOSE_TO_ATTACK"
 	"		COND_TASK_FAILED"
 	"		COND_LOST_ENEMY"
 	"		COND_HEAVY_DAMAGE"
+	// If the enemy retreats out of the close band, re-decide (stand-gun /
+	// walk-gun / charge). These conditions are only set beyond melee range, so
+	// they won't thrash the chase while he's genuinely closing in.
+	"		COND_CRABSYNTH_CAN_STAND_GUN"
+	"		COND_CRABSYNTH_CAN_RANGE_WALK"
 	"		COND_CRABSYNTH_CAN_CHARGE"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_RANGE_WALK
+//
+// Advance on a distant enemy on foot while firing the minigun.
+// The firing itself comes from the AE_CRABSYNTH_SHOOT events baked into the
+// "walk_blended_gundown" sequence (ACT_CRABSYNTH_WALK_FIRE), which ACT_WALK
+// is translated to for the duration of this schedule.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_RANGE_WALK,
+
+	"	Tasks"
+	// If we can't path even at medium range (big hull vs. sparse nav), don't
+	// stall in the default 1-second SCHED_FAIL and don't wander -- just plant and
+	// fire. The deployed minigun needs only line of sight, so he keeps fighting.
+	"		TASK_SET_FAIL_SCHEDULE			SCHEDULE:SCHED_CRABSYNTH_STAND_AND_GUN"
+	"		TASK_STOP_MOVING				0"
+	"		TASK_GET_CHASE_PATH_TO_ENEMY	300"
+	"		TASK_WALK_PATH					0"
+	"		TASK_WAIT_FOR_MOVEMENT			0"
+	"		TASK_FACE_ENEMY					0"
+	""
+	"	Interrupts"
+	"		COND_NEW_ENEMY"
+	"		COND_ENEMY_DEAD"
+	"		COND_ENEMY_UNREACHABLE"
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_CRABSYNTH_CAN_CHARGE"
+	// Break to a stationary minigun burst once he's closed into medium-close range.
+	"		COND_CRABSYNTH_CAN_STAND_GUN"
+	"		COND_TOO_CLOSE_TO_ATTACK"
+	"		COND_TASK_FAILED"
+	"		COND_LOST_ENEMY"
+	"		COND_HEAVY_DAMAGE"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_STAND_AND_GUN
+//
+// Medium-close range behavior: stop, face the enemy, and fire the minigun in
+// place for one burst (sk_crabsynth_standgun_duration). When the burst ends the
+// task completes, forcing a fresh range-band decision.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_STAND_AND_GUN,
+
+	"	Tasks"
+	"		TASK_STOP_MOVING				0"
+	"		TASK_FACE_ENEMY					0"
+	"		TASK_CRABSYNTH_STAND_AND_GUN	0"
+	""
+	"	Interrupts"
+	"		COND_NEW_ENEMY"
+	"		COND_ENEMY_DEAD"
+	"		COND_LOST_ENEMY"
+	// Enemy rushed into melee reach -> drop the gun and swing.
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_TOO_CLOSE_TO_ATTACK"
+	"		COND_HEAVY_DAMAGE"
+	"		COND_TASK_FAILED"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_CHANGE_POSITION
+//
+// Hunter-style "make busy": wander to a nearby spot while keeping the enemy in
+// view (so the side/back walk-run blends play), then settle and re-face. Breaks
+// out the instant an attack becomes available.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_CHANGE_POSITION,
+
+	"	Tasks"
+	"		TASK_STOP_MOVING									0"
+	"		TASK_WANDER											720432"	// 6ft..36ft (min 72, max 432 units)
+	"		TASK_RUN_PATH										0"
+	"		TASK_CRABSYNTH_WAIT_FOR_MOVEMENT_FACING_ENEMY		0"
+	"		TASK_STOP_MOVING									0"
+	"		TASK_SET_SCHEDULE									SCHEDULE:SCHED_CRABSYNTH_CHANGE_POSITION_FINISH"
+	""
+	"	Interrupts"
+	"		COND_ENEMY_DEAD"
+	"		COND_NEW_ENEMY"
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_CRABSYNTH_CAN_CHARGE"
+	"		COND_HEAVY_DAMAGE"
+	"		COND_TASK_FAILED"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_CHANGE_POSITION_FINISH
+//
+// Settle after repositioning: face the enemy briefly, then re-decide. Attack
+// conditions interrupt immediately so he snaps back into the fight.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_CHANGE_POSITION_FINISH,
+
+	"	Tasks"
+	"		TASK_FACE_ENEMY					0"
+	"		TASK_WAIT_FACE_ENEMY_RANDOM		1"
+	""
+	"	Interrupts"
+	"		COND_ENEMY_DEAD"
+	"		COND_NEW_ENEMY"
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_CRABSYNTH_CAN_CHARGE"
+	"		COND_CRABSYNTH_CAN_STAND_GUN"
+	"		COND_CRABSYNTH_CAN_RANGE_WALK"
+	"		COND_HEAVY_DAMAGE"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_SIDESTEP
+//
+// Quick lateral dodge (used after heavy damage). Runs to a point directly
+// left/right, facing the enemy the whole way via OverrideMoveFacing.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_SIDESTEP,
+
+	"	Tasks"
+	"		TASK_SET_FAIL_SCHEDULE				SCHEDULE:SCHED_CRABSYNTH_CHANGE_POSITION"
+	"		TASK_STOP_MOVING					0"
+	"		TASK_CRABSYNTH_FIND_SIDESTEP_POSITION	0"
+	"		TASK_GET_PATH_TO_SAVEPOSITION		0"
+	"		TASK_RUN_PATH						0"
+	"		TASK_WAIT_FOR_MOVEMENT				0"
+	"		TASK_FACE_ENEMY						0"
+	""
+	"	Interrupts"
+	"		COND_NEW_ENEMY"
+	"		COND_ENEMY_DEAD"
+	"		COND_CAN_MELEE_ATTACK1"
+)
+
+//=========================================================
+// SCHED_CRABSYNTH_STANDGROUND_FIRE
+//
+// Enemy is above us and unreachable (e.g. up on a ledge). Face him, telegraph
+// with the spin-up, then pour on sustained minigun fire. The task itself drives
+// the START -> FIRE -> END animation state machine and decides when to bail:
+//   * enemy drops down close   -> spin down (END), then chase (via reselect)
+//   * enemy drops down far      -> hand off to walk-and-gun
+// So most transitions are handled in-task rather than by interrupts here.
+//=========================================================
+DEFINE_SCHEDULE
+(
+	SCHED_CRABSYNTH_STANDGROUND_FIRE,
+
+	"	Tasks"
+	"		TASK_STOP_MOVING				0"
+	"		TASK_FACE_ENEMY					0"
+	"		TASK_CRABSYNTH_STANDGROUND_FIRE	0"
+	""
+	"	Interrupts"
+	"		COND_NEW_ENEMY"
+	"		COND_ENEMY_DEAD"
+	"		COND_LOST_ENEMY"
+	"		COND_CAN_MELEE_ATTACK1"
+	"		COND_TASK_FAILED"
 )
 
 AI_END_CUSTOM_NPC()
